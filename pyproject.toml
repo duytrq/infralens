@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infralens"
+version = "0.1.0"
+description = "CLI foundation for Terraform security scanning and drift detection"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["typer>=0.24,<1"]
+
+[project.scripts]
+infralens = "infralens.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.14,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
