@@ -20,6 +20,8 @@ from infralens.validation import (
     failure_threshold,
     optional_text,
     output_path,
+    scan_directory,
+    scan_output_path,
     severity_filter,
     terraform_directory,
     trace_lookback,
@@ -27,7 +29,7 @@ from infralens.validation import (
 )
 
 app = typer.Typer(
-    help="Inspect Terraform security and drift (engines not yet implemented).",
+    help="Scan Terraform security and inspect infrastructure drift.",
     add_completion=False,
     invoke_without_command=True,
     no_args_is_help=False,
@@ -56,7 +58,7 @@ def root(
         ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option("--verbose", help="Log validation steps to stderr.")
+        bool, typer.Option("--verbose", help="Log diagnostic steps to stderr.")
     ] = False,
     no_color: Annotated[
         bool, typer.Option("--no-color", help="Disable ANSI color output.")
@@ -87,16 +89,19 @@ def scan(
             help="Inclusive LOW|MEDIUM|HIGH|CRITICAL threshold; ignores --severity."
         ),
     ] = None,
+    timeout: Annotated[int, typer.Option(min=1, help="Scan timeout in seconds.")] = 300,
 ) -> None:
-    """Validate a security scan request (engine not yet implemented)."""
+    """Scan Terraform misconfigurations using Trivy 0.76.x."""
     with command_errors():
         selected = severity_filter(severity)
         threshold = failure_threshold(fail_on)
-        directory, inputs = terraform_directory(path)
-        destination = output_path(output, inputs)
+        directory, inputs = scan_directory(path)
+        destination = scan_output_path(output, inputs)
         logger.debug("Scan validation complete")
         handle_scan(
-            ScanOptions(directory, selected, format.value, destination, threshold)
+            ScanOptions(
+                directory, selected, format.value, destination, threshold, timeout
+            )
         )
 
 

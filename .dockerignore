@@ -1,0 +1,11 @@
+# Whitelist only package/build inputs; user projects and credentials stay out.
+**
+!Dockerfile
+!.dockerignore
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!src/**
+**/__pycache__/
+**/*.pyc

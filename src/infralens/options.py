@@ -26,6 +26,7 @@ class ScanOptions:
     output: Path | None
     # Inclusive threshold across ALL findings, independent of the report filter.
     fail_on: str | None
+    timeout: int = 300
 
 
 @dataclass(frozen=True)

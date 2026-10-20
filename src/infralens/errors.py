@@ -27,6 +27,10 @@ class FeatureUnavailable(Exception):
     """A declared feature has no implementation yet."""
 
 
+class ExecutionError(Exception):
+    """A safe, controlled failure while running an engine or exporting a report."""
+
+
 def report_unexpected(exc: Exception) -> None:
     typer.echo(
         "Error: Unexpected execution error. Use --verbose for stack frames.", err=True
@@ -48,6 +52,9 @@ def command_errors() -> Iterator[None]:
     except FeatureUnavailable as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(ExitCode.unavailable) from None
+    except ExecutionError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(ExitCode.execution_error) from None
     except KeyboardInterrupt:
         typer.echo("Error: Interrupted.", err=True)
         raise typer.Exit(ExitCode.interrupted) from None

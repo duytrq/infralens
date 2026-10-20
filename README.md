@@ -1,57 +1,145 @@
 # InfraLens
 
-Nền tảng CLI Python cho kiểm tra bảo mật và drift của dự án Terraform.
-Phiên bản **0.1.0** trên nhánh `feature/cli` chỉ triển khai giao diện lệnh,
-chuẩn hóa/kiểm tra đầu vào, logging và xử lý lỗi.
+CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tầng.
 
-**Chưa có scan engine, drift engine hay CloudTrail trace.** Lệnh hợp lệ trả mã
-`4` với thông báo tính năng chưa triển khai. CLI không gọi Trivy, Terraform,
-AWS hoặc network; không kiểm tra binary/credentials, tạo báo cáo, tạo thư mục
-output, sửa Terraform hoặc thao tác state. Các lựa chọn format và chính sách
-findings mới được khai báo và lưu trong `ScanOptions`/`DriftOptions`.
+**Security scan đã hoạt động bằng Trivy.** Drift và CloudTrail trace hiện chỉ
+validate đầu vào rồi trả mã `4`. Upload cloud chưa được triển khai.
 
-## Cài đặt và chạy
+## Chạy trực tiếp
 
-Yêu cầu Python **≥3.10** và [uv](https://docs.astral.sh/uv/).
-Từ thư mục repo:
+Yêu cầu Python **>=3.10**, [uv](https://docs.astral.sh/uv/) và
+[Trivy **0.76.x**](https://github.com/aquasecurity/trivy/releases/tag/v0.76.0)
+trên PATH. Phiên bản chuẩn dùng để kiểm thử là 0.76.0.
 
 ```bash
 uv sync --locked
-uv run infralens
 uv run infralens --help
 uv run infralens --version
-uv run python -m infralens --help
+uv run infralens scan ./infra
 ```
 
-`infralens` không có subcommand sẽ hiện help và thoát `0`. Phiên bản lấy từ
-package metadata. Để cài CLI độc lập từ repo: `uv tool install .`.
+Cài CLI độc lập: `uv tool install .`. Cách này vẫn yêu cầu Trivy trên máy.
+`python -m infralens` và executable `infralens` dùng cùng CLI.
 
-Global options `--help`, `--version`, `--verbose`, `--no-color` đặt **trước**
-subcommand. Help riêng của lệnh dùng `infralens scan --help` hoặc
-`infralens drift --help`. Help và thông báo lỗi dùng tiếng Anh.
+Không có subcommand sẽ hiện help và thoát `0`. Global options `--verbose`,
+`--no-color`, `--version` đặt **trước** subcommand. Help và thông báo CLI dùng
+tiếng Anh; terminal sử dụng văn bản thuần, không ANSI.
 
-## Scan
+## Chạy bằng Docker
 
-Các ví dụ dưới đây giả định `./infra` chứa ít nhất một tệp Terraform trực tiếp:
+**Chỉ cần Docker; không cần cài Python hay Trivy trên máy.** Image chứa cả
+InfraLens và Trivy. Bản này hướng tới Linux/WSL, image `linux/amd64`.
+
+```bash
+docker build --platform linux/amd64 -t infralens:local .
+mkdir -p reports .infralens-cache
+
+docker run --rm --init \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -v "$PWD/infra:/workspace:ro" \
+  -v "$PWD/reports:/reports" \
+  -v "$PWD/.infralens-cache:/cache" \
+  infralens:local scan /workspace \
+  --format sarif \
+  --output /reports/security.sarif \
+  --fail-on HIGH
+```
+
+Tự thay `$PWD/infra` bằng thư mục dự án cần quét. Các thư mục mount trên host
+phải tồn tại; thư mục báo cáo/cache phải cho phép UID/GID được chọn ghi.
+
+| Đường dẫn container | Mục đích |
+| --- | --- |
+| `/workspace` | Mã nguồn, mount chỉ đọc. |
+| `/reports` | Báo cáo; ví dụ trên tạo `./reports/security.sarif` trên host. |
+| `/cache` | Cache Trivy được giữ lại giữa các lần chạy. |
+
+Container mặc định chạy bằng user `10001:10001`; `--user` trong ví dụ giúp file
+báo cáo thuộc người dùng host. `--init` chuyển tiếp tín hiệu khi nhấn Ctrl+C.
+Scan không cần Docker socket hoặc AWS credentials.
+
+Image nền, uv và Trivy được ghim digest trong Dockerfile; dependencies Python
+được cài từ lockfile. Chưa có launcher tự mount hoặc pipeline publish registry.
+Nếu Docker Desktop báo WSL integration chưa bật, bật integration cho distro
+đang chạy trước khi sử dụng lệnh `docker` trong WSL.
+
+## Security scan
 
 ```bash
 uv run infralens scan ./infra
 uv run infralens --verbose scan "./terraform project" --severity "high, critical"
-uv run infralens --no-color scan ./infra --format json --output ./reports/security.json
-uv run infralens scan ./infra --format sarif --fail-on HIGH
+uv run infralens scan ./infra --format json --output ./reports/security.json
+uv run infralens scan ./infra --format sarif --output ./reports/security.sarif
+uv run infralens scan ./infra --severity LOW --fail-on HIGH
+uv run infralens scan ./infra --timeout 120
 ```
 
-| Tham số | Quy tắc |
+| Tham số | Hành vi |
 | --- | --- |
-| `PATH` | Thư mục Terraform bắt buộc. |
-| `--severity` | Danh sách phân cách bằng dấu phẩy: `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`. Mặc định chọn tất cả; không phân biệt hoa thường, bỏ khoảng trắng quanh mỗi giá trị và loại giá trị trùng. Từ chối mục rỗng/không hợp lệ. |
-| `--format` | `table`, `json`, `sarif`; mặc định `table`. Không suy luận từ đuôi output; chưa có renderer. |
-| `--output` | Đường dẫn tệp báo cáo dự kiến; chưa ghi tệp. |
-| `--fail-on` | Một ngưỡng `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`, không phân biệt hoa thường. Mặc định không thất bại vì findings. |
+| `PATH` | Thư mục đọc được có ít nhất một `.tf` hoặc `.tf.json` trong cây thư mục. |
+| `--severity` | Danh sách UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL phân cách bằng dấu phẩy; mặc định tất cả. Không phân biệt hoa thường, bỏ khoảng trắng và giá trị trùng; từ chối mục rỗng/không hợp lệ. |
+| `--format` | `table`, `json`, `sarif`; mặc định `table`. Không suy luận từ đuôi output. |
+| `--output` | File báo cáo, tương đối với CWD hoặc tuyệt đối. |
+| `--fail-on` | Ngưỡng LOW,MEDIUM,HIGH,CRITICAL gồm chính mức đó và các mức cao hơn. Mặc định không thất bại vì findings. |
+| `--timeout` | Số giây nguyên dương cho scan, mặc định 300. Kiểm tra phiên bản giới hạn 10 giây; convert báo cáo giới hạn 60 giây. |
 
-Hợp đồng cho engine sau này: ngưỡng bao gồm chính mức đó và các mức cao hơn
-(`HIGH` gồm HIGH và CRITICAL). `--severity` chỉ lọc báo cáo; **không thay đổi**
-việc đánh giá `--fail-on` trên toàn bộ findings. Nhánh này chưa đánh giá findings.
+Trivy quét cấu hình Terraform đệ quy; InfraLens không chạy Terraform hay AWS CLI.
+Bước khám phá đầu vào bỏ qua `.git`, `.terraform` và không đi theo symlink thư mục.
+Việc resolve và đánh giá module do Trivy đảm nhiệm.
+
+`--severity` chỉ lọc **báo cáo**. `--fail-on` đánh giá **tất cả findings chưa
+bị ignore**. Vì vậy `--severity LOW --fail-on HIGH` vẫn trả `1` nếu có
+HIGH/CRITICAL bị ẩn. UNKNOWN không vượt các ngưỡng LOW–CRITICAL.
+
+Bảng terminal gồm tổng số findings, số đang hiển thị, số lượng theo severity,
+rule ID, cảnh báo, resource và vị trí nguồn khi xác định được. Thứ tự hiển thị:
+CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN. Thiếu dòng thì chỉ hiện file; thiếu cả
+vị trí thì hiện `unknown location`.
+
+| Lựa chọn | stdout | File |
+| --- | --- | --- |
+| Mặc định | Bảng kết quả | Không tạo. |
+| JSON/SARIF, không output | Chỉ dữ liệu JSON/SARIF | Không tạo. |
+| Có output | Bảng kết quả | Định dạng đã chọn. |
+
+JSON giữ schema gốc của Trivy; SARIF dùng phiên bản 2.1.0. Mỗi lệnh chỉ quét
+một lần, sau đó chuyển đổi báo cáo từ JSON. Báo cáo có thể chứa trích đoạn
+mã nguồn do Trivy cung cấp. Báo cáo được xuất trước khi trả exit code `1`.
+
+### Checks, ignore và network
+
+- Dùng built-in checks của Trivy; lần chạy có thể tải bản checks cập nhật.
+  Khi Trivy dùng embedded checks thay thế, InfraLens báo warning.
+- Tôn trọng ignore inline và `.trivyignore` trong thư mục quét; không nạp
+  `trivy.yaml` từ project/CWD.
+- Các biến `TRIVY_*` từ môi trường không được dùng để thay đổi scanner,
+  filter, output hoặc chính sách. Ngoại lệ: `TRIVY_CACHE_DIR` để cấu hình cache.
+  Proxy/TLS và cấu hình Git/Docker thông thường vẫn được kế thừa.
+- Telemetry Trivy được tắt.
+- Trivy có thể tải remote Terraform modules. Quét local không bảo đảm offline
+  hoặc hoàn toàn không có network; mã nguồn và báo cáo không được InfraLens
+  upload lên cloud.
+- Trivy thực hiện static analysis, không truy vấn provider để resolve giá trị
+  chỉ biết từ hạ tầng thật. Chất lượng phát hiện phụ thuộc checks và khả năng
+  phân tích của Trivy. Lỗi parse được phát hiện phải trả lỗi, không báo scan sạch.
+
+Tham khảo [Terraform coverage](https://trivy.dev/docs/v0.76/guide/coverage/iac/terraform/)
+và [report conversion](https://trivy.dev/docs/v0.76/guide/configuration/reporting/).
+
+## Đường dẫn và ghi báo cáo
+
+- PATH tương đối tính từ thư mục gọi CLI; symlink đầu vào được chuẩn hóa.
+- Scan kiểm tra Terraform trong thư mục con; drift vẫn yêu cầu ít nhất một
+  `.tf` hoặc `.tf.json` trực tiếp trong PATH.
+- Output không được là thư mục, trùng source/tfvars/state/lockfile, kể cả qua
+  symlink/hardlink. Các tên file Terraform đầu vào cũng không được dùng làm
+  tên output mới.
+- Cho phép thư mục output chưa tồn tại; tạo ở bước xuất báo cáo.
+- Ghi qua file tạm rồi thay thế atomically. Nếu ghi thất bại, báo cáo cũ được
+  giữ nguyên. File báo cáo mới có quyền riêng tư `0600` trên Linux.
+- JSON trung gian được lưu trong thư mục tạm riêng và dọn sau khi kết thúc.
+  Source và state không bị sửa.
 
 ## Drift
 
@@ -59,61 +147,36 @@ việc đánh giá `--fail-on` trên toàn bộ findings. Nhánh này chưa đá
 uv run infralens drift ./infra
 uv run infralens drift ./infra --var-file dev.tfvars --var-file overrides.tfvars
 uv run infralens drift ./infra --format json --output ./reports/drift.json --fail-on-drift
-uv run infralens --verbose drift ./infra --profile dev --region ap-southeast-1
-uv run infralens drift ./infra --trace
+uv run infralens drift ./infra --profile dev --region ap-southeast-1
 uv run infralens drift ./infra --trace --lookback-days 14
 ```
 
-| Tham số | Quy tắc |
-| --- | --- |
-| `PATH` | Thư mục Terraform bắt buộc; chưa yêu cầu state hay `.terraform`. |
-| `--var-file` | Có thể lặp lại, giữ thứ tự kể cả tệp trùng. Mỗi đường dẫn phải là tệp đọc được; không đọc/log nội dung. |
-| `--format` | `table` hoặc `json`, mặc định `table`; chưa có renderer. |
-| `--output` | Đường dẫn tệp báo cáo dự kiến; chưa ghi tệp. |
-| `--profile`, `--region` | Tùy chọn; bỏ khoảng trắng ở đầu/cuối và từ chối chuỗi trắng. Chưa truy cập AWS hoặc kiểm tra credentials. |
-| `--trace` | Yêu cầu CloudTrail trace, hiện chưa hỗ trợ. |
-| `--lookback-days` | Số nguyên dương, chỉ dùng với `--trace`. Khi trace bật, mặc định 7 ngày. |
-| `--fail-on-drift` | Khai báo chính sách thoát `1` khi có drift; chưa được đánh giá. |
+Drift hiện validate đầu vào rồi trả mã `4`: thông báo engine chưa triển khai,
+hoặc CloudTrail trace chưa hỗ trợ khi có `--trace`. Lỗi đầu vào được báo trước.
+Không kiểm tra binary/credentials, gọi Terraform/AWS, đọc nội dung state/tfvars
+hoặc tạo báo cáo cho drift.
 
-Sau khi **tất cả** đầu vào hợp lệ, drift thường báo `Drift engine is not
-implemented.`; drift có `--trace` báo `CloudTrail trace is not supported yet.`.
-Cả hai đều thoát `4`. Lỗi cú pháp/đầu vào luôn được báo trước lỗi thiếu tính năng.
+`--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
+Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`
+là số nguyên dương, chỉ dùng cùng trace; mặc định 7 khi trace bật.
 
-## Quy tắc đường dẫn
+## Logging và exit code
 
-- `PATH` tương đối tính từ thư mục gọi CLI. Nó phải tồn tại, là thư mục đọc
-  được, có ít nhất một tệp `.tf` hoặc `.tf.json` trực tiếp bên trong. Các tệp
-  Terraform trực tiếp phải đọc được; không quét đệ quy.
-- `--var-file` tương đối tính từ **thư mục Terraform**, không phải thư mục gọi
-  CLI. Đường dẫn tuyệt đối cũng được chấp nhận.
-- `--output` tương đối tính từ **thư mục gọi CLI**. Đích không được là thư mục
-  hoặc trùng tệp Terraform/var-file đầu vào, kể cả qua symlink/hardlink.
-- Cho phép cha của output chưa tồn tại, ví dụ `./reports/security.json`.
-  Chỉ kiểm tra tổ tiên hiện có và quyền ghi sơ bộ, không tạo thư mục/tệp.
-  Engine tương lai vẫn cần xử lý lỗi I/O tại thời điểm ghi thực tế.
-- Dùng dấu nháy cho đường dẫn có khoảng trắng. Symlink được chuẩn hóa về đích.
-
-## Logging và mã thoát
-
-Help/version ghi ra **stdout**; logging và lỗi ghi ra **stderr**. Scan/drift
-hiện để stdout trống để dành cho dữ liệu báo cáo sau này. Logging mặc định
-`WARNING`; `--verbose` bật `DEBUG` để theo dõi các bước kiểm tra.
-
-CLI hiện dùng văn bản thuần cho cả help và lỗi, nên `--no-color`, biến môi trường
-`NO_COLOR` và stream không phải terminal đều không có ANSI. Không log nội dung
-Terraform/tfvars/state, credentials hay environment. Lỗi ngoài dự kiến chỉ có
-thông báo chung; verbose bổ sung tên tệp, dòng và hàm trong stack, không in source,
-biến cục bộ hoặc exception payload. Cấu hình tắt pretty exceptions và locals
-dựa trên [tài liệu Typer](https://typer.tiangolo.com/tutorial/exceptions/).
+Help/version và dữ liệu báo cáo ghi stdout; logging, diagnostics và lỗi ghi
+stderr. `--verbose` bật DEBUG để xem các bước xử lý, không in raw stderr của
+Trivy, exception payload, source, credentials hoặc environment.
 
 | Mã | Ý nghĩa |
 | --- | --- |
-| `0` | Help/version thành công; dành cho engine hoàn tất sau này. |
-| `1` | Dành cho findings vượt ngưỡng hoặc drift khi bật `--fail-on-drift`. |
+| `0` | Thành công; findings không vượt ngưỡng hoặc không đặt ngưỡng. |
+| `1` | Findings đạt/vượt fail-on. |
 | `2` | Sai cú pháp hoặc đầu vào không hợp lệ. |
-| `3` | Lỗi thực thi/I/O hoặc lỗi ngoài dự kiến. |
-| `4` | Engine hoặc trace chưa triển khai. |
+| `3` | Thiếu/sai phiên bản Trivy, lỗi scan/convert/JSON, timeout hoặc I/O. |
+| `4` | Drift engine hoặc trace chưa triển khai. |
 | `130` | Người dùng ngắt bằng Ctrl+C. |
+
+Lỗi thực thi/ghi báo cáo ưu tiên hơn trạng thái findings. Timeout và Ctrl+C
+dừng process group của công cụ và dọn tài nguyên tạm.
 
 ## Phát triển và kiểm chứng
 
@@ -123,14 +186,25 @@ uv run pytest -q
 uv run ruff check
 uv run ruff format --check
 uv build
+
+# Có Trivy 0.76.x trên PATH:
+uv run pytest -q tests/integration/test_trivy_integration.py --run-integration
+uv run pytest -q tests/integration/test_trivy_integration.py --run-integration --run-network
+
+# Sau khi build image:
+uv run pytest -q tests/integration/test_docker.py --run-docker
 ```
 
-Mã nguồn ở `src/infralens/`: `cli.py` khai báo lệnh và dựng dataclass;
-`options.py` lưu options; `validation.py` kiểm tra đầu vào; `errors.py` và
-`logging.py` xử lý chung; `handlers.py` báo tính năng chưa triển khai.
-`tests/` dùng pytest và Typer CliRunner, kèm kiểm tra entrypoint đã cài,
-`python -m infralens`, Ctrl+C và tính bất biến của fixture Terraform.
-Lockfile `uv.lock` cố định dependencies cho môi trường phát triển.
+Suite mặc định dùng fixture và executable giả, không yêu cầu Trivy/Docker/network.
+Các suite công cụ ngoài được chọn bằng flag; khi đã chọn, thiếu dependency
+hoặc lỗi runtime sẽ làm test fail, không tự skip.
 
-Upload, dashboard, CI runner, backend API và mọi thao tác thay đổi Terraform/state
-không thuộc phạm vi nhánh này.
+Có thể đặt `INFRALENS_TEST_TRIVY` bằng đường dẫn executable cho integration tests;
+`TRIVY_CACHE_DIR` để dùng chung cache. Docker tests dùng `infralens:local`;
+`INFRALENS_TEST_IMAGE` và `INFRALENS_TEST_DOCKER` cho phép đổi image/executable.
+Tests Docker dùng volume riêng để hỗ trợ cả daemon từ xa, kiểm tra source chỉ
+đọc, UID file báo cáo, cache, exit code và SIGINT; tự dọn container/volume đã tạo.
+
+Mã nguồn trong `src/infralens/`: CLI/options/validation, handler orchestration,
+Trivy adapter, process runner, reporting và error/logging chung.
+Quyết định triển khai và checklist ở `tasks/plan.md`, `tasks/todo.md`.

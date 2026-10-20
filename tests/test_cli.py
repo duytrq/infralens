@@ -24,13 +24,14 @@ def test_version_from_metadata():
 
 
 @pytest.mark.parametrize("fmt", ["table", "json", "sarif"])
-def test_scan_reports_missing_engine(project, tmp_path, fmt):
+def test_scan_reports_missing_binary(project, tmp_path, fmt, monkeypatch):
+    monkeypatch.setattr("infralens.trivy.shutil.which", lambda name: None)
     output = tmp_path / "reports" / "security.json"
     result = runner.invoke(
         app, ["scan", str(project), "--format", fmt, "--output", str(output)]
     )
-    assert result.exit_code == 4
-    assert "Scan engine is not implemented" in result.stderr
+    assert result.exit_code == 3
+    assert "Trivy 0.76.x was not found on PATH" in result.stderr
     assert result.stdout == ""
     assert not output.parent.exists()
 
@@ -70,24 +71,21 @@ def test_scan_normalized_options_are_passed_to_handler(project, monkeypatch):
     ]
 
 
-@pytest.mark.parametrize("kind", ["missing", "file", "empty", "nested"])
+@pytest.mark.parametrize("kind", ["missing", "file", "empty"])
 def test_rejects_invalid_project(tmp_path, kind):
     path = tmp_path / "project"
     if kind == "file":
         path.write_text("")
     elif kind != "missing":
         path.mkdir()
-        if kind == "nested":
-            (path / "child").mkdir()
-            (path / "child" / "main.tf").write_text("")
     result = runner.invoke(app, ["scan", str(path)])
     assert result.exit_code == 2
     assert "PATH" in result.stderr
 
 
-def test_tf_json_is_recognized(tmp_path):
+def test_tf_json_is_recognized(tmp_path, fake_trivy):
     (tmp_path / "main.tf.json").write_text("{}")
-    assert runner.invoke(app, ["scan", str(tmp_path)]).exit_code == 4
+    assert runner.invoke(app, ["scan", str(tmp_path)]).exit_code == 0
 
 
 @pytest.mark.parametrize("target", ["directory", "input", "symlink", "hardlink"])

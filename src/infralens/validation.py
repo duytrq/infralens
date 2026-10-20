@@ -57,6 +57,54 @@ def readable_file(path: Path, parameter: str) -> Path:
     return path
 
 
+def _scan_input(name: str) -> bool:
+    return (
+        name.endswith((".tf", ".tf.json", ".tfvars", ".tfvars.json", ".tfstate"))
+        or ".tfstate." in name
+        or name == ".terraform.lock.hcl"
+    )
+
+
+def scan_directory(path: Path) -> tuple[Path, tuple[Path, ...]]:
+    """Discover source and protect auxiliary inputs; do not follow directory links."""
+    path = resolve_path(path, "PATH")
+    logger.debug("Validating recursive Terraform directory %r", str(path))
+    if not path.is_dir():
+        raise InvalidInput(f"PATH: {str(path)!r} must be an existing directory.")
+    sources = []
+    protected = []
+
+    def walk_error(error: OSError) -> None:
+        raise InvalidInput("PATH: cannot enumerate a project directory.") from None
+
+    for directory, names, files in os.walk(path, onerror=walk_error):
+        current = Path(directory)
+        if not os.access(current, os.R_OK | os.X_OK):
+            raise InvalidInput(f"PATH: directory {str(current)!r} is not readable.")
+        names[:] = sorted(name for name in names if name not in (".git", ".terraform"))
+        for name in sorted(files):
+            file = current / name
+            if _scan_input(name) and file.is_file():
+                protected.append(file)
+                if name.endswith((".tf", ".tf.json")):
+                    sources.append(readable_file(file, "PATH"))
+    if not sources:
+        raise InvalidInput(
+            f"PATH: {str(path)!r} has no .tf or .tf.json files in the project tree."
+        )
+    return path, tuple(protected)
+
+
+def scan_output_path(path: Path | None, inputs: tuple[Path, ...]) -> Path | None:
+    destination = output_path(path, inputs)
+    if destination is not None and _scan_input(destination.name):
+        raise InvalidInput(
+            "--output: must not use a Terraform source, variable, "
+            "lock or state filename."
+        )
+    return destination
+
+
 def output_path(path: Path | None, inputs: tuple[Path, ...]) -> Path | None:
     if path is None:
         return None
