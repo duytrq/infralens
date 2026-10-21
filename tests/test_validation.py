@@ -1,4 +1,6 @@
+import errno
 import os
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -6,7 +8,7 @@ from typer.testing import CliRunner
 from infralens.cli import app
 from infralens.errors import InvalidInput
 from infralens.options import SEVERITIES
-from infralens.validation import failure_threshold, severity_filter
+from infralens.validation import failure_threshold, resolve_path, severity_filter
 
 runner = CliRunner()
 
@@ -100,3 +102,33 @@ def test_output_symlink_loop_is_invalid_input(project, symlink):
     result = runner.invoke(app, ["scan", str(project), "--output", str(output)])
     assert result.exit_code == 2
     assert "--output" in result.stderr
+
+
+def test_windows_output_symlink_resolution_error_is_invalid_input(project, monkeypatch):
+    output = project / "loop"
+    error = OSError(errno.EINVAL, "The name of the file cannot be resolved")
+    error.winerror = 1921  # ERROR_CANT_RESOLVE_FILENAME, also on Python 3.14.
+    original_resolve = Path.resolve
+
+    def resolve(path, *args, **kwargs):
+        if path == output:
+            raise error
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", resolve)
+    result = runner.invoke(app, ["scan", str(project), "--output", str(output)])
+    assert result.exit_code == 2
+    assert "--output" in result.stderr
+
+
+def test_unrelated_windows_resolution_error_is_preserved(tmp_path, monkeypatch):
+    error = OSError(errno.EINVAL, "Invalid parameter")
+    error.winerror = 87
+
+    def resolve(path, *args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(Path, "resolve", resolve)
+    with pytest.raises(OSError) as caught:
+        resolve_path(tmp_path / "report.json", "--output")
+    assert caught.value is error

@@ -20,6 +20,12 @@ def resolve_path(path: Path, parameter: str) -> Path:
     except (RuntimeError, ValueError):
         raise InvalidInput(f"{parameter}: cannot resolve path {str(path)!r}.") from None
     except OSError as exc:
+        # Windows symlink loops raise ERROR_CANT_RESOLVE_FILENAME (1921),
+        # which Python maps to EINVAL rather than POSIX ELOOP.
+        if getattr(exc, "winerror", None) == 1921:
+            raise InvalidInput(
+                f"{parameter}: cannot resolve path {str(path)!r}."
+            ) from None
         if exc.errno not in (
             errno.ELOOP,
             errno.ENOTDIR,
