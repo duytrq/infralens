@@ -8,16 +8,28 @@ version = "0.1.0"
 description = "Terraform security scanning with Trivy and a CLI foundation for drift detection"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["typer>=0.24,<1"]
+dependencies = [
+    "pywin32>=310,<400 ; sys_platform == 'win32'",
+    "typer>=0.24,<1",
+]
 
 [project.scripts]
 infralens = "infralens.cli:main"
 
 [dependency-groups]
 dev = [
+    "distlib>=0.4,<1",
     "jsonschema>=4,<5",
     "pytest>=8,<10",
     "ruff>=0.14,<1",
+]
+
+[tool.hatch.build.hooks.custom]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src", "/scripts", "/vendor", "/tests", "/hatch_build.py",
+    "/pyproject.toml", "/uv.lock", "/README.md", "/CHANGELOG.md",
 ]
 
 [tool.pytest.ini_options]

@@ -110,7 +110,7 @@ def test_adapter_cannot_inherit_filters_or_project_config(
             return ProcessResult(0, "Version: 0.76.0\n", "")
         return ProcessResult(0, json.dumps(report), "")
 
-    monkeypatch.setattr("infralens.trivy.shutil.which", lambda name: "/bin/trivy")
+    monkeypatch.setattr("infralens.executable.shutil.which", lambda name: "/bin/trivy")
     monkeypatch.setattr("infralens.trivy.run_process", execute)
     engine = Trivy(tmp_path)
     result = engine.scan(300)
@@ -131,7 +131,7 @@ def test_missing_ignore_file_is_disabled(tmp_path, report, monkeypatch):
         payload = "Version: 0.76.0" if "--version" in args else json.dumps(report)
         return ProcessResult(0, payload, "")
 
-    monkeypatch.setattr("infralens.trivy.shutil.which", lambda name: "/bin/trivy")
+    monkeypatch.setattr("infralens.executable.shutil.which", lambda name: "/bin/trivy")
     monkeypatch.setattr("infralens.trivy.run_process", execute)
     Trivy(tmp_path).scan(300)
     args = calls[-1]
@@ -140,7 +140,7 @@ def test_missing_ignore_file_is_disabled(tmp_path, report, monkeypatch):
 
 @pytest.mark.parametrize("version", ["0.75.0", "1.0.0", "0.76.0-dev", "not-a-version"])
 def test_unsupported_binary_is_rejected(tmp_path, monkeypatch, version):
-    monkeypatch.setattr("infralens.trivy.shutil.which", lambda name: "/bin/trivy")
+    monkeypatch.setattr("infralens.executable.shutil.which", lambda name: "/bin/trivy")
     monkeypatch.setattr(
         "infralens.trivy.run_process",
         lambda *a, **kw: ProcessResult(0, f"Version: {version}", ""),
@@ -150,6 +150,6 @@ def test_unsupported_binary_is_rejected(tmp_path, monkeypatch, version):
 
 
 def test_missing_binary_has_installation_hint(tmp_path, monkeypatch):
-    monkeypatch.setattr("infralens.trivy.shutil.which", lambda name: None)
+    monkeypatch.setattr("infralens.executable.shutil.which", lambda name: None)
     with pytest.raises(ExecutionError, match="PATH.*Docker"):
         Trivy(tmp_path)

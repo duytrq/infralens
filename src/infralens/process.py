@@ -42,6 +42,10 @@ def run_process(
     env: dict[str, str] | None = None,
 ) -> ProcessResult:
     """Capture streams; callers classify engine exits without leaking payloads."""
+    if os.name == "nt":
+        from infralens.windows_process import run_windows_process
+
+        return run_windows_process(arguments, cwd=cwd, timeout=timeout, env=env)
     try:
         process = subprocess.Popen(
             arguments,

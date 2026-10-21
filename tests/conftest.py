@@ -1,4 +1,8 @@
+import io
+import os
 import sys
+import zipfile
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -13,14 +17,38 @@ def project(tmp_path):
 
 
 @pytest.fixture
+def symlink():
+    def create(link, target):
+        try:
+            link.symlink_to(target)
+        except OSError as exc:
+            if os.name == "nt" and exc.winerror == 1314:
+                if os.environ.get("INFRALENS_REQUIRE_SYMLINKS") == "1":
+                    pytest.fail("CI requires symlink privilege; WinError 1314")
+                pytest.skip("Windows token has no symlink privilege (WinError 1314)")
+            raise
+
+    return create
+
+
+@pytest.fixture
 def fake_trivy(tmp_path, monkeypatch):
     """A real executable boundary; scan policy and reporting run unmocked."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    script = bin_dir / "trivy"
-    script.write_text(
-        f"#!{sys.executable}\n" + (Path(__file__).parent / "fake_trivy.py").read_text()
-    )
+    source = (Path(__file__).parent / "fake_trivy.py").read_text(encoding="utf-8")
+    script = bin_dir / ("trivy.exe" if os.name == "nt" else "trivy")
+    if os.name == "nt":
+        # A real Windows executable boundary, like an installed console script.
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, "w") as archive:
+            archive.writestr("__main__.py", source)
+        launcher = files("distlib").joinpath("w64.exe").read_bytes()
+        script.write_bytes(
+            launcher + f'#!"{sys.executable}"\n'.encode() + payload.getvalue()
+        )
+    else:
+        script.write_text(f"#!{sys.executable}\n" + source, encoding="utf-8")
     script.chmod(0o755)
     monkeypatch.setenv("PATH", str(bin_dir))
     log = tmp_path / "engine-calls.jsonl"

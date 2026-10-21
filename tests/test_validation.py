@@ -94,9 +94,9 @@ def test_scan_defaults_do_not_infer_format_from_output(project, monkeypatch):
     assert options.output == project.parent / "out.sarif"
 
 
-def test_output_symlink_loop_is_invalid_input(project):
+def test_output_symlink_loop_is_invalid_input(project, symlink):
     output = project / "loop"
-    output.symlink_to(output)
+    symlink(output, output)
     result = runner.invoke(app, ["scan", str(project), "--output", str(output)])
     assert result.exit_code == 2
     assert "--output" in result.stderr

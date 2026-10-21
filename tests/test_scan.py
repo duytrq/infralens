@@ -66,7 +66,7 @@ def test_export_precedes_findings_exit(project, tmp_path, format):
     assert output.is_file()
     if format != "table":
         json.loads(output.read_text())
-    assert str(output) in result.stderr
+    assert repr(str(output)) in result.stderr
 
 
 @pytest.mark.parametrize("mode", ["fail", "broken", "parse", "version", "convert"])

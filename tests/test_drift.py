@@ -96,13 +96,13 @@ def test_drift_options_and_relative_paths(project, tmp_path, monkeypatch, trace,
 
 
 @pytest.mark.parametrize("link", [False, True])
-def test_output_cannot_overwrite_var_file(project, link):
+def test_output_cannot_overwrite_var_file(project, link, symlink):
     variables = project / "dev.tfvars"
     variables.write_text('secret = "DO_NOT_PRINT"')
     output = variables
     if link:
         output = project / "report.json"
-        output.symlink_to(variables)
+        symlink(output, variables)
     result = runner.invoke(
         app,
         ["drift", str(project), "--var-file", variables.name, "--output", str(output)],

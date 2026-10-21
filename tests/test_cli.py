@@ -25,7 +25,7 @@ def test_version_from_metadata():
 
 @pytest.mark.parametrize("fmt", ["table", "json", "sarif"])
 def test_scan_reports_missing_binary(project, tmp_path, fmt, monkeypatch):
-    monkeypatch.setattr("infralens.trivy.shutil.which", lambda name: None)
+    monkeypatch.setattr("infralens.executable.shutil.which", lambda name: None)
     output = tmp_path / "reports" / "security.json"
     result = runner.invoke(
         app, ["scan", str(project), "--format", fmt, "--output", str(output)]
@@ -89,13 +89,13 @@ def test_tf_json_is_recognized(tmp_path, fake_trivy):
 
 
 @pytest.mark.parametrize("target", ["directory", "input", "symlink", "hardlink"])
-def test_rejects_output_collision(project, target):
+def test_rejects_output_collision(project, target, symlink):
     output = project
     if target == "input":
         output = project / "main.tf"
     elif target == "symlink":
         output = project / "report.json"
-        output.symlink_to(project / "main.tf")
+        symlink(output, project / "main.tf")
     elif target == "hardlink":
         output = project / "report.json"
         output.hardlink_to(project / "main.tf")

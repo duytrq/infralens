@@ -6,7 +6,7 @@ FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3
 FROM python AS build
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md hatch_build.py ./
 COPY src ./src
 RUN uv sync --locked --no-dev --no-editable --compile-bytecode
 

@@ -5,6 +5,7 @@
 !pyproject.toml
 !uv.lock
 !README.md
+!hatch_build.py
 !src/
 !src/**
 **/__pycache__/

@@ -61,7 +61,7 @@ def _scan_input(name: str) -> bool:
     return (
         name.endswith((".tf", ".tf.json", ".tfvars", ".tfvars.json", ".tfstate"))
         or ".tfstate." in name
-        or name == ".terraform.lock.hcl"
+        or name in (".terraform.lock.hcl", ".trivyignore")
     )
 
 
@@ -72,7 +72,9 @@ def scan_directory(path: Path) -> tuple[Path, tuple[Path, ...]]:
     if not path.is_dir():
         raise InvalidInput(f"PATH: {str(path)!r} must be an existing directory.")
     sources = []
-    protected = []
+    # Resolve the consumed root policy even on case-insensitive filesystems.
+    ignorefile = path / ".trivyignore"
+    protected = [ignorefile] if ignorefile.is_file() else []
 
     def walk_error(error: OSError) -> None:
         raise InvalidInput("PATH: cannot enumerate a project directory.") from None
@@ -84,6 +86,11 @@ def scan_directory(path: Path) -> tuple[Path, tuple[Path, ...]]:
         names[:] = sorted(name for name in names if name not in (".git", ".terraform"))
         for name in sorted(files):
             file = current / name
+            if name.endswith((".tf", ".tf.json")) and file.is_symlink():
+                raise InvalidInput(
+                    f"PATH: Terraform source {str(file)!r} is a symlink; "
+                    "Trivy cannot reliably scan symlinked source files."
+                )
             if _scan_input(name) and file.is_file():
                 protected.append(file)
                 if name.endswith((".tf", ".tf.json")):
@@ -97,10 +104,12 @@ def scan_directory(path: Path) -> tuple[Path, tuple[Path, ...]]:
 
 def scan_output_path(path: Path | None, inputs: tuple[Path, ...]) -> Path | None:
     destination = output_path(path, inputs)
-    if destination is not None and _scan_input(destination.name):
+    if destination is not None and (
+        _scan_input(destination.name) or destination.name.lower() == ".trivyignore"
+    ):
         raise InvalidInput(
             "--output: must not use a Terraform source, variable, "
-            "lock or state filename."
+            "lock, state or .trivyignore filename."
         )
     return destination
 

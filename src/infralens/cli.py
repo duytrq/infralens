@@ -1,5 +1,8 @@
 """Command declarations and process entry point."""
 
+import os
+import signal
+import sys
 from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated
@@ -158,6 +161,15 @@ def drift(
 
 
 def main() -> None:
+    if os.name == "nt":
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8")
+
+        def interrupt(signum, frame):
+            raise KeyboardInterrupt
+
+        signal.signal(signal.SIGBREAK, interrupt)
     try:
         app()
     except KeyboardInterrupt:

@@ -5,21 +5,111 @@ CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tần
 **Security scan đã hoạt động bằng Trivy.** Drift và CloudTrail trace hiện chỉ
 validate đầu vào rồi trả mã `4`. Upload cloud chưa được triển khai.
 
-## Chạy trực tiếp
+## Cài wheel có sẵn Trivy (khuyến nghị)
+
+Yêu cầu Python **>=3.10** và [uv](https://docs.astral.sh/uv/). Wheel bundle
+chứa Trivy **0.76.0**; không cần cài Trivy riêng, Docker hoặc mount thư mục.
+Hiện hỗ trợ Linux/WSL **x64** và Windows native **x64**. macOS và ARM64 để sau.
+
+Tải đúng wheel từ build artifacts được cung cấp, rồi cài một lần:
+
+```bash
+# Linux/WSL x64
+uv tool install ./infralens-0.1.0-py3-none-linux_x86_64.whl
+infralens scan ./infra --format sarif --output ./reports/security.sarif
+```
+
+```powershell
+# Windows x64 (PowerShell)
+uv tool install .\infralens-0.1.0-py3-none-win_amd64.whl
+infralens scan .\infra --format sarif --output .\reports\security.sarif
+```
+
+Nếu shell chưa tìm thấy `infralens`, chạy `uv tool update-shell` rồi mở terminal
+mới. CLI dùng được ở mọi repo; đường dẫn input/output tương đối tính từ thư mục
+gọi lệnh. Cập nhật bằng `uv tool install --reinstall <wheel-mới>`; gỡ bằng
+`uv tool uninstall infralens`. Chưa tự publish package lên PyPI.
+
+Mỗi wheel chỉ chứa một binary cho nền tảng tương ứng. Kích thước khoảng **49 MiB
+Linux**, **50 MiB Windows**; binary sau cài khoảng **166/170 MiB** (chưa tính
+dependencies Python và cache checks). Trivy được gọi trực tiếp bằng đường dẫn
+nội bộ. Bundle lỗi/sai phiên bản trả exit `3` và hướng dẫn cài lại; không tự tải
+executable hoặc chuyển sang Trivy khác trên PATH. `--verbose` cho biết scanner
+đến từ `bundle` hay `PATH` cùng phiên bản.
+SHA-256 của binary đã cài được kiểm tra một lần khi khởi tạo mỗi lệnh scan.
+
+## Cài từ mã nguồn và dùng CLI ở nhiều repo
 
 Yêu cầu Python **>=3.10**, [uv](https://docs.astral.sh/uv/) và
 [Trivy **0.76.x**](https://github.com/aquasecurity/trivy/releases/tag/v0.76.0)
 trên PATH. Phiên bản chuẩn dùng để kiểm thử là 0.76.0.
 
 ```bash
-uv sync --locked
-uv run infralens --help
-uv run infralens --version
-uv run infralens scan ./infra
+# Chạy ở thư mục bất kỳ; uv tải mã nguồn và cài CLI vào môi trường riêng.
+# Cần Git và quyền truy cập repo GitHub này.
+uv tool install 'git+https://github.com/duytrq/infralens.git'
+infralens --help
+infralens --version
 ```
 
-Cài CLI độc lập: `uv tool install .`. Cách này vẫn yêu cầu Trivy trên máy.
-`python -m infralens` và executable `infralens` dùng cùng CLI.
+Cài một lần, sau đó gọi `infralens` từ bất kỳ repo Terraform nào; không cần
+clone repo InfraLens, chạy `uv sync` hay thêm dependency vào từng repo cần quét.
+Trivy vẫn phải được cài riêng trên PATH. Nếu shell chưa tìm thấy `infralens`,
+chạy `uv tool update-shell` rồi mở terminal mới. Xem
+[hướng dẫn cài tool của uv](https://docs.astral.sh/uv/guides/tools/#installing-tools).
+
+### Wheel phát triển không bundle
+
+Nếu được cung cấp file wheel (`.whl`), tải file về rồi cài bằng đường dẫn tới
+file đó. Ví dụ với package phiên bản 0.1.0 trong thư mục Downloads:
+
+```bash
+uv tool install "$HOME/Downloads/infralens-0.1.0-py3-none-any.whl"
+infralens --version
+```
+
+Thay đường dẫn/tên file bằng package thực tế nhận được. Người đóng gói có thể
+chạy `uv build` trong repo InfraLens để tạo wheel ở `dist/` rồi chuyển file đó
+cho người dùng. Wheel `py3-none-any` tạo bằng `uv build` thông thường là bản
+phát triển, **vẫn cần Trivy trên PATH**. Muốn tạo wheel bundle, dùng quy trình
+đóng gói bên dưới. Không yêu cầu package đã được phát hành trên PyPI.
+
+### Quét nhiều repo bằng cùng một bản cài
+
+```bash
+# Đứng trong repo thứ nhất, quét toàn bộ Terraform trong repo.
+cd /path/to/repo-a
+infralens scan . --format json --output ./reports/security.json
+
+# Chuyển sang repo khác, chỉ quét thư mục infra.
+cd /path/to/repo-b
+infralens scan ./infra --format sarif --output ./reports/security.sarif
+
+# Hoặc đứng ở bất kỳ đâu và truyền đường dẫn tuyệt đối.
+infralens scan /path/to/repo-a/infra
+infralens scan "/path/to/repo with spaces/infra"
+```
+
+Thay `/path/to/...` bằng đường dẫn repo trên máy. Mỗi lệnh quét một thư mục,
+bao gồm các thư mục con có Terraform. PATH và `--output` tương đối đều tính từ
+thư mục đang đứng khi gọi lệnh; vì vậy hai lệnh đầu ghi báo cáo vào từng repo
+tương ứng. Repo cần quét không cần có `pyproject.toml` hay `uv.lock`.
+
+### Cập nhật và gỡ cài đặt
+
+```bash
+# Lấy lại mã nguồn mới từ Git và cài lại.
+uv tool install --reinstall 'git+https://github.com/duytrq/infralens.git'
+
+# Hoặc cài lại từ file wheel mới đã tải về.
+uv tool install --reinstall /path/to/infralens-0.1.0-py3-none-any.whl
+
+# Gỡ CLI khi không còn sử dụng.
+uv tool uninstall infralens
+```
+
+Để dùng đúng một revision khi cài từ Git, thêm `@<commit-sha>` vào cuối URL
+(thay `<commit-sha>` bằng SHA thực tế).
 
 Không có subcommand sẽ hiện help và thoát `0`. Global options `--verbose`,
 `--no-color`, `--version` đặt **trước** subcommand. Help và thông báo CLI dùng
@@ -67,12 +157,12 @@ Nếu Docker Desktop báo WSL integration chưa bật, bật integration cho dis
 ## Security scan
 
 ```bash
-uv run infralens scan ./infra
-uv run infralens --verbose scan "./terraform project" --severity "high, critical"
-uv run infralens scan ./infra --format json --output ./reports/security.json
-uv run infralens scan ./infra --format sarif --output ./reports/security.sarif
-uv run infralens scan ./infra --severity LOW --fail-on HIGH
-uv run infralens scan ./infra --timeout 120
+infralens scan ./infra
+infralens --verbose scan "./terraform project" --severity "high, critical"
+infralens scan ./infra --format json --output ./reports/security.json
+infralens scan ./infra --format sarif --output ./reports/security.sarif
+infralens scan ./infra --severity LOW --fail-on HIGH
+infralens scan ./infra --timeout 120
 ```
 
 | Tham số | Hành vi |
@@ -86,6 +176,8 @@ uv run infralens scan ./infra --timeout 120
 
 Trivy quét cấu hình Terraform đệ quy; InfraLens không chạy Terraform hay AWS CLI.
 Bước khám phá đầu vào bỏ qua `.git`, `.terraform` và không đi theo symlink thư mục.
+File nguồn `.tf`/`.tf.json` dạng symlink bị từ chối vì Trivy không bảo đảm quét
+chúng; không trả scan sạch cho nguồn bị bỏ qua.
 Việc resolve và đánh giá module do Trivy đảm nhiệm.
 
 `--severity` chỉ lọc **báo cáo**. `--fail-on` đánh giá **tất cả findings chưa
@@ -133,22 +225,26 @@ và [report conversion](https://trivy.dev/docs/v0.76/guide/configuration/reporti
 - Scan kiểm tra Terraform trong thư mục con; drift vẫn yêu cầu ít nhất một
   `.tf` hoặc `.tf.json` trực tiếp trong PATH.
 - Output không được là thư mục, trùng source/tfvars/state/lockfile, kể cả qua
-  symlink/hardlink. Các tên file Terraform đầu vào cũng không được dùng làm
+  symlink/hardlink, hoặc ghi đè `.trivyignore`. Các tên file Terraform đầu vào
+  và tên `.trivyignore` cũng không được dùng làm
   tên output mới.
 - Cho phép thư mục output chưa tồn tại; tạo ở bước xuất báo cáo.
 - Ghi qua file tạm rồi thay thế atomically. Nếu ghi thất bại, báo cáo cũ được
   giữ nguyên. File báo cáo mới có quyền riêng tư `0600` trên Linux.
 - JSON trung gian được lưu trong thư mục tạm riêng và dọn sau khi kết thúc.
   Source và state không bị sửa.
+- Windows xuất UTF-8 cả khi redirect stdout/stderr; Ctrl+C/Ctrl+Break trả `130`.
+  Timeout/ngắt lệnh dọn Trivy và tiến trình con qua Windows Job Object. Quyền
+  báo cáo trên Windows theo ACL kế thừa của thư mục đích; `0600` chỉ áp dụng POSIX.
 
 ## Drift
 
 ```bash
-uv run infralens drift ./infra
-uv run infralens drift ./infra --var-file dev.tfvars --var-file overrides.tfvars
-uv run infralens drift ./infra --format json --output ./reports/drift.json --fail-on-drift
-uv run infralens drift ./infra --profile dev --region ap-southeast-1
-uv run infralens drift ./infra --trace --lookback-days 14
+infralens drift ./infra
+infralens drift ./infra --var-file dev.tfvars --var-file overrides.tfvars
+infralens drift ./infra --format json --output ./reports/drift.json --fail-on-drift
+infralens drift ./infra --profile dev --region ap-southeast-1
+infralens drift ./infra --trace --lookback-days 14
 ```
 
 Drift hiện validate đầu vào rồi trả mã `4`: thông báo engine chưa triển khai,
@@ -180,8 +276,57 @@ dừng process group của công cụ và dọn tài nguyên tạm.
 
 ## Phát triển và kiểm chứng
 
+### Đóng gói bản bundle
+
+Archive Trivy chính thức, URL và SHA-256 được ghim trong `vendor/trivy.json`.
+Script chỉ tải ở bước chuẩn bị build, kiểm tra checksum rồi lấy binary/LICENSE;
+không commit binary vào Git. Build hook kiểm tra manifest, checksum executable
+và đúng kiến trúc trước khi đưa vào wheel. License Apache-2.0 của Trivy nằm cùng
+binary tại `infralens/_vendor/trivy/LICENSE`; nguồn/phần mềm bên thứ ba được ghi
+trong `vendor/README.md`.
+
+```bash
+uv sync --locked
+uv run python scripts/bundle_trivy.py linux_x86_64
+INFRALENS_BUNDLE_PLATFORM=linux_x86_64 uv build --wheel
+uv run python scripts/verify_bundle.py dist/infralens-0.1.0-py3-none-linux_x86_64.whl
+```
+
+```powershell
+uv sync --locked
+uv run python scripts/bundle_trivy.py win_amd64
+$env:INFRALENS_BUNDLE_PLATFORM = "win_amd64"
+uv build --wheel
+Remove-Item Env:\INFRALENS_BUNDLE_PLATFORM
+uv run python scripts/verify_bundle.py dist/infralens-0.1.0-py3-none-win_amd64.whl
+```
+
+Có thể dùng `--archive <file-đã-tải>` cho bước chuẩn bị; checksum vẫn bắt buộc.
+Build bundle thiếu/sai binary phải thất bại. Wheel không chứa database CVE/Java
+hay bản checks riêng: chỉ bật Terraform và giữ cơ chế checks/cache hiện tại.
+Không tách engine/policy thành một fork Go cần bảo trì.
+
+`scripts/verify_bundle.py` dùng `uv tool install` trong thư mục tạm riêng, chạy
+ngoài checkout với PATH rỗng, kiểm tra scan thật, JSON/SARIF, Unicode, ignore và
+fail-on. Workflow `Bundled scanner` kiểm thử Linux/Windows với Python 3.10/3.14,
+tạo wheel và checksum dưới dạng artifacts, cùng Docker smoke trên Linux; không
+tự publish. Windows runner CI phải có quyền tạo symlink. Máy Windows không có
+quyền này chỉ bỏ qua các test symlink thật với WinError 1314; đặt
+`INFRALENS_REQUIRE_SYMLINKS=1` để yêu cầu chúng chạy như CI. Linux chạy đầy đủ.
+
+Nâng Trivy: cập nhật phiên bản/URL/checksum từ release chính thức trong manifest,
+chuẩn bị lại hai nền tảng rồi chạy toàn bộ kiểm thử. Adapter hiện hỗ trợ 0.76.x;
+đổi minor phải kiểm tra và cập nhật compatibility guard. Không tự nâng binary
+khi người dùng chạy scan.
+
+### Phát triển từ checkout
+
+Các lệnh dưới đây dành cho người phát triển, chạy trong repo mã nguồn InfraLens:
+
 ```bash
 uv sync --locked --python 3.10
+uv run infralens --help
+uv run infralens scan ./tests/fixtures/clean
 uv run pytest -q
 uv run ruff check
 uv run ruff format --check
@@ -194,6 +339,10 @@ uv run pytest -q tests/integration/test_trivy_integration.py --run-integration -
 # Sau khi build image:
 uv run pytest -q tests/integration/test_docker.py --run-docker
 ```
+
+`uv run python -m infralens` và `uv run infralens` dùng cùng CLI trong môi
+trường phát triển. Nếu muốn cài CLI độc lập từ checkout local, dùng
+`uv tool install .` thay cho URL Git hoặc file wheel ở trên.
 
 Suite mặc định dùng fixture và executable giả, không yêu cầu Trivy/Docker/network.
 Các suite công cụ ngoài được chọn bằng flag; khi đã chọn, thiếu dependency

@@ -3,11 +3,12 @@
 import json
 import os
 import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
 from infralens.errors import ExecutionError
+from infralens.executable import discover_trivy
+from infralens.logging import logger
 from infralens.options import SEVERITIES
 from infralens.process import run_process
 
@@ -120,8 +121,12 @@ def _diagnostics(stderr: str) -> tuple[str, ...]:
     """Never replay engine diagnostics: they may contain source or credentials."""
     messages = []
     for line in stderr.splitlines():
-        if "\tERROR\t" in line:
-            if "Falling back to embedded checks" in line:
+        fields = line.split("\t", 3)
+        if len(fields) < 3:
+            continue
+        level, message = fields[1:3]
+        if level == "ERROR":
+            if message == "[misconfig] Falling back to embedded checks":
                 messages.append(
                     "Trivy used embedded checks because updated checks "
                     "were unavailable."
@@ -131,7 +136,7 @@ def _diagnostics(stderr: str) -> tuple[str, ...]:
                     "Trivy could not completely analyze the project. "
                     "Check Terraform syntax, module access and cache permissions."
                 )
-        elif "\tWARN\t" in line:
+        elif level == "WARN":
             messages.append("Trivy reported a warning; analysis may be incomplete.")
     return tuple(dict.fromkeys(messages))
 
@@ -139,13 +144,8 @@ def _diagnostics(stderr: str) -> tuple[str, ...]:
 class Trivy:
     def __init__(self, root: Path):
         self.root = root
-        executable = shutil.which("trivy")
-        if executable is None:
-            raise ExecutionError(
-                "Trivy 0.76.x was not found on PATH. "
-                "Install Trivy or use the InfraLens Docker image."
-            )
-        self.executable = executable
+        executable = discover_trivy()
+        self.executable = str(executable.path)
         # Parent TRIVY_* values must not override scanner, filtering or outputs.
         self.env = {
             key: value
@@ -162,6 +162,14 @@ class Trivy:
                 "or use the InfraLens Docker image."
             )
         self.version = match[1]
+        if executable.expected_version and self.version != executable.expected_version:
+            raise ExecutionError(
+                "The bundled Trivy version does not match its manifest. "
+                "Reinstall the InfraLens wheel."
+            )
+        logger.debug(
+            "Trivy executable source=%s version=%s", executable.source, self.version
+        )
 
     def _run(self, arguments: list[str], *, timeout: int, step: str):
         try:

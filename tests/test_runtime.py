@@ -100,7 +100,7 @@ def test_io_error_is_safe_and_mentions_path(project, monkeypatch):
     result = runner.invoke(cli.app, ["--verbose", "drift", str(project)])
     assert result.exit_code == 3
     assert "I/O operation failed" in result.stderr
-    assert str(project) in result.stderr
+    assert repr(str(project)) in result.stderr
     assert SECRET not in result.output
 
 
@@ -151,7 +151,13 @@ def test_plain_help_and_errors(args, prefix, env):
 @pytest.mark.parametrize("entry", ["console", "module"])
 def test_installed_entrypoints(entry, project, tmp_path, fake_trivy):
     prefix = (
-        [str(Path(sys.executable).with_name("infralens"))]
+        [
+            str(
+                Path(sys.executable).with_name(
+                    "infralens.exe" if os.name == "nt" else "infralens"
+                )
+            )
+        ]
         if entry == "console"
         else [sys.executable, "-m", "infralens"]
     )
@@ -190,7 +196,7 @@ import os
 import signal
 from infralens import cli
 def interrupt(options):
-    os.kill(os.getpid(), signal.SIGINT)
+    signal.raise_signal(signal.SIGINT)
 cli.handle_scan = interrupt
 cli.main()
 """
@@ -205,19 +211,38 @@ cli.main()
     assert not result.stdout
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows redirected console encoding")
+def test_windows_redirected_output_is_utf8_without_environment_opt_in():
+    script = """
+import sys
+from infralens import cli
+sys.stdout.reconfigure(encoding="ascii")
+cli.app = lambda: print("hạ tầng")
+cli.main()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, timeout=10
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.decode("utf-8").strip() == "hạ tầng"
+
+
 def test_sigint_while_scan_child_is_running(project, fake_trivy, monkeypatch):
     monkeypatch.setenv("FAKE_TRIVY_MODE", "timeout")
     process = subprocess.Popen(
         [sys.executable, "-m", "infralens", "scan", str(project)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
     )
     try:
         deadline = time.monotonic() + 5
         while not fake_trivy.exists() or '"config"' not in fake_trivy.read_text():
             assert time.monotonic() < deadline
             time.sleep(0.02)
-        process.send_signal(signal.SIGINT)
+        process.send_signal(
+            signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT
+        )
         stdout, stderr = process.communicate(timeout=5)
         assert process.returncode == 130
         assert stdout == b""
