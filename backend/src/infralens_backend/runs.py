@@ -27,6 +27,7 @@ class Runs:
         self.table = table
         self.s3 = s3
         self.now = now
+        self.analysis = None
 
     def key(self, owner, run):
         return {"pk": f"USER#{owner}", "sk": f"RUN#{run}"}
@@ -210,6 +211,9 @@ class Runs:
         item["revision"] = revision + 1
         data["upload_status"] = "ready"
         data["uploaded_at"] = v.iso(self.now())
+        if self.analysis is not None:
+            data["analysis"] = self.analysis.pending()
+            self.analysis.ensure_job(item)
         item["history_pk"] = item["pk"]
         item["project_pk"] = f"{item['pk']}#PROJECT#{data['project_id']}"
         item["history_sk"] = f"{data['started_at']}#{run}"
@@ -317,6 +321,12 @@ class Runs:
             item.pop(attribute, None)
         item["cleanup_pk"] = "DELETING"
         item["cleanup_sk"] = v.iso(self.now())
+        if "analysis" in item["data"]:
+            # Any already-running worker is bounded by its 600-second timeout.
+            item["analysis_delete_after"] = v.iso(
+                v.timestamp(item["data"]["analysis"]["requested_at"])
+                + timedelta(minutes=16)
+            )
         self.replace(item, revision)
         return item
 
@@ -328,6 +338,8 @@ class Runs:
         # Keep a tombstone until every upload URL has expired. The extra minute
         # covers time spent signing after recording its lifetime in DynamoDB.
         safe_after = v.timestamp(item["upload_valid_until"]) + timedelta(minutes=1)
+        if "analysis_delete_after" in item:
+            safe_after = max(safe_after, v.timestamp(item["analysis_delete_after"]))
         if self.now() < safe_after:
             revision = item["revision"]
             item["revision"] = revision + 1

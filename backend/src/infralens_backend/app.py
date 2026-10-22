@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+import time
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -10,6 +11,7 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import BotoCoreError, ClientError
 
 from infralens_backend import validation as v
+from infralens_backend.analysis import Analysis
 from infralens_backend.errors import ApiError, conflict, not_found
 from infralens_backend.runs import Runs
 from infralens_backend.schemas import PROJECT, RUN
@@ -28,12 +30,16 @@ def conditional(exc):
 
 
 class Application:
-    def __init__(self, settings, table, s3):
+    def __init__(self, settings, table, s3, findings_table=None):
         self.settings = settings
         self.table = table
         self.s3 = s3
         self.now = lambda: datetime.now(UTC)
         self.runs = Runs(settings, table, s3, lambda: self.now())
+        self.analysis = (
+            Analysis(self.runs, findings_table) if findings_table is not None else None
+        )
+        self.runs.analysis = self.analysis
 
     def identity(self, event):
         claims = (
@@ -48,7 +54,11 @@ class Application:
             not isinstance(owner, str)
             or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", owner)
             or claims.get("iss") != self.settings.issuer
-            or claims.get("client_id") != self.settings.client_id
+            or claims.get("client_id")
+            not in {
+                self.settings.client_id,
+                self.settings.dashboard_client_id or self.settings.client_id,
+            }
             or claims.get("token_use") != "access"
             or not isinstance(scope, str)
             or self.settings.scope not in scope.split()
@@ -96,7 +106,31 @@ class Application:
         if method == "GET" and path == "/v1/config":
             v.query(event, [])
             return 200, self.settings.public()
+        if method == "GET" and path == "/v1/dashboard-config":
+            v.query(event, [])
+            if not self.settings.dashboard_client_id:
+                raise ApiError(
+                    503, "dashboard_unavailable", "Dashboard is not configured."
+                )
+            return 200, self.settings.dashboard()
         owner = self.identity(event)
+        match = re.fullmatch(
+            r"/v1/runs/([^/]+)/(findings(?:/([^/]+))?|analysis/retry)", path
+        )
+        if match:
+            run = v.run_id(match[1])
+            if self.analysis is None:
+                raise ApiError(
+                    503, "analysis_unavailable", "Analysis is not configured."
+                )
+            if match[2] == "analysis/retry" and method == "POST":
+                v.query(event, [])
+                return self.analysis.retry(owner, run)
+            if match[2].startswith("findings") and method == "GET":
+                if match[3]:
+                    v.query(event, [])
+                    return 200, self.analysis.detail(owner, run, match[3])
+                return 200, self.analysis.page(owner, run, event)
         if path == "/v1/runs" and method == "POST":
             v.query(event, [])
             payload = v.scan(v.body(event, RUN), self.settings.max_report_bytes)
@@ -123,12 +157,15 @@ class Application:
         match = re.fullmatch(r"/v1/projects/([^/]+)", path)
         if match:
             project = v.project_id(match[1])
-            v.query(event, [])
             if method == "PUT":
+                v.query(event, [])
                 payload = v.body(event, PROJECT)
                 return self.create_project(owner, project, payload)
             if method == "GET":
-                return 200, self.project(owner, project)["data"]
+                include = self.project_query(event)
+                return 200, self.project_data(
+                    owner, self.project(owner, project)["data"], include
+                )
         raise not_found()
 
     def project(self, owner, project):
@@ -163,7 +200,8 @@ class Application:
             return 200, existing
 
     def projects(self, owner, event):
-        params = v.query(event, ["limit", "cursor"])
+        params = v.query(event, ["limit", "cursor", "include"])
+        include = self.project_query(event, pagination=True)
         scope = {"owner": owner, "type": "projects"}
         cursor = v.decode_cursor(
             params.get("cursor"), scope, {"pk": f"USER#{owner}", "sk": None}
@@ -178,7 +216,52 @@ class Application:
             Limit=v.page_limit(params),
             **kwargs,
         )
+        budget = {"pages": 120, "deadline": time.monotonic() + 8}
         return {
-            "items": [item["data"] for item in page.get("Items", [])],
+            "items": [
+                self.project_data(owner, item["data"], include, budget)
+                for item in page.get("Items", [])
+            ],
             "next_cursor": v.encode_cursor(page.get("LastEvaluatedKey"), scope),
         }
+
+    def project_query(self, event, pagination=False):
+        params = v.query(
+            event, ["include", "limit", "cursor"] if pagination else ["include"]
+        )
+        if "include" in params and params["include"] != "latest_scan":
+            raise v.invalid("Only include=latest_scan is supported.")
+        return "include" in params
+
+    def project_data(self, owner, data, include, budget=None):
+        if not include:
+            return data
+        # Reuse history's strong state/generation checks, including empty GSI pages.
+        cursor = None
+        budget = (
+            budget
+            if budget is not None
+            else {"pages": 120, "deadline": time.monotonic() + 8}
+        )
+        while True:
+            if budget["pages"] <= 0 or time.monotonic() >= budget["deadline"]:
+                raise ApiError(
+                    503,
+                    "latest_scan_unavailable",
+                    "Latest-scan lookup is busy; retry later.",
+                )
+            budget["pages"] -= 1
+            params = {"project_id": data["project_id"], "limit": "5" if cursor else "1"}
+            if cursor:
+                params["cursor"] = cursor
+            page = self.runs.history(owner, {"queryStringParameters": params})
+            if page["items"]:
+                run = page["items"][0]
+                summary = {
+                    key: run[key]
+                    for key in ("run_id", "started_at", "finished_at", "result")
+                }
+                return {**data, "latest_scan": summary}
+            cursor = page["next_cursor"]
+            if not cursor:
+                return {**data, "latest_scan": None}

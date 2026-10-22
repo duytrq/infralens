@@ -36,7 +36,7 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
     assert set(deployed) == documented
     for (method, path), props in deployed.items():
         assert (props.get("Auth", {}).get("Authorizer") == "NONE") == (
-            method == "get" and path == "/v1/config"
+            method == "get" and path in ("/v1/config", "/v1/dashboard-config")
         )
 
 

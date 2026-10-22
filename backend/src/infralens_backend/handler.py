@@ -35,7 +35,12 @@ def application():
             )
         ),
     )
-    return Application(settings, table, s3)
+    findings = (
+        boto3.resource("dynamodb", config=config).Table(settings.findings_table_name)
+        if settings.findings_table_name
+        else None
+    )
+    return Application(settings, table, s3, findings)
 
 
 def api_handler(event, context):
@@ -44,9 +49,40 @@ def api_handler(event, context):
 
 def cleanup_handler(event, context):
     result = application().runs.cleanup()
+    if application().analysis is not None:
+        extra = application().analysis.cleanup()
+        result = {k: result[k] + extra[k] for k in result}
     if result["failed"]:
         # Surface partial failures in Lambda Errors and EventBridge retry handling.
         raise RuntimeError(
             "Cleanup dependencies unavailable; remaining work is indexed."
         )
     return result
+
+
+def analysis_handler(event, context):
+    """Batch size one, bounded retries, SQS on-failure destination."""
+    from boto3.dynamodb.types import TypeDeserializer
+
+    deserialize = TypeDeserializer().deserialize
+    service = application().analysis
+    if service is None:
+        raise RuntimeError("Analysis is not configured")
+    for record in event.get("Records", []):
+        image = record.get("dynamodb", {}).get("NewImage", {})
+        if not image:
+            continue
+        item = {k: deserialize(value) for k, value in image.items()}
+        analysis = item.get("data", {}).get("analysis", {})
+        if (
+            analysis.get("status") != "pending"
+            or item["data"].get("upload_status") != "ready"
+        ):
+            continue
+        service.process(
+            item["pk"].removeprefix("USER#"),
+            item["data"]["run_id"],
+            item["generation"],
+            analysis["build_id"],
+        )
+    return {"processed": len(event.get("Records", []))}

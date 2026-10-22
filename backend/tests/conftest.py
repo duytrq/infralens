@@ -1,6 +1,8 @@
+import hashlib
 import json
 import re
 from datetime import UTC, datetime
+from uuid import uuid4
 
 import boto3
 import pytest
@@ -70,8 +72,32 @@ def cloud(monkeypatch):
             issuer="https://cognito-idp.ap-southeast-1.amazonaws.com/pool",
             client_id="client",
             auth_domain="https://example.auth.ap-southeast-1.amazoncognito.com",
+            dashboard_client_id="dashboard-client",
         )
-        app = Application(settings, table, s3)
+        findings_table = dynamodb.create_table(
+            TableName="findings",
+            BillingMode="PAY_PER_REQUEST",
+            KeySchema=[
+                {"AttributeName": "pk", "KeyType": "HASH"},
+                {"AttributeName": "sk", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": n, "AttributeType": "S"}
+                for n in ("pk", "sk", "rule_pk", "file_pk")
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": index,
+                    "KeySchema": [
+                        {"AttributeName": pk, "KeyType": "HASH"},
+                        {"AttributeName": "sk", "KeyType": "RANGE"},
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+                for index, pk in (("RuleIndex", "rule_pk"), ("FileIndex", "file_pk"))
+            ],
+        )
+        app = Application(settings, table, s3, findings_table)
         app.now = lambda: datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
         yield app
 
@@ -127,3 +153,47 @@ def api(cloud):
         return response["statusCode"], data
 
     return call
+
+
+@pytest.fixture
+def scan(api):
+    assert api("PUT", "/v1/projects/demo", {"name": "Demo"})[0] == 201
+    report = json.dumps({"SchemaVersion": 2, "Results": []}).encode()
+    return {
+        "schema_version": 1,
+        "run_id": str(uuid4()),
+        "project_id": "demo",
+        "run_type": "security_scan",
+        "started_at": "2026-10-21T11:59:00Z",
+        "finished_at": "2026-10-21T11:59:02Z",
+        "duration_ms": 2000,
+        "source": {"relative_path": "."},
+        "tool": {
+            "infralens_version": "0.1.0",
+            "engine": "trivy",
+            "engine_version": "0.76.0",
+        },
+        "scan_options": {"fail_on": None, "severity": ["HIGH"], "ignore_sha256": None},
+        "result": {
+            "scan_status": "completed",
+            "threshold_status": "not_evaluated",
+            "findings": {
+                "total": 0,
+                "by_severity": {
+                    "UNKNOWN": 0,
+                    "LOW": 0,
+                    "MEDIUM": 0,
+                    "HIGH": 0,
+                    "CRITICAL": 0,
+                },
+            },
+            "warnings": [],
+        },
+        "artifact": {
+            "format": "json",
+            "content_type": "application/json",
+            "size_bytes": len(report),
+            "sha256": hashlib.sha256(report).hexdigest(),
+            "schema_version": 2,
+        },
+    }, report

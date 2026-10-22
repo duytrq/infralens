@@ -17,6 +17,9 @@ class Settings:
     download_seconds: int = 300
     pending_seconds: int = 7 * 24 * 3600
     max_report_bytes: int = 50 * 1024 * 1024
+    findings_table_name: str = ""
+    dashboard_client_id: str = ""
+    dashboard_origin: str = "http://localhost:5173"
 
     @classmethod
     def from_env(cls):
@@ -27,6 +30,9 @@ class Settings:
             client_id=os.environ["COGNITO_CLIENT_ID"],
             auth_domain=os.environ["COGNITO_DOMAIN"],
             callback_url=os.environ.get("CALLBACK_URL", cls.callback_url),
+            findings_table_name=os.environ.get("FINDINGS_TABLE", ""),
+            dashboard_client_id=os.environ.get("DASHBOARD_CLIENT_ID", ""),
+            dashboard_origin=os.environ.get("DASHBOARD_ORIGIN", cls.dashboard_origin),
         )
 
     def public(self):
@@ -49,3 +55,11 @@ class Settings:
                 "url_expires_seconds": self.upload_seconds,
             },
         }
+
+    def dashboard(self):
+        config = self.public()
+        config["auth"]["client_id"] = self.dashboard_client_id
+        config["auth"]["callback_url"] = self.dashboard_origin + "/auth/callback"
+        config["auth"]["logout_url"] = self.dashboard_origin + "/"
+        config["auth"]["logout_endpoint"] = self.auth_domain + "/logout"
+        return config

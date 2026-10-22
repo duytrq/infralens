@@ -41,6 +41,11 @@ def resource_tags(session, kind, physical, account, region, api_id):
     if kind == "AWS::Lambda::Function":
         arn = f"arn:aws:lambda:{region}:{account}:function:{physical}"
         return client("lambda").list_tags(Resource=arn)["Tags"]
+    if kind == "AWS::Lambda::EventSourceMapping":
+        arn = f"arn:aws:lambda:{region}:{account}:event-source-mapping:{physical}"
+        return client("lambda").list_tags(Resource=arn)["Tags"]
+    if kind == "AWS::SQS::Queue":
+        return client("sqs").list_queue_tags(QueueUrl=physical).get("Tags", {})
     if kind == "AWS::DynamoDB::Table":
         arn = f"arn:aws:dynamodb:{region}:{account}:table/{physical}"
         return tag_map(

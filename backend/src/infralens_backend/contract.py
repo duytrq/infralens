@@ -1,6 +1,6 @@
 """OpenAPI 3.1 contract generated from the runtime request schemas."""
 
-from infralens_backend.schemas import PROJECT, RUN, TIME, obj
+from infralens_backend.schemas import COUNT, PROJECT, RUN, SEVERITIES, TIME, obj
 
 
 def ref(name):
@@ -9,6 +9,54 @@ def ref(name):
 
 STRING = {"type": "string"}
 CURSOR = {"type": ["string", "null"], "maxLength": 8192}
+NULLABLE_STRING = {"type": ["string", "null"]}
+FINDING_COUNTS = obj(
+    {"total": COUNT, "by_severity": obj({s: COUNT for s in SEVERITIES})}
+)
+ANALYSIS = obj(
+    {
+        "status": {"enum": ["pending", "ready", "failed"]},
+        "version": {"type": "integer", "minimum": 1},
+        "build_id": {"type": "string", "format": "uuid"},
+        "requested_at": TIME,
+        "completed_at": {"anyOf": [TIME, {"type": "null"}]},
+        "findings": {"anyOf": [FINDING_COUNTS, {"type": "null"}]},
+        "counts_match": {"type": ["boolean", "null"]},
+        "error_code": NULLABLE_STRING,
+    }
+)
+FINDING_SUMMARY = obj(
+    {
+        "finding_id": STRING,
+        "rule_id": STRING,
+        "severity": {"enum": list(SEVERITIES)},
+        "title": STRING,
+        "file": NULLABLE_STRING,
+        "resource": NULLABLE_STRING,
+        "start_line": {"type": ["integer", "null"]},
+        "end_line": {"type": ["integer", "null"]},
+        "truncated_fields": {"type": "array", "items": STRING},
+    }
+)
+FINDING = obj(
+    {
+        **FINDING_SUMMARY["properties"],
+        "message": STRING,
+        "description": STRING,
+        "resolution": STRING,
+        "references": {"type": "array", "items": STRING},
+        "code": {
+            "type": "array",
+            "items": obj(
+                {
+                    "number": {"type": "integer", "minimum": 1},
+                    "content": STRING,
+                    "is_cause": {"type": "boolean"},
+                }
+            ),
+        },
+    }
+)
 UPLOAD = obj(
     {
         "url": {"type": "string", "format": "uri"},
@@ -23,9 +71,25 @@ RUN_ITEM = obj(
         "received_at": TIME,
         "uploaded_at": {"anyOf": [TIME, {"type": "null"}]},
         "upload_status": {"enum": ["pending", "ready"]},
+        "analysis": ANALYSIS,
+    },
+    optional=("analysis",),
+)
+LATEST = obj(
+    {
+        key: RUN["properties"][key]
+        for key in ("run_id", "started_at", "finished_at", "result")
     }
 )
-PROJECT_ITEM = obj({**PROJECT["properties"], "project_id": STRING, "created_at": TIME})
+PROJECT_ITEM = obj(
+    {
+        **PROJECT["properties"],
+        "project_id": STRING,
+        "created_at": TIME,
+        "latest_scan": {"anyOf": [LATEST, {"type": "null"}]},
+    },
+    optional=("latest_scan",),
+)
 ERROR = obj({"error": obj({"code": STRING, "message": STRING})})
 
 SCHEMAS = {
@@ -33,6 +97,15 @@ SCHEMAS = {
     "RunInput": RUN,
     "Project": PROJECT_ITEM,
     "Run": RUN_ITEM,
+    "Analysis": ANALYSIS,
+    "Finding": FINDING,
+    "FindingSummary": FINDING_SUMMARY,
+    "FindingPage": obj(
+        {
+            "items": {"type": "array", "items": ref("FindingSummary")},
+            "next_cursor": CURSOR,
+        }
+    ),
     "ProjectPage": obj(
         {"items": {"type": "array", "items": ref("Project")}, "next_cursor": CURSOR}
     ),
@@ -76,6 +149,18 @@ SCHEMAS = {
         }
     ),
 }
+SCHEMAS["DashboardConfig"] = obj(
+    {
+        **SCHEMAS["Config"]["properties"],
+        "auth": obj(
+            {
+                **SCHEMAS["Config"]["properties"]["auth"]["properties"],
+                "logout_url": STRING,
+                "logout_endpoint": STRING,
+            }
+        ),
+    }
+)
 
 
 def response(schema, description="Success"):
@@ -146,6 +231,13 @@ HISTORY = (
     parameter("from", TIME),
     parameter("to", TIME),
 )
+INCLUDE_LATEST = (parameter("include", {"enum": ["latest_scan"]}),)
+FINDING_FILTERS = (
+    *PAGINATION,
+    parameter("severity", {"enum": list(SEVERITIES)}),
+    parameter("rule_id", {"type": "string", "minLength": 1, "maxLength": 1024}),
+    parameter("file", {"type": "string", "minLength": 1, "maxLength": 4096}),
+)
 
 
 def openapi():
@@ -153,7 +245,7 @@ def openapi():
         "openapi": "3.1.0",
         "info": {
             "title": "InfraLens storage API",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "description": (
                 "User-private projects and immutable native Trivy JSON reports. "
                 "Caller-reported scan metadata is not independently attested."
@@ -180,9 +272,16 @@ def openapi():
         },
         "paths": {
             "/v1/config": {"get": operation("config", {200: "Config"}, public=True)},
+            "/v1/dashboard-config": {
+                "get": operation(
+                    "dashboardConfig", {200: "DashboardConfig"}, public=True
+                )
+            },
             "/v1/projects": {
                 "get": operation(
-                    "listProjects", {200: "ProjectPage"}, params=PAGINATION
+                    "listProjects",
+                    {200: "ProjectPage"},
+                    params=(*PAGINATION, *INCLUDE_LATEST),
                 )
             },
             "/v1/projects/{project_id}": {
@@ -190,7 +289,7 @@ def openapi():
                 "put": operation(
                     "createProject", {200: "Project", 201: "Project"}, "ProjectInput"
                 ),
-                "get": operation("getProject", {200: "Project"}),
+                "get": operation("getProject", {200: "Project"}, params=INCLUDE_LATEST),
             },
             "/v1/runs": {
                 "post": operation(
@@ -212,6 +311,23 @@ def openapi():
             "/v1/runs/{run_id}/artifacts/json": {
                 "parameters": [parameter("run_id", location="path")],
                 "get": operation("downloadReport", {200: "Download"}),
+            },
+            "/v1/runs/{run_id}/findings": {
+                "parameters": [parameter("run_id", location="path")],
+                "get": operation(
+                    "listFindings", {200: "FindingPage"}, params=FINDING_FILTERS
+                ),
+            },
+            "/v1/runs/{run_id}/findings/{finding_id}": {
+                "parameters": [
+                    parameter("run_id", location="path"),
+                    parameter("finding_id", location="path"),
+                ],
+                "get": operation("getFinding", {200: "Finding"}),
+            },
+            "/v1/runs/{run_id}/analysis/retry": {
+                "parameters": [parameter("run_id", location="path")],
+                "post": operation("retryAnalysis", {200: "Run", 202: "Run"}),
             },
         },
     }

@@ -38,7 +38,7 @@ jobs:
       - run: uvx --from aws-sam-cli==1.169.0 sam validate --lint --template-file infra/template.yaml --region ap-southeast-1
       - run: uvx --from aws-sam-cli==1.169.0 python infra/verify_template.py
       - run: uvx --from aws-sam-cli==1.169.0 sam build --template-file infra/template.yaml
-      - run: uv run --project backend python -S backend/scripts/verify_artifacts.py .aws-sam/build/ApiFunction .aws-sam/build/CleanupFunction
+      - run: uv run --project backend python -S backend/scripts/verify_artifacts.py .aws-sam/build/ApiFunction .aws-sam/build/CleanupFunction .aws-sam/build/AnalysisFunction
       - run: uv build --project backend
       - name: Audit runtime and development dependencies
         run: |

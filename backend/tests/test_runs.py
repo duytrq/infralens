@@ -1,56 +1,11 @@
 import base64
 import copy
 import hashlib
-import json
 from datetime import timedelta
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
-
-
-@pytest.fixture
-def scan(api):
-    assert api("PUT", "/v1/projects/demo", {"name": "Demo"})[0] == 201
-    report = json.dumps({"SchemaVersion": 2, "Results": []}).encode()
-    return {
-        "schema_version": 1,
-        "run_id": str(uuid4()),
-        "project_id": "demo",
-        "run_type": "security_scan",
-        "started_at": "2026-10-21T11:59:00Z",
-        "finished_at": "2026-10-21T11:59:02Z",
-        "duration_ms": 2000,
-        "source": {"relative_path": "."},
-        "tool": {
-            "infralens_version": "0.1.0",
-            "engine": "trivy",
-            "engine_version": "0.76.0",
-        },
-        "scan_options": {"fail_on": None, "severity": ["HIGH"], "ignore_sha256": None},
-        "result": {
-            "scan_status": "completed",
-            "threshold_status": "not_evaluated",
-            "findings": {
-                "total": 0,
-                "by_severity": {
-                    "UNKNOWN": 0,
-                    "LOW": 0,
-                    "MEDIUM": 0,
-                    "HIGH": 0,
-                    "CRITICAL": 0,
-                },
-            },
-            "warnings": [],
-        },
-        "artifact": {
-            "format": "json",
-            "content_type": "application/json",
-            "size_bytes": len(report),
-            "sha256": hashlib.sha256(report).hexdigest(),
-            "schema_version": 2,
-        },
-    }, report
 
 
 def upload(cloud, payload, report, owner="user-a"):

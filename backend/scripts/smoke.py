@@ -211,9 +211,9 @@ def smoke(endpoint, config, token, report, project):
         http("PUT", upload["url"], report, upload["headers"], (412,))
         _, ready = api("POST", f"/v1/runs/{run}/complete")
         assert ready["upload_status"] == "ready"
-        assert api("POST", f"/v1/runs/{run}/complete")[1] == ready
+        assert api("POST", f"/v1/runs/{run}/complete")[1]["upload_status"] == "ready"
         assert api("POST", "/v1/runs", payload)[1]["upload"] is None
-        assert api("GET", f"/v1/runs/{run}")[1] == ready
+        assert api("GET", f"/v1/runs/{run}")[1]["upload_status"] == "ready"
         _, download = api("GET", f"/v1/runs/{run}/artifacts/json")
         assert (
             http("GET", download["url"], limit=config["upload"]["max_report_bytes"])[1]

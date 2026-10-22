@@ -59,6 +59,8 @@ def verify(environment, reserve):
         "AWS::Events::Rule",
         "AWS::Cognito::UserPool",
         "AWS::ApiGatewayV2::Stage",
+        "AWS::Lambda::EventSourceMapping",
+        "AWS::SQS::Queue",
     }
     for name, resource in resources.items():
         if resource["Type"] in tagged_types:
@@ -90,7 +92,7 @@ def verify(environment, reserve):
     for (method, path), operation in routes.items():
         expected_security = (
             [{"NONE": []}]
-            if (method, path) == ("get", "/v1/config")
+            if method == "get" and path in ("/v1/config", "/v1/dashboard-config")
             else [{"CognitoJwt": ["infralens/api"]}]
         )
         assert operation["security"] == expected_security, (method, path)
@@ -102,7 +104,10 @@ def verify(environment, reserve):
         "x-amazon-apigateway-authorizer"
     ]
     assert jwt["type"] == "jwt"
-    assert jwt["jwtConfiguration"]["audience"] == [{"Ref": "CliClient"}]
+    assert jwt["jwtConfiguration"]["audience"] == [
+        {"Ref": "CliClient"},
+        {"Ref": "DashboardClient"},
+    ]
     for name, log_group in (
         ("ApiFunction", "ApiLogGroup"),
         ("CleanupFunction", "CleanupLogGroup"),
@@ -125,6 +130,22 @@ def verify(environment, reserve):
         "Fn::Equals": [{"Ref": "ReserveConcurrency"}, "true"]
     }
     assert not any(r["Type"] == "AWS::Lambda::Url" for r in resources.values())
+    assert resources["StorageTable"]["Properties"]["StreamSpecification"] == {
+        "StreamViewType": "NEW_IMAGE"
+    }
+    worker = resources["AnalysisFunction"]["Properties"]
+    assert worker["Timeout"] == 600
+    assert worker["LoggingConfig"]["LogGroup"] == {"Ref": "AnalysisLogGroup"}
+    mapping = resources["AnalysisStream"]["Properties"]
+    assert mapping["BatchSize"] == 1 and mapping["MaximumRetryAttempts"] == 3
+    assert mapping["MaximumRecordAgeInSeconds"] == 900
+    pattern = json.loads(mapping["FilterCriteria"]["Filters"][0]["Pattern"])
+    assert pattern["dynamodb"]["NewImage"]["data"]["M"]["analysis"]["M"]["status"][
+        "S"
+    ] == ["pending"]
+    assert resources["HttpApi"]["Properties"]["Body"]["x-amazon-apigateway-cors"][
+        "allowOrigins"
+    ] == ["http://localhost:5173"]
     print(
         json.dumps(
             {
