@@ -3,7 +3,8 @@
 CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tầng.
 
 **Security scan đã hoạt động bằng Trivy.** Drift và CloudTrail trace hiện chỉ
-validate đầu vào rồi trả mã `4`. Upload cloud chưa được triển khai.
+validate đầu vào rồi trả mã `4`. [Backend lưu trữ cloud](backend/README.md) cung cấp
+API Cognito/S3/DynamoDB và SAM template; các lệnh cloud/upload trong CLI chưa tích hợp.
 
 ## Cài wheel có sẵn Trivy (khuyến nghị)
 

@@ -1,0 +1,388 @@
+{
+  "account": "695650811791",
+  "region": "ap-southeast-1",
+  "recorded_at": "2026-10-21T14:13:00.393744+00:00",
+  "tags": {
+    "Project": "infralens",
+    "Environment": "dev",
+    "ManagedBy": "cloudformation",
+    "Deployment": "infralens-dev"
+  },
+  "stacks": [
+    {
+      "name": "infralens-dev",
+      "id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+      "status": "UPDATE_COMPLETE",
+      "outputs": [
+        {
+          "OutputKey": "UserPoolId",
+          "OutputValue": "ap-southeast-1_GT5fxFHCB"
+        },
+        {
+          "OutputKey": "StorageTable",
+          "OutputValue": "infralens-dev-StorageTable-1FLSCFV7W74IC"
+        },
+        {
+          "OutputKey": "ClientId",
+          "OutputValue": "3tfc9k8uemi41ped00nm8b1lst"
+        },
+        {
+          "OutputKey": "AuthDomain",
+          "OutputValue": "https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com"
+        },
+        {
+          "OutputKey": "ApiEndpoint",
+          "OutputValue": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com"
+        },
+        {
+          "OutputKey": "ReportsBucket",
+          "OutputValue": "infralens-dev-reportsbucket-nwhov6dyug0d"
+        }
+      ],
+      "resources": [
+        {
+          "LogicalResourceId": "ApiFunction",
+          "PhysicalResourceId": "infralens-dev-ApiFunction-b51oebN8zmWv",
+          "ResourceType": "AWS::Lambda::Function",
+          "ResourceStatus": "UPDATE_COMPLETE",
+          "tags": {
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation",
+            "Project": "infralens",
+            "aws:cloudformation:logical-id": "ApiFunction",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "aws:cloudformation:stack-name": "infralens-dev"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionCompletePermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionCompletePermission-9bb8f93Se3CX",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionConfigPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionConfigPermission-hPwHOAbxA9gt",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionDownloadPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionDownloadPermission-DILY4F8yS6S6",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionProjectGetPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionProjectGetPermission-5oQS73FA527v",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionProjectPutPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionProjectPutPermission-dDS6UA8L7wqb",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionProjectsPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionProjectsPermission-c1TtqEmWGZ3v",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionRole",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionRole-gpv09Gcvc3RN",
+          "ResourceType": "AWS::IAM::Role",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionRunCreatePermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionRunCreatePermission-B8WLbZA8PAiu",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionRunDeletePermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionRunDeletePermission-AIQg9D8xGcpU",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionRunGetPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionRunGetPermission-irrXhVAOy8rL",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionRunsPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionRunsPermission-cqouBfeUCsj9",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiLogGroup",
+          "PhysicalResourceId": "infralens-dev-ApiLogGroup-UcFYiDp2XRm9",
+          "ResourceType": "AWS::Logs::LogGroup",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "ApiLogGroup"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "CleanupFunction",
+          "PhysicalResourceId": "infralens-dev-CleanupFunction-CqFxTHzDzYvA",
+          "ResourceType": "AWS::Lambda::Function",
+          "ResourceStatus": "UPDATE_COMPLETE",
+          "tags": {
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation",
+            "Project": "infralens",
+            "aws:cloudformation:logical-id": "CleanupFunction",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "aws:cloudformation:stack-name": "infralens-dev"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "CleanupFunctionRole",
+          "PhysicalResourceId": "infralens-dev-CleanupFunctionRole-yrTPvhq8hORG",
+          "ResourceType": "AWS::IAM::Role",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "CleanupLogGroup",
+          "PhysicalResourceId": "infralens-dev-CleanupLogGroup-bgg35qEYBKKU",
+          "ResourceType": "AWS::Logs::LogGroup",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "CleanupLogGroup"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "CleanupSchedule",
+          "PhysicalResourceId": "infralens-dev-CleanupSchedule-2wKJ2AoblNXg",
+          "ResourceType": "AWS::Events::Rule",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "CleanupSchedule"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "CleanupSchedulePermission",
+          "PhysicalResourceId": "infralens-dev-CleanupSchedulePermission-f8rAhdPxzXKA",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "CliClient",
+          "PhysicalResourceId": "3tfc9k8uemi41ped00nm8b1lst",
+          "ResourceType": "AWS::Cognito::UserPoolClient",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its user pool"
+        },
+        {
+          "LogicalResourceId": "HttpApi",
+          "PhysicalResourceId": "8maelv4bic",
+          "ResourceType": "AWS::ApiGatewayV2::Api",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "HttpApi",
+            "httpapi:createdBy": "SAM"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "HttpApiApiGatewayDefaultStage",
+          "PhysicalResourceId": "$default",
+          "ResourceType": "AWS::ApiGatewayV2::Stage",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "HttpApiApiGatewayDefaultStage",
+            "httpapi:createdBy": "SAM"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "ReportsBucket",
+          "PhysicalResourceId": "infralens-dev-reportsbucket-nwhov6dyug0d",
+          "ResourceType": "AWS::S3::Bucket",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "ReportsBucket"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "ReportsPolicy",
+          "PhysicalResourceId": "infralens-dev-reportsbucket-nwhov6dyug0d",
+          "ResourceType": "AWS::S3::BucketPolicy",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its bucket"
+        },
+        {
+          "LogicalResourceId": "ResourceServer",
+          "PhysicalResourceId": "infralens",
+          "ResourceType": "AWS::Cognito::UserPoolResourceServer",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its user pool"
+        },
+        {
+          "LogicalResourceId": "StorageTable",
+          "PhysicalResourceId": "infralens-dev-StorageTable-1FLSCFV7W74IC",
+          "ResourceType": "AWS::DynamoDB::Table",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "ManagedBy": "cloudformation",
+            "Deployment": "infralens-dev",
+            "Environment": "dev"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "UserPool",
+          "PhysicalResourceId": "ap-southeast-1_GT5fxFHCB",
+          "ResourceType": "AWS::Cognito::UserPool",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation",
+            "Project": "infralens",
+            "aws:cloudformation:logical-id": "UserPool",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev/71e18550-cd57-11f1-988e-0affe38a716f",
+            "aws:cloudformation:stack-name": "infralens-dev"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "UserPoolDomain",
+          "PhysicalResourceId": "infralens-dev-695650811791-ap-southeast-1",
+          "ResourceType": "AWS::Cognito::UserPoolDomain",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Delete domain before deleting its user pool"
+        }
+      ]
+    },
+    {
+      "name": "infralens-dev-artifacts",
+      "id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-artifacts/10177e60-cd57-11f1-ae08-02fffd3479d5",
+      "status": "CREATE_COMPLETE",
+      "outputs": [
+        {
+          "OutputKey": "ArtifactsBucket",
+          "OutputValue": "infralens-dev-artifacts-artifactsbucket-yswxkvh81khb"
+        }
+      ],
+      "resources": [
+        {
+          "LogicalResourceId": "ArtifactsBucket",
+          "PhysicalResourceId": "infralens-dev-artifacts-artifactsbucket-yswxkvh81khb",
+          "ResourceType": "AWS::S3::Bucket",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev-artifacts",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-artifacts/10177e60-cd57-11f1-ae08-02fffd3479d5",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "ArtifactsBucket"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "ArtifactsPolicy",
+          "PhysicalResourceId": "infralens-dev-artifacts-artifactsbucket-yswxkvh81khb",
+          "ResourceType": "AWS::S3::BucketPolicy",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its bucket"
+        }
+      ]
+    }
+  ]
+}

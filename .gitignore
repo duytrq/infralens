@@ -5,6 +5,8 @@ __pycache__/
 .ruff_cache/
 dist/
 build/
+.aws-sam/
+samconfig.toml
 *.egg-info/
 .env
 .env.*

@@ -1,0 +1,55 @@
+name: Storage backend
+
+on:
+  pull_request:
+    paths: ['backend/**', 'infra/**', 'contracts/**', '.github/workflows/backend.yml']
+  push:
+    branches: [main]
+    paths: ['backend/**', 'infra/**', 'contracts/**', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SAM_CLI_TELEMETRY: '0'
+  AWS_EC2_METADATA_DISABLED: 'true'
+  AWS_DEFAULT_REGION: ap-southeast-1
+
+jobs:
+  backend:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: '0.11.6'
+          python-version: '3.12'
+      - run: uv sync --project backend --locked
+      - run: uv run --project backend ruff check backend infra
+      - run: uv run --project backend ruff format --check backend infra
+      - run: uv run --project backend python backend/scripts/export_contract.py --check
+      - name: Check pinned runtime requirements
+        run: |
+          uv export --project backend --locked --no-dev --no-emit-project --no-header --no-annotate --output-file "$RUNNER_TEMP/backend-requirements.txt" > /dev/null
+          diff -u backend/requirements.txt "$RUNNER_TEMP/backend-requirements.txt"
+      - run: uv run --project backend pytest -q backend/tests
+      - run: uv run --project backend cfn-lint infra/template.yaml infra/artifacts.yaml
+      - run: uvx --from aws-sam-cli==1.169.0 sam validate --lint --template-file infra/template.yaml --region ap-southeast-1
+      - run: uvx --from aws-sam-cli==1.169.0 python infra/verify_template.py
+      - run: uvx --from aws-sam-cli==1.169.0 sam build --template-file infra/template.yaml
+      - run: uv run --project backend python -S backend/scripts/verify_artifacts.py .aws-sam/build/ApiFunction .aws-sam/build/CleanupFunction
+      - run: uv build --project backend
+      - name: Audit runtime and development dependencies
+        run: |
+          uv export --project backend --locked --no-emit-project --output-file "$RUNNER_TEMP/backend-audit.txt" > /dev/null
+          uv run --project backend pip-audit --requirement "$RUNNER_TEMP/backend-audit.txt" --require-hashes --no-deps --disable-pip --progress-spinner off
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: infralens-backend
+          path: |
+            .aws-sam/build
+            backend/dist
+            contracts/openapi.json
+          if-no-files-found: error
+          include-hidden-files: true
