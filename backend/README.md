@@ -1,6 +1,6 @@
 # Backend lưu trữ InfraLens
 
-Backend cung cấp API quản lý project, metadata lần scan và báo cáo JSON trên AWS.
+Backend cung cấp API quản lý project, metadata lần scan, findings và báo cáo JSON trên AWS.
 Mỗi tài khoản Cognito có dữ liệu riêng. Dashboard và tích hợp các lệnh `cloud` /
 `scan --upload` trong CLI là bước tiếp theo; CLI hiện tại vẫn chỉ scan và xuất local.
 
@@ -10,6 +10,7 @@ Mỗi tài khoản Cognito có dữ liệu riêng. Dashboard và tích hợp cá
 CLI -- đăng nhập Code + PKCE --> Cognito
 CLI -- access token ----------> HTTP API Gateway --> Lambda --> DynamoDB
 CLI -- presigned PUT/GET ------------------------------------> S3 private
+DynamoDB Streams -------------> Lambda phân tích JSON --> DynamoDB findings
 EventBridge mỗi giờ ----------> Lambda cleanup
 ```
 
@@ -24,7 +25,8 @@ Backend không chạy Trivy và không cần nhận AWS credentials của ngư�
 - Cognito Lite, public client không secret, OAuth code grant, callback mặc định
   `http://localhost:8765/callback`. Client phải dùng PKCE S256 và kiểm tra state.
 - Admin tạo tài khoản; chưa mở đăng ký công khai. Không dùng Cognito Identity Pool.
-- Không có CORS cho dashboard ở phiên bản này; chỉ có client local.
+- Dashboard có public app client riêng trong cùng User Pool và CORS theo
+  `DashboardOrigin` (dev mặc định `http://localhost:5173`); xem [DASHBOARD.md](DASHBOARD.md).
 
 Backend là project Python >=3.12 riêng, có `uv.lock` riêng. Dependencies SDK,
 JSON validator và streaming parser không được đóng gói vào CLI.
@@ -252,3 +254,9 @@ lý riêng; không có lệnh tự động xóa tài nguyên production.
 - [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)
 - [S3 PutObject checksums and headers](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html)
 - [DynamoDB/S3 consistency boundaries](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-use-s3-too.html)
+
+## Dashboard backend
+
+Projects with latest scan, paginated findings, background indexing, retry,
+separate browser login and CORS are documented in [DASHBOARD.md](DASHBOARD.md).
+The CLI cloud integration and dashboard frontend remain separate deliverables.

@@ -81,3 +81,12 @@ Tag chỉ giúp tìm tài nguyên, không tự xóa tài nguyên. Có thể tra 
 
 Không tự động quét/xóa toàn bộ account theo tag. Luôn xác nhận account và đối chiếu
 physical ID để tránh đụng đến tài nguyên của hệ thống khác.
+
+## Dashboard resources
+
+The backend also owns a retained/deletion-protected `FindingsTable`, a tagged
+analysis Lambda/log group/stream mapping, an encrypted SQS failure queue and a
+separate Cognito dashboard client. Add `FindingsTable` to the explicit retained
+table cleanup above. Set `DashboardOrigin` to the exact HTTPS frontend origin
+when publishing; current dev uses `http://localhost:5173`. See
+[dashboard API and recovery](../backend/DASHBOARD.md).
