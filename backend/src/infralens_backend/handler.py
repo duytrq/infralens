@@ -61,7 +61,7 @@ def cleanup_handler(event, context):
 
 
 def analysis_handler(event, context):
-    """Batch size one, bounded retries, SQS on-failure destination."""
+    """Batch size one, bounded retries; metadata supports manual recovery."""
     from boto3.dynamodb.types import TypeDeserializer
 
     deserialize = TypeDeserializer().deserialize

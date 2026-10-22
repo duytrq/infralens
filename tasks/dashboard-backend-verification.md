@@ -68,3 +68,16 @@ recreated by UpdateItem; cursor filter hashes keep long-path cursors bounded.
 
 Build the three dashboard screens against these APIs and set DashboardOrigin to
 the deployed HTTPS origin. No frontend hosting resources were provisioned here.
+
+## Internal-tool simplification
+
+The initial verification above included an SQS failure destination. Following
+user feedback, remove that queue and its permission/destination. Recovery uses
+run metadata, existing CloudWatch logs and manual retry/backfill. The refreshed
+resource inventory describes the simplified deployment.
+
+Removal verified on AWS dev: stack UPDATE_COMPLETE; old queue no longer exists,
+stream remains Enabled with no failure destination, and the worker role has no
+SQS permission. API config200/protected route401, seven focused tests, lint,
+SAM transform/build and three isolated artifacts pass. See
+`infra/deployments/infralens-dev-sqs-removal-verification.json`.

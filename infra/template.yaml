@@ -432,17 +432,6 @@ Resources:
             - {AttributeName: sk, KeyType: RANGE}
           Projection: {ProjectionType: ALL}
 
-  AnalysisFailures:
-    Type: AWS::SQS::Queue
-    Properties:
-      SqsManagedSseEnabled: true
-      MessageRetentionPeriod: 1209600
-      Tags:
-        - {Key: Project, Value: infralens}
-        - {Key: Environment, Value: !Ref Environment}
-        - {Key: ManagedBy, Value: cloudformation}
-        - {Key: Deployment, Value: !Ref AWS::StackName}
-
   AnalysisFunction:
     Type: AWS::Serverless::Function
     Metadata: {BuildMethod: makefile}
@@ -466,9 +455,6 @@ Resources:
             - Effect: Allow
               Action: s3:GetObject
               Resource: !Sub ${ReportsBucket.Arn}/users/*
-            - Effect: Allow
-              Action: sqs:SendMessage
-              Resource: !GetAtt AnalysisFailures.Arn
 
   AnalysisStream:
     Type: AWS::Lambda::EventSourceMapping
@@ -480,8 +466,6 @@ Resources:
       MaximumRetryAttempts: 3
       MaximumRecordAgeInSeconds: 900
       ParallelizationFactor: 1
-      DestinationConfig:
-        OnFailure: {Destination: !GetAtt AnalysisFailures.Arn}
       FilterCriteria:
         Filters:
           - Pattern: '{"eventName":["INSERT","MODIFY"],"dynamodb":{"NewImage":{"data":{"M":{"upload_status":{"S":["ready"]},"analysis":{"M":{"status":{"S":["pending"]}}}}}}}}'
@@ -562,5 +546,3 @@ Outputs:
     Value: !Ref DashboardClient
   DashboardOrigin:
     Value: !Ref DashboardOrigin
-  AnalysisFailuresQueueUrl:
-    Value: !Ref AnalysisFailures

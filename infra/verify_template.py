@@ -60,7 +60,6 @@ def verify(environment, reserve):
         "AWS::Cognito::UserPool",
         "AWS::ApiGatewayV2::Stage",
         "AWS::Lambda::EventSourceMapping",
-        "AWS::SQS::Queue",
     }
     for name, resource in resources.items():
         if resource["Type"] in tagged_types:
@@ -139,6 +138,8 @@ def verify(environment, reserve):
     mapping = resources["AnalysisStream"]["Properties"]
     assert mapping["BatchSize"] == 1 and mapping["MaximumRetryAttempts"] == 3
     assert mapping["MaximumRecordAgeInSeconds"] == 900
+    assert "DestinationConfig" not in mapping
+    assert not any(r["Type"] == "AWS::SQS::Queue" for r in resources.values())
     pattern = json.loads(mapping["FilterCriteria"]["Filters"][0]["Pattern"])
     assert pattern["dynamodb"]["NewImage"]["data"]["M"]["analysis"]["M"]["status"][
         "S"

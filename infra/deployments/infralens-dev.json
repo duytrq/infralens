@@ -1,7 +1,7 @@
 {
   "account": "695650811791",
   "region": "ap-southeast-1",
-  "recorded_at": "2026-10-22T10:26:18.670221+00:00",
+  "recorded_at": "2026-10-22T14:12:08.702758+00:00",
   "tags": {
     "Project": "infralens",
     "Environment": "dev",
@@ -35,10 +35,6 @@
           "OutputValue": "https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com"
         },
         {
-          "OutputKey": "AnalysisFailuresQueueUrl",
-          "OutputValue": "https://sqs.ap-southeast-1.amazonaws.com/695650811791/infralens-dev-AnalysisFailures-aCJsmnp3rrri"
-        },
-        {
           "OutputKey": "ApiEndpoint",
           "OutputValue": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com"
         },
@@ -57,23 +53,10 @@
       ],
       "resources": [
         {
-          "LogicalResourceId": "AnalysisFailures",
-          "PhysicalResourceId": "https://sqs.ap-southeast-1.amazonaws.com/695650811791/infralens-dev-AnalysisFailures-aCJsmnp3rrri",
-          "ResourceType": "AWS::SQS::Queue",
-          "ResourceStatus": "CREATE_COMPLETE",
-          "tags": {
-            "Project": "infralens",
-            "Deployment": "infralens-dev",
-            "Environment": "dev",
-            "ManagedBy": "cloudformation"
-          },
-          "tagging": "verified"
-        },
-        {
           "LogicalResourceId": "AnalysisFunction",
           "PhysicalResourceId": "infralens-dev-AnalysisFunction-F89nG8JGNVLh",
           "ResourceType": "AWS::Lambda::Function",
-          "ResourceStatus": "CREATE_COMPLETE",
+          "ResourceStatus": "UPDATE_COMPLETE",
           "tags": {
             "Deployment": "infralens-dev",
             "Environment": "dev",
@@ -89,7 +72,7 @@
           "LogicalResourceId": "AnalysisFunctionRole",
           "PhysicalResourceId": "infralens-dev-AnalysisFunctionRole-lizVGyINGtO5",
           "ResourceType": "AWS::IAM::Role",
-          "ResourceStatus": "CREATE_COMPLETE",
+          "ResourceStatus": "UPDATE_COMPLETE",
           "tags": {
             "Project": "infralens",
             "Deployment": "infralens-dev",
@@ -118,7 +101,7 @@
           "LogicalResourceId": "AnalysisStream",
           "PhysicalResourceId": "7fffaea8-5163-4d47-adfc-8994da358b12",
           "ResourceType": "AWS::Lambda::EventSourceMapping",
-          "ResourceStatus": "CREATE_COMPLETE",
+          "ResourceStatus": "UPDATE_COMPLETE",
           "tags": {
             "Deployment": "infralens-dev",
             "Environment": "dev",

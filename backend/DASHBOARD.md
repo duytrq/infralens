@@ -84,7 +84,8 @@ presented as a concrete file. Highlighted HTML from reports is never retained.
 
 Metadata changes trigger a DynamoDB Stream mapping filtered to ready uploads
 with pending analysis. It uses batches of one, three retries, maximum record age
-15minutes and an encrypted SQS on-failure queue (14days). A durable cleanup job
+15minutes. Failed work is recovered using run metadata and manual retry/backfill;
+there is no separate failure queue. A durable cleanup job
 precedes derived writes. Findings are isolated by owner/run generation/build and
 remain private until the complete build is published conditionally.
 
@@ -118,11 +119,11 @@ uv run --project backend python backend/scripts/backfill_analysis.py \
 Add `--apply` to queue missing indexes, and `--include-failed` to retry failures.
 The script changes metadata; the deployed stream runs analysis asynchronously.
 It never replaces already-ready indexes or duplicates pending work. Review worker
-logs and SQS failures if builds stop processing; once20minutes have passed,
-invoke/schedule cleanup and retry through the API or backfill script. Clear only
-failure-queue messages whose corresponding runs have been recovered or removed.
+logs and run metadata if builds stop processing; once20minutes have passed,
+invoke/schedule cleanup and retry through the API or backfill script. Logs and
+stored run state provide the recovery information for this internal tool.
 
 New resources retain the deployment tags. FindingsTable is retained and deletion
 protected like StorageTable: export inventory, disable protection and explicitly
 delete both tables when tearing down the environment. The stream mapping, worker,
-role, logs, failure queue and dashboard app client are stack-managed.
+role, logs and dashboard app client are stack-managed.
