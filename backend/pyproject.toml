@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infralens-backend"
+version = "0.1.0"
+description = "Private scan history and report storage API for InfraLens"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.40,<2",
+    "ijson>=3.4,<4",
+    "jsonschema>=4.25,<5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "moto[s3,dynamodb]>=5.1,<6",
+    "ruff>=0.14,<1",
+    "cfn-lint>=1.40,<2",
+    "openapi-spec-validator>=0.7,<1",
+    "pip-audit>=2.9,<3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/infralens_backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

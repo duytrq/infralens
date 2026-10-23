@@ -1,0 +1,548 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: InfraLens private scan history service (JSON reports only)
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+  CallbackUrl:
+    Type: String
+    Default: http://localhost:8765/callback
+    AllowedPattern: '^(http://localhost:8765/callback|https://[^\s]+)$'
+    Description: Registered OAuth callback for CLI PKCE login
+  ReserveConcurrency:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Enable only when the account supports 11 reserved executions plus its unreserved minimum
+  DashboardOrigin:
+    Type: String
+    Default: http://localhost:5173
+    AllowedPattern: '^(http://localhost:5173|https://[a-zA-Z0-9.-]+(:[0-9]+)?)$'
+    Description: Exact dashboard origin, without a trailing slash
+
+Conditions:
+  UseReservedConcurrency: !Equals [!Ref ReserveConcurrency, 'true']
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [x86_64]
+    MemorySize: 512
+    Timeout: 30
+    PropagateTags: true
+    Tags:
+      Project: infralens
+      Environment: !Ref Environment
+      ManagedBy: cloudformation
+      Deployment: !Ref AWS::StackName
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+      SystemLogLevel: WARN
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref StorageTable
+        REPORTS_BUCKET: !Ref ReportsBucket
+        COGNITO_ISSUER: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${UserPool}
+        COGNITO_CLIENT_ID: !Ref CliClient
+        COGNITO_DOMAIN: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
+        CALLBACK_URL: !Ref CallbackUrl
+        FINDINGS_TABLE: !Ref FindingsTable
+        DASHBOARD_CLIENT_ID: !Ref DashboardClient
+        DASHBOARD_ORIGIN: !Ref DashboardOrigin
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolTier: LITE
+      UserPoolTags:
+        Project: infralens
+        Environment: !Ref Environment
+        ManagedBy: cloudformation
+        Deployment: !Ref AWS::StackName
+      DeletionProtection: ACTIVE
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      MfaConfiguration: OPTIONAL
+      EnabledMfas: [SOFTWARE_TOKEN_MFA]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  ResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      Identifier: infralens
+      Name: InfraLens API
+      Scopes:
+        - ScopeName: api
+          ScopeDescription: Manage the signed-in user's projects and scans
+
+  CliClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, infralens/api]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [!Ref CallbackUrl]
+      ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub infralens-${Environment}-${AWS::AccountId}-${AWS::Region}
+      UserPoolId: !Ref UserPool
+      ManagedLoginVersion: 1
+
+  DashboardClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, infralens/api]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [!Sub '${DashboardOrigin}/auth/callback']
+      LogoutURLs: [!Sub '${DashboardOrigin}/']
+      ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 30
+      TokenValidityUnits: {AccessToken: minutes, IdToken: minutes, RefreshToken: days}
+
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireUncommittedReports
+            Status: Enabled
+            Prefix: users/
+            TagFilters:
+              - Key: state
+                Value: pending
+            ExpirationInDays: 7
+          - Id: AbortUnfinishedMultipartUploads
+            Status: Enabled
+            Prefix: users/
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  ReportsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReportsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: RequireTLS
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt ReportsBucket.Arn
+              - !Sub ${ReportsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+          - Sid: RequireImmutableUpload
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub ${ReportsBucket.Arn}/users/*
+            Condition:
+              StringNotEquals:
+                s3:if-none-match: '*'
+          - Sid: RequireStagingTag
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub ${ReportsBucket.Arn}/users/*
+            Condition:
+              StringNotEquals:
+                s3:RequestObjectTag/state: pending
+
+  StorageTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+      DeletionProtectionEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - {AttributeName: pk, AttributeType: S}
+        - {AttributeName: sk, AttributeType: S}
+        - {AttributeName: history_pk, AttributeType: S}
+        - {AttributeName: project_pk, AttributeType: S}
+        - {AttributeName: history_sk, AttributeType: S}
+        - {AttributeName: cleanup_pk, AttributeType: S}
+        - {AttributeName: cleanup_sk, AttributeType: S}
+      KeySchema:
+        - {AttributeName: pk, KeyType: HASH}
+        - {AttributeName: sk, KeyType: RANGE}
+      GlobalSecondaryIndexes:
+        - IndexName: HistoryIndex
+          KeySchema:
+            - {AttributeName: history_pk, KeyType: HASH}
+            - {AttributeName: history_sk, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+        - IndexName: ProjectHistoryIndex
+          KeySchema:
+            - {AttributeName: project_pk, KeyType: HASH}
+            - {AttributeName: history_sk, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+        - IndexName: CleanupIndex
+          KeySchema:
+            - {AttributeName: cleanup_pk, KeyType: HASH}
+            - {AttributeName: cleanup_sk, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      PropagateTags: true
+      Tags:
+        Project: infralens
+        Environment: !Ref Environment
+        ManagedBy: cloudformation
+        Deployment: !Ref AWS::StackName
+      StageName: '$default'
+      CorsConfiguration:
+        AllowOrigins: [!Ref DashboardOrigin]
+        AllowMethods: [GET, PUT, POST, DELETE, OPTIONS]
+        AllowHeaders: [authorization, content-type]
+        MaxAge: 300
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${UserPool}
+              audience: [!Ref CliClient, !Ref DashboardClient]
+            AuthorizationScopes: [infralens/api]
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: ../backend/
+      Handler: infralens_backend.handler.api_handler
+      ReservedConcurrentExecutions: !If [UseReservedConcurrency, 10, !Ref AWS::NoValue]
+      LoggingConfig:
+        LogGroup: !Ref ApiLogGroup
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:DeleteItem, dynamodb:Query]
+              Resource:
+                - !GetAtt StorageTable.Arn
+                - !Sub ${StorageTable.Arn}/index/HistoryIndex
+                - !Sub ${StorageTable.Arn}/index/ProjectHistoryIndex
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:Query]
+              Resource:
+                - !GetAtt FindingsTable.Arn
+                - !Sub ${FindingsTable.Arn}/index/*
+            - Effect: Allow
+              Action: [s3:PutObject, s3:GetObject, s3:DeleteObject, s3:PutObjectTagging]
+              Resource: !Sub ${ReportsBucket.Arn}/users/*
+            # HEAD on a missing key returns 404 only with ListBucket permission.
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !GetAtt ReportsBucket.Arn
+      Events:
+        Config:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/config
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        DashboardConfig:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/dashboard-config
+            Method: GET
+            Auth: {Authorizer: NONE}
+        Projects:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/projects, Method: GET}
+        ProjectGet:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/projects/{project_id}', Method: GET}
+        ProjectPut:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/projects/{project_id}', Method: PUT}
+        RunCreate:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/runs, Method: POST}
+        Runs:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/runs, Method: GET}
+        RunGet:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}', Method: GET}
+        RunDelete:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}', Method: DELETE}
+        Complete:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/complete', Method: POST}
+        Download:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/artifacts/json', Method: GET}
+        Findings:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/findings', Method: GET}
+        Finding:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/findings/{finding_id}', Method: GET}
+        AnalysisRetry:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/analysis/retry', Method: POST}
+
+  CleanupFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: ../backend/
+      Handler: infralens_backend.handler.cleanup_handler
+      Timeout: 60
+      ReservedConcurrentExecutions: !If [UseReservedConcurrency, 1, !Ref AWS::NoValue]
+      LoggingConfig:
+        LogGroup: !Ref CleanupLogGroup
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem]
+              Resource: !GetAtt StorageTable.Arn
+            - Effect: Allow
+              Action: dynamodb:Query
+              Resource: !Sub ${StorageTable.Arn}/index/CleanupIndex
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:BatchWriteItem]
+              Resource: !GetAtt FindingsTable.Arn
+            - Effect: Allow
+              Action: s3:DeleteObject
+              Resource: !Sub ${ReportsBucket.Arn}/users/*
+
+  FindingsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      SSESpecification: {SSEEnabled: true}
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+      AttributeDefinitions:
+        - {AttributeName: pk, AttributeType: S}
+        - {AttributeName: sk, AttributeType: S}
+        - {AttributeName: rule_pk, AttributeType: S}
+        - {AttributeName: file_pk, AttributeType: S}
+      KeySchema:
+        - {AttributeName: pk, KeyType: HASH}
+        - {AttributeName: sk, KeyType: RANGE}
+      GlobalSecondaryIndexes:
+        - IndexName: RuleIndex
+          KeySchema:
+            - {AttributeName: rule_pk, KeyType: HASH}
+            - {AttributeName: sk, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+        - IndexName: FileIndex
+          KeySchema:
+            - {AttributeName: file_pk, KeyType: HASH}
+            - {AttributeName: sk, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+
+  AnalysisFunction:
+    Type: AWS::Serverless::Function
+    Metadata: {BuildMethod: makefile}
+    Properties:
+      CodeUri: ../backend/
+      Handler: infralens_backend.handler.analysis_handler
+      Timeout: 600
+      LoggingConfig: {LogGroup: !Ref AnalysisLogGroup}
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt StorageTable.Arn
+            - Effect: Allow
+              Action: dynamodb:BatchWriteItem
+              Resource: !GetAtt FindingsTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:DescribeStream, dynamodb:GetRecords, dynamodb:GetShardIterator, dynamodb:ListStreams]
+              Resource: !GetAtt StorageTable.StreamArn
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub ${ReportsBucket.Arn}/users/*
+
+  AnalysisStream:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName: !Ref AnalysisFunction
+      EventSourceArn: !GetAtt StorageTable.StreamArn
+      StartingPosition: TRIM_HORIZON
+      BatchSize: 1
+      MaximumRetryAttempts: 3
+      MaximumRecordAgeInSeconds: 900
+      ParallelizationFactor: 1
+      FilterCriteria:
+        Filters:
+          - Pattern: '{"eventName":["INSERT","MODIFY"],"dynamodb":{"NewImage":{"data":{"M":{"upload_status":{"S":["ready"]},"analysis":{"M":{"status":{"S":["pending"]}}}}}}}}'
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+
+  AnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+
+  CleanupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(1 hour)
+      State: ENABLED
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+      Targets:
+        - {Id: Cleanup, Arn: !GetAtt CleanupFunction.Arn}
+
+  CleanupSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CleanupFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CleanupSchedule.Arn
+      SourceAccount: !Ref AWS::AccountId
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+
+  CleanupLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      Tags:
+        - {Key: Project, Value: infralens}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: ManagedBy, Value: cloudformation}
+        - {Key: Deployment, Value: !Ref AWS::StackName}
+
+Outputs:
+  ApiEndpoint:
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+  UserPoolId:
+    Value: !Ref UserPool
+  ClientId:
+    Value: !Ref CliClient
+  AuthDomain:
+    Value: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
+  ReportsBucket:
+    Value: !Ref ReportsBucket
+  StorageTable:
+    Value: !Ref StorageTable
+  FindingsTable:
+    Value: !Ref FindingsTable
+  DashboardClientId:
+    Value: !Ref DashboardClient
+  DashboardOrigin:
+    Value: !Ref DashboardOrigin
