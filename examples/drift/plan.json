@@ -1,0 +1,19 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.5",
+  "planned_values": {},
+  "resource_drift": [
+    {
+      "address": "aws_instance.demo",
+      "type": "aws_instance",
+      "mode": "managed",
+      "change": {
+        "actions": ["update"],
+        "before": {"instance_type": "t3.micro", "password": "example-old-private-value"},
+        "after": {"instance_type": "t3.small", "password": "example-new-private-value"},
+        "before_sensitive": {"password": true},
+        "after_sensitive": {"password": true}
+      }
+    }
+  ]
+}

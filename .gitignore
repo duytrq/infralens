@@ -11,3 +11,6 @@ build/
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
+reports/
+.infralens/

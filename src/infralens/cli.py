@@ -20,9 +20,11 @@ from infralens.options import (
     ScanOptions,
 )
 from infralens.validation import (
+    drift_output_path,
+    drift_priority_threshold,
     failure_threshold,
     optional_text,
-    output_path,
+    readable_file,
     scan_directory,
     scan_output_path,
     severity_filter,
@@ -124,26 +126,50 @@ def drift(
     profile: Annotated[str | None, typer.Option(help="AWS profile name.")] = None,
     region: Annotated[str | None, typer.Option(help="AWS region name.")] = None,
     trace: Annotated[
-        bool, typer.Option("--trace", help="Request CloudTrail trace.")
+        bool, typer.Option("--trace", help="Look up related AWS CloudTrail events.")
     ] = False,
     lookback_days: Annotated[
         int | None,
         typer.Option(
-            min=1, help="Positive lookback; requires --trace (default with trace: 7)."
+            min=1,
+            max=90,
+            help="Lookback in days (1-90); requires --trace (default: 7).",
         ),
     ] = None,
     fail_on_drift: Annotated[
-        bool, typer.Option("--fail-on-drift", help="Reserve exit 1 for detected drift.")
+        bool, typer.Option("--fail-on-drift", help="Exit 1 when drift is detected.")
     ] = False,
+    fail_on_priority: Annotated[
+        str | None,
+        typer.Option(help="Exit 1 for high, or medium and high, review priority."),
+    ] = None,
+    fail_on_unknown: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-unknown", help="Exit 1 for unknown or unassessed priority."
+        ),
+    ] = False,
+    timeout: Annotated[
+        int, typer.Option(min=1, help="Refresh-only plan timeout in seconds.")
+    ] = 300,
+    plan_json: Annotated[
+        Path | None,
+        typer.Option(help="Read plan JSON without Terraform; --trace still calls AWS."),
+    ] = None,
 ) -> None:
-    """Validate a drift request (engine and trace not yet implemented)."""
+    """Detect managed resource drift using a Terraform refresh-only plan."""
     with command_errors():
         days = trace_lookback(trace, lookback_days)
+        priority = drift_priority_threshold(fail_on_priority)
         profile = optional_text(profile, "--profile")
         region = optional_text(region, "--region")
         directory, inputs = terraform_directory(path)
         variables = variable_files(var_file or [], directory)
-        destination = output_path(output, inputs + variables)
+        imported = (
+            readable_file(plan_json, "--plan-json") if plan_json is not None else None
+        )
+        protected = inputs + variables + ((imported,) if imported is not None else ())
+        destination = drift_output_path(output, directory, protected)
         logger.debug("Drift validation complete")
         handle_drift(
             DriftOptions(
@@ -156,6 +182,10 @@ def drift(
                 trace,
                 days,
                 fail_on_drift,
+                timeout,
+                imported,
+                fail_on_priority=priority,
+                fail_on_unknown=fail_on_unknown,
             )
         )
 

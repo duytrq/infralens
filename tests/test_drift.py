@@ -7,19 +7,20 @@ runner = CliRunner()
 
 
 @pytest.mark.parametrize(
-    "extra, message",
+    "extra",
     [
-        ([], "Drift engine is not implemented"),
-        (["--format", "json", "--fail-on-drift"], "Drift engine is not implemented"),
-        (["--trace"], "CloudTrail trace is not supported"),
-        (["--trace", "--lookback-days", "14"], "CloudTrail trace is not supported"),
+        ["--trace"],
+        ["--trace", "--lookback-days", "14"],
     ],
 )
-def test_valid_drift_reports_missing_feature(project, extra, message):
+def test_clean_trace_requires_no_aws_calls(project, extra, fake_terraform, monkeypatch):
+    def forbidden(*args):
+        pytest.fail("Clean drift must not initialize an AWS session")
+
+    monkeypatch.setattr("infralens.cloudtrail._session", forbidden)
     result = runner.invoke(app, ["drift", str(project), *extra])
-    assert result.exit_code == 4
-    assert message in result.stderr
-    assert result.stdout == ""
+    assert result.exit_code == 0
+    assert "CloudTrail trace: not_needed" in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -29,6 +30,7 @@ def test_valid_drift_reports_missing_feature(project, extra, message):
         (["--trace", "--lookback-days", "0"], "--lookback-days"),
         (["--trace", "--lookback-days", "-1"], "--lookback-days"),
         (["--trace", "--lookback-days", "1.5"], "--lookback-days"),
+        (["--trace", "--lookback-days", "91"], "--lookback-days"),
         (["--profile", "  "], "--profile"),
         (["--region", ""], "--region"),
         (["--trace", "--var-file", "missing.tfvars"], "--var-file"),

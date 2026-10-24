@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>InfraLens · Drift workspace</title>
+  <link rel="stylesheet" href="/dashboard/app.css">
+  <script src="/dashboard/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="InfraLens trang chủ"><span class="brand-icon">◈</span> InfraLens</a>
+    <div class="eyebrow">INFRASTRUCTURE INTELLIGENCE</div>
+    <div class="nav-current"><span>⌁</span> Drift workspace <span class="local-tag">LOCAL</span></div>
+    <div class="side-context"><span class="dot" id="health-dot"></span><span id="health">Đang kiểm tra backend…</span></div>
+    <form id="connect-form" class="connection">
+      <h2>Kết nối workspace</h2>
+      <label for="token">API token</label>
+      <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Nhập bearer token" required minlength="24" maxlength="256">
+      <p class="muted">Token chỉ giữ trong bộ nhớ tab. Tải lại trang để đăng nhập lại.</p>
+      <button type="submit" id="connect">Kết nối</button>
+    </form>
+    <div id="session" hidden>
+      <div class="session-line"><span class="dot online"></span> Đã xác thực <button id="disconnect" class="text-button" type="button">Ngắt kết nối</button></div>
+      <label for="project">Dự án</label>
+      <select id="project" aria-label="Chọn dự án"></select>
+      <p id="project-context" class="muted"></p>
+      <form id="run-form">
+        <h2>Lượt kiểm tra mới</h2>
+        <label for="mode">Nguồn kiểm tra</label>
+        <select id="mode"><option value="refresh">Terraform refresh</option><option value="import">Import plan JSON</option></select>
+        <div id="import-fields" hidden>
+          <label for="plan-file">Terraform show JSON</label>
+          <input id="plan-file" type="file" accept=".json,application/json">
+          <button id="example" type="button" class="secondary">Nạp ví dụ 4 drift</button>
+          <p id="plan-label" class="muted">Chưa chọn plan.</p>
+        </div>
+        <label for="timeout">Timeout mỗi phase (giây)</label>
+        <input id="timeout" type="number" min="1" max="600" value="120" required>
+        <label for="gate-priority">Gate · điều kiện chặn</label>
+        <select id="gate-priority"><option value="off">Không đặt ngưỡng</option><option value="high">Ưu tiên cao</option><option value="medium">Từ trung bình trở lên</option><option value="any">Bất kỳ drift nào</option></select>
+        <label class="check"><input id="gate-unknown" type="checkbox"> Chặn cả khi chưa đủ ngữ cảnh</label>
+        <p class="muted">Chặn nếu khớp một điều kiện đã chọn. Gate không thay đổi hạ tầng.</p>
+        <label class="check"><input id="trace" type="checkbox"> Tra cứu CloudTrail</label>
+        <div id="trace-fields" hidden><label for="lookback">Số ngày tra cứu</label><input id="lookback" type="number" min="1" max="90" value="7"></div>
+        <button id="submit-run" type="submit">Tạo lượt kiểm tra <span aria-hidden="true">↗</span></button>
+        <p class="muted">Refresh đọc hạ tầng theo cấu hình đã đăng ký. Import chỉ phân tích plan đã có.</p>
+      </form>
+    </div>
+    <div class="side-bottom"><a href="/docs" target="_blank" rel="noopener">API documentation ↗</a><span>InfraLens / Drift v1</span></div>
+  </aside>
+  <main>
+    <header class="page-header"><div><div class="eyebrow">OBSERVE / REVIEW / DECIDE</div><h1>Infrastructure drift<span>.</span></h1><p>Nhìn rõ những gì đã thay đổi trong hạ tầng của bạn.</p></div><span class="header-tag">LOCAL WORKSPACE</span></header>
+    <div id="notice" role="status" aria-live="polite" hidden></div>
+    <section id="welcome" class="welcome"><span class="welcome-symbol" aria-hidden="true">⌁</span><div class="eyebrow">SẴN SÀNG QUAN SÁT</div><h2>Từ thay đổi đến quyết định.</h2><p>Kết nối bằng API token, chọn dự án rồi chạy kiểm tra hoặc import Terraform plan. Lịch sử và báo cáo được lưu trong backend cục bộ.</p><div class="welcome-steps"><span>01 / Chọn dự án</span><span>02 / Phát hiện drift</span><span>03 / Xem & so sánh</span></div></section>
+    <div id="workspace" hidden>
+      <section class="stats" aria-label="Tổng quan lượt đang chọn"><div><span>RESOURCE CÓ DRIFT</span><strong id="stat-resources">—</strong></div><div><span>ƯU TIÊN CAO</span><strong id="stat-high">—</strong></div><div><span>ƯU TIÊN TRUNG BÌNH</span><strong id="stat-medium">—</strong></div><div><span>CHƯA ĐỦ NGỮ CẢNH</span><strong id="stat-unknown">—</strong></div></section>
+      <section class="history panel"><div class="section-head"><div><div class="eyebrow">RUN HISTORY</div><h2>Lịch sử kiểm tra</h2></div><div class="history-controls"><label class="sr-only" for="status-filter">Lọc trạng thái</label><select id="status-filter"><option value="">Tất cả trạng thái</option><option value="queued">Đang chờ</option><option value="running">Đang chạy</option><option value="succeeded">Hoàn tất</option><option value="failed">Lỗi</option><option value="cancelled">Đã hủy</option><option value="interrupted">Gián đoạn</option></select><button id="refresh-history" type="button" class="secondary">Làm mới</button></div></div><div class="table-scroll"><table><thead><tr><th>LƯỢT / THỜI GIAN</th><th>NGUỒN</th><th>TRẠNG THÁI</th><th>KẾT QUẢ</th><th>GATE</th><th><span class="sr-only">Chi tiết</span></th></tr></thead><tbody id="history-body"></tbody></table></div><div class="history-footer"><span id="history-note" class="muted">20 lượt mỗi trang · tự cập nhật mỗi 3 giây</span><button id="older" type="button" class="text-button" disabled>Trang cũ hơn →</button></div></section>
+      <section class="detail panel" aria-labelledby="detail-title"><div class="section-head"><div><div class="eyebrow">RUN INSPECTOR</div><h2 id="detail-title">Chọn một lượt kiểm tra</h2><p id="run-meta" class="muted"></p></div><div class="detail-actions"><button id="cancel-run" class="secondary danger" type="button" hidden>Hủy lượt này</button><button id="download" class="secondary" type="button" disabled>Tải báo cáo JSON ↓</button></div></div><div id="run-state" class="empty">Chọn “Xem” để đọc báo cáo và so sánh với lượt trước.</div><div id="report" hidden><div id="gate-result" aria-live="polite"></div><div id="report-notes" class="report-notes"></div><div class="section-head compact"><h3>Thay đổi theo resource</h3><label class="sr-only" for="resource-filter">Lọc resource</label><input id="resource-filter" type="search" placeholder="Lọc theo địa chỉ resource…"></div><div id="resources"></div><section class="comparison"><div class="eyebrow">HISTORY COMPARISON</div><h3>So với lượt thành công trước</h3><div id="comparison-content"></div></section></div></section>
+    </div>
+    <footer>Terraform saved state → Provider observed values <span>Review trước khi thay đổi hạ tầng.</span></footer>
+  </main>
+</body>
+</html>

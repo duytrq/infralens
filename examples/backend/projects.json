@@ -1,0 +1,24 @@
+{
+  "projects": [
+    {
+      "id": "drift-demo",
+      "name": "InfraLens offline drift demo",
+      "path": "../drift-review",
+      "workspace": "default",
+      "allow_refresh": false,
+      "allow_import": true,
+      "allow_trace": false,
+      "max_timeout": 120
+    },
+    {
+      "id": "network-rules-demo",
+      "name": "Security Group rules drift demo",
+      "path": "../network-rules",
+      "workspace": "default",
+      "allow_refresh": false,
+      "allow_import": true,
+      "allow_trace": false,
+      "max_timeout": 120
+    }
+  ]
+}

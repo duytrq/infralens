@@ -2,8 +2,22 @@
 
 CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tầng.
 
-**Security scan đã hoạt động bằng Trivy.** Drift và CloudTrail trace hiện chỉ
-validate đầu vào rồi trả mã `4`. Upload cloud chưa được triển khai.
+**Security scan đã hoạt động bằng Trivy. Drift engine đã dùng được với Terraform.**
+Drift đối chiếu state đã lưu với tài nguyên thực tế bằng refresh-only plan;
+CloudTrail trace đã hỗ trợ EC2/Security Group qua `--trace`.
+Rule ingress/egress tách riêng đã có trace theo rule ID chính xác;
+[demo CloudTrail offline](examples/network-rules/README.md#demo-cloudtrail-offline).
+[Gate CI](docs/DRIFT_CI.md) hỗ trợ ngưỡng high/medium và chặn unknown riêng,
+giữ đầy đủ báo cáo khi pipeline thất bại do finding.
+Upload cloud chưa được triển khai.
+
+Có [backend drift chạy cục bộ](docs/BACKEND.md) với API FastAPI, worker nền,
+hàng đợi/lịch sử SQLite, hủy lượt chạy và so sánh các lần kiểm tra. Swagger:
+`http://127.0.0.1:8765/docs` sau khi khởi động server. CLI và backend dùng chung engine.
+Dashboard tiếng Việt ở `http://127.0.0.1:8765/`: chọn dự án, import plan hoặc
+refresh, đọc báo cáo, tải JSON và so sánh lịch sử ngay trên trình duyệt.
+Đánh giá drift đã hỗ trợ cả Security Group inline và rule tách riêng;
+[demo 6 tình huống mạng](examples/network-rules/README.md) chạy offline.
 
 ## Cài wheel có sẵn Trivy (khuyến nghị)
 
@@ -247,14 +261,69 @@ infralens drift ./infra --profile dev --region ap-southeast-1
 infralens drift ./infra --trace --lookback-days 14
 ```
 
-Drift hiện validate đầu vào rồi trả mã `4`: thông báo engine chưa triển khai,
-hoặc CloudTrail trace chưa hỗ trợ khi có `--trace`. Lỗi đầu vào được báo trước.
-Không kiểm tra binary/credentials, gọi Terraform/AWS, đọc nội dung state/tfvars
-hoặc tạo báo cáo cho drift.
+Yêu cầu Terraform bản ổn định **>=1.1,<2** trên PATH và dự án đã chạy
+`terraform init` với đúng backend/workspace/credentials. Terraform chưa được
+bundle trong wheel hoặc Docker image scanner. CLI không tự init hoặc apply.
+
+Engine tạo `terraform plan -refresh-only` vào thư mục tạm, đọc bằng
+`terraform show -json`, rồi lấy `resource_drift`. Không dùng `resource_changes`
+làm bằng chứng drift, nên sửa mã chưa apply không tự động bị báo thành drift.
+Kết quả gồm địa chỉ resource/module, thao tác update/delete, thuộc tính và
+giá trị saved state → observed. Giá trị được Terraform đánh dấu sensitive
+được che ở cả terminal và JSON. Các collection được hiển thị theo cả thuộc tính,
+không suy diễn danh tính phần tử từ chỉ số mảng.
+Resource có ID/ARN kèm nguồn observed/saved nếu provider cung cấp; giá trị
+sensitive vẫn được che. Báo cáo ghi rõ các bản đồ tag AWS rỗng được chuẩn hóa
+từ `null`/`{}`; thêm, xóa hoặc đổi tag thật vẫn được tính là drift.
+Mỗi resource drift được gắn file và khoảng dòng khai báo khi tìm được trong
+mã hiện tại, gồm HCL, `.tf.json` và module lồng nhau. Xem
+[định vị mã Terraform](docs/SOURCE_LOCATIONS.md) về các trạng thái thiếu/đa nghĩa.
+Mỗi resource cũng có [mức ưu tiên và hướng dẫn xử lý](docs/DRIFT_REVIEW.md):
+high/medium/unknown, lý do và hai lựa chọn khôi phục cấu hình hoặc chấp nhận
+thay đổi đã được duyệt. Đây là gợi ý review, không tự sửa hạ tầng.
+
+Có [bộ demo AWS riêng](docs/AWS_DRIFT_DEMO.md) để kiểm chứng sáu tình huống
+với EC2/Security Group, lưu bằng chứng và cleanup. Chạy demo có tạo/thay đổi/xóa
+tài nguyên sandbox; không được gọi ngầm bởi lệnh drift.
+Ngày 22/10/2026, sáu tình huống đã đạt trên AWS thật và cleanup đã hoàn tất;
+xem [biên bản kiểm chứng](docs/verification/AWS_DRIFT_2026-10-22.md).
+
+```powershell
+# Demo offline từ dữ liệu giả lập, không gọi Terraform/AWS.
+infralens drift ./examples/drift --plan-json ./examples/drift/plan.json
+
+# Kiểm tra hạ tầng trong dự án Terraform đã init.
+infralens drift ./infra --timeout 300 --format json --output ./reports/drift.json
+```
+
+`--plan-json` nhận JSON từ `terraform show -json` (đường dẫn tính từ CWD),
+không nhận state JSON hay event stream của `terraform plan -json`. Chế độ này
+không chứng minh được plan đã refresh, đúng workspace hoặc còn mới; báo cáo
+ghi rõ giới hạn này. Profile, region và var-file không được dùng để tạo lại
+plan khi đã chọn nhập JSON. Plan lỗi/incomplete và metadata không hợp lệ bị
+từ chối thay vì báo không có drift.
+
+`--timeout` giới hạn bước plan (mặc định 300 giây); version/show có giới hạn
+10/60 giây. Khóa state được giữ theo Terraform, chờ tối đa 10 giây để lấy khóa.
+CLI không ghi state đã refresh, không sửa hạ tầng quản lý và dọn plan tạm khi
+kết thúc/lỗi/ngắt lệnh bình thường. Provider vẫn có thể gọi API, đọc data source
+hoặc chạy chương trình ngoài trong quá trình plan; chỉ chạy dự án tin cậy.
+Diagnostics thô của Terraform không được đưa vào terminal/log; khi lỗi cần
+chạy Terraform trực tiếp để xem chi tiết.
+
+`--profile`/`--region` đặt biến môi trường AWS cho provider/backend; cấu hình
+profile/region tường minh trong Terraform có thể ưu tiên hơn. Giữ TF_VAR_*,
+TF_WORKSPACE và credential chain; loại TF_CLI_ARGS* để tránh ngầm thu hẹp phạm
+vi kiểm tra, loại TF_LOG* để tránh ghi log thô. `--trace` tra sự kiện CloudTrail
+liên quan sau khi phát hiện drift, kiểm tra account/region theo ARN và STS.
+Xem [hướng dẫn CloudTrail](docs/CLOUDTRAIL.md) về cài extra `aws-trace`, quyền,
+phạm vi và trạng thái partial/error. `--fail-on-drift` trả `1` khi có managed resource
+drift, sau khi ghi báo cáo thành công; thay đổi output đơn thuần không làm fail.
 
 `--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
 Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`
-là số nguyên dương, chỉ dùng cùng trace; mặc định 7 khi trace bật.
+là số nguyên từ 1 đến 90, chỉ dùng cùng trace; mặc định 7 khi trace bật.
+Nhập `--plan-json --trace` vẫn gọi AWS, không chạy Terraform.
 
 ## Logging và exit code
 
@@ -265,10 +334,10 @@ Trivy, exception payload, source, credentials hoặc environment.
 | Mã | Ý nghĩa |
 | --- | --- |
 | `0` | Thành công; findings không vượt ngưỡng hoặc không đặt ngưỡng. |
-| `1` | Findings đạt/vượt fail-on. |
+| `1` | Findings đạt/vượt fail-on hoặc phát hiện drift khi bật --fail-on-drift. |
 | `2` | Sai cú pháp hoặc đầu vào không hợp lệ. |
-| `3` | Thiếu/sai phiên bản Trivy, lỗi scan/convert/JSON, timeout hoặc I/O. |
-| `4` | Drift engine hoặc trace chưa triển khai. |
+| `3` | Thiếu/sai phiên bản công cụ, lỗi scan/drift/JSON/CloudTrail, timeout hoặc I/O. |
+| `4` | Dành riêng cho tính năng chưa hỗ trợ; drift/trace hiện không dùng mã này. |
 | `130` | Người dùng ngắt bằng Ctrl+C. |
 
 Lỗi thực thi/ghi báo cáo ưu tiên hơn trạng thái findings. Timeout và Ctrl+C
@@ -338,6 +407,9 @@ uv run pytest -q tests/integration/test_trivy_integration.py --run-integration -
 
 # Sau khi build image:
 uv run pytest -q tests/integration/test_docker.py --run-docker
+
+# Fixture terraform_data cần Terraform >=1.4,<2; chỉ dùng tài nguyên local.
+uv run pytest -q tests/integration/test_terraform_integration.py --run-terraform --run-network
 ```
 
 `uv run python -m infralens` và `uv run infralens` dùng cùng CLI trong môi
@@ -345,6 +417,9 @@ trường phát triển. Nếu muốn cài CLI độc lập từ checkout local,
 `uv tool install .` thay cho URL Git hoặc file wheel ở trên.
 
 Suite mặc định dùng fixture và executable giả, không yêu cầu Trivy/Docker/network.
+Các test Terraform thật cũng được chọn riêng qua `--run-terraform`. Test local_file
+cần `--run-network` để tải provider hashicorp/local 2.5.3. Có thể đặt
+`INFRALENS_TEST_TERRAFORM` thành đường dẫn executable. Không tạo tài nguyên AWS.
 Các suite công cụ ngoài được chọn bằng flag; khi đã chọn, thiếu dependency
 hoặc lỗi runtime sẽ làm test fail, không tự skip.
 
@@ -355,5 +430,6 @@ Tests Docker dùng volume riêng để hỗ trợ cả daemon từ xa, kiểm tr
 đọc, UID file báo cáo, cache, exit code và SIGINT; tự dọn container/volume đã tạo.
 
 Mã nguồn trong `src/infralens/`: CLI/options/validation, handler orchestration,
-Trivy adapter, process runner, reporting và error/logging chung.
+Trivy adapter, Terraform adapter, drift parser/reporting, process runner và
+error/logging chung. Xem [hướng dẫn và giới hạn drift](docs/DRIFT.md).
 Quyết định triển khai và checklist ở `tasks/plan.md`, `tasks/todo.md`.

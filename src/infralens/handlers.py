@@ -6,7 +6,10 @@ from pathlib import Path
 
 import typer
 
-from infralens.errors import ExitCode, FeatureUnavailable
+from infralens.drift_gate import evaluate_gate, render_gate
+from infralens.drift_reporting import render_drift
+from infralens.drift_service import collect_drift
+from infralens.errors import ExitCode
 from infralens.options import SEVERITIES, DriftOptions, ScanOptions
 from infralens.reporting import render_table, write_report
 from infralens.trivy import Trivy
@@ -38,6 +41,41 @@ def handle_scan(options: ScanOptions) -> None:
 
 
 def handle_drift(options: DriftOptions) -> None:
-    if options.trace:
-        raise FeatureUnavailable("CloudTrail trace is not supported yet.")
-    raise FeatureUnavailable("Drift engine is not implemented.")
+    result = collect_drift(options)
+    gate = None
+    if (
+        options.fail_on_drift
+        or options.fail_on_priority is not None
+        or options.fail_on_unknown
+    ):
+        gate = evaluate_gate(
+            result,
+            fail_on_drift=options.fail_on_drift,
+            fail_on_priority=options.fail_on_priority,
+            fail_on_unknown=options.fail_on_unknown,
+        )
+    table = render_drift(result)
+    if gate is not None:
+        table += render_gate(gate)
+    data = result.to_dict()
+    if gate is not None:
+        data["gate"] = gate
+    report = (
+        json.dumps(data, ensure_ascii=True, indent=2) + "\n"
+        if options.format == "json"
+        else table
+    )
+    if options.output is not None:
+        write_report(options.output, report)
+        typer.echo(table, nl=False)
+        typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
+    else:
+        typer.echo(report, nl=False)
+    if result.trace and result.trace["has_errors"]:
+        typer.echo(
+            "Error: CloudTrail trace incomplete; see trace details in the report.",
+            err=True,
+        )
+        raise typer.Exit(ExitCode.execution_error)
+    if gate is not None and gate["exit_code"] == 1:
+        raise typer.Exit(ExitCode.findings)

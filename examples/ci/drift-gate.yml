@@ -1,0 +1,70 @@
+# Example for this InfraLens checkout: copy into this repo's .github/workflows/.
+# Imports an existing Terraform show JSON; no Terraform refresh or AWS login.
+name: InfraLens drift gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Terraform configuration directory in this repository
+        type: string
+        default: examples/drift-review
+        required: true
+      plan_json:
+        description: Existing Terraform show JSON path in this repository
+        type: string
+        default: examples/drift-review/plan.json
+        required: true
+      minimum_priority:
+        description: Inclusive review priority threshold
+        type: choice
+        options: [high, medium]
+        default: high
+        required: true
+      fail_on_unknown:
+        description: Also block unknown or unassessed resource priorities
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Install InfraLens from this checkout
+        run: python -m pip install .
+      - name: Evaluate drift gate
+        id: drift
+        shell: bash
+        env:
+          PROJECT_PATH: ${{ inputs.project }}
+          PLAN_JSON: ${{ inputs.plan_json }}
+          MINIMUM_PRIORITY: ${{ inputs.minimum_priority }}
+          FAIL_ON_UNKNOWN: ${{ inputs.fail_on_unknown }}
+        run: |
+          flags=(--fail-on-priority "$MINIMUM_PRIORITY")
+          if [[ "$FAIL_ON_UNKNOWN" == "true" ]]; then
+            flags+=(--fail-on-unknown)
+          fi
+          python -m infralens drift "$PROJECT_PATH" \
+            --plan-json "$PLAN_JSON" \
+            --format json \
+            --output "$RUNNER_TEMP/infralens-drift/drift.json" \
+            "${flags[@]}"
+      - name: Retain the normalized report even when the gate fails
+        if: ${{ always() && steps.drift.outcome != 'skipped' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: drift-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/infralens-drift/drift.json
+          if-no-files-found: ignore
+          retention-days: 7
