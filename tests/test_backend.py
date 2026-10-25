@@ -326,6 +326,85 @@ def test_cancelled_gate_run_does_not_claim_passed(settings):
         assert row["has_report"] is False
 
 
+@pytest.mark.parametrize("decision", ["passed", "failed", "incomplete"])
+def test_cancel_wins_between_engine_completion_and_report_commit(
+    settings, monkeypatch, decision
+):
+    ready, release = threading.Event(), threading.Event()
+
+    def execute(options, initial):
+        return (
+            replace(initial, trace={"status": "partial", "has_errors": True})
+            if decision == "incomplete"
+            else initial
+        )
+
+    app = create_app(settings, executor=execute)
+    finish = app.state.store.finish
+
+    def delayed_finish(identity, status, report=None, error_code=None):
+        if report is not None:
+            assert report["gate"]["status"] == decision
+            ready.set()
+            assert release.wait(8)
+        return finish(identity, status, report, error_code)
+
+    monkeypatch.setattr(app.state.store, "finish", delayed_finish)
+    with TestClient(app) as client:
+        payload = {
+            "mode": "import",
+            "plan": plan([] if decision == "passed" else [entry()]),
+            "gate": {"any_drift": True},
+        }
+        identity = submit(client, payload).json()["run"]["id"]
+        try:
+            assert ready.wait(8)
+            response = client.post(f"/api/v1/runs/{identity}/cancel", headers=AUTH)
+            assert response.status_code == 202
+            assert response.json()["cancel_requested"] is True
+        finally:
+            release.set()
+        row = wait(client, identity)
+        assert row["status"] == "cancelled"
+        assert row["error_code"] == "cancel_requested"
+        assert row["gate"] is None and row["has_drift"] is None
+        assert row["has_report"] is False
+        assert (
+            client.get(f"/api/v1/runs/{identity}/report", headers=AUTH).status_code
+            == 404
+        )
+        stored = app.state.store.get(identity)
+        assert stored["input_json"] is None and stored["report_json"] is None
+
+
+@pytest.mark.parametrize("status", ["succeeded", "failed", "interrupted"])
+def test_cancel_wins_over_late_error_without_report(settings, status):
+    store = Store(settings.database)
+    store.initialize()
+    request = {"mode": "import", "trace": False, "lookback_days": 7, "timeout": 120}
+    queued, _ = store.enqueue(settings.projects["demo"], request)
+    store.claim()
+    store.cancel(queued["id"])
+    store.finish(queued["id"], status, error_code="execution_failed")
+    row = store.get(queued["id"])
+    assert row["status"] == "cancelled" and row["error_code"] == "cancel_requested"
+    assert row["report_json"] is None and row["has_drift"] is None
+
+
+def test_completed_run_wins_before_cancel_and_keeps_report(settings):
+    with TestClient(create_app(settings)) as client:
+        identity = submit(
+            client, {"mode": "import", "plan": plan(), "gate": {"any_drift": True}}
+        ).json()["run"]["id"]
+        before = wait(client, identity)
+        assert before["gate"]["status"] == "passed"
+        assert (
+            client.post(f"/api/v1/runs/{identity}/cancel", headers=AUTH).status_code
+            == 409
+        )
+        assert client.get(f"/api/v1/runs/{identity}", headers=AUTH).json() == before
+
+
 def test_queue_survives_restart_and_stale_running_work_is_interrupted(settings):
     with TestClient(create_app(settings, start_worker=False)) as client:
         stale = submit(client).json()["run"]["id"]

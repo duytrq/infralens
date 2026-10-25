@@ -197,10 +197,17 @@ class Store:
 
     def finish(self, identity, status, report=None, error_code=None):
         with self.connection() as c:
+            # Cancellation and completion race on this row. Decide in the same
+            # UPDATE, so an accepted cancel cannot retain a successful gate or
+            # stale execution error after the worker's last checkpoint.
             c.execute(
                 """UPDATE runs SET
                 status=CASE WHEN cancel_requested=1 THEN 'cancelled' ELSE ? END,
-                report_json=?, has_drift=?, error_code=?, finished_at=?, input_json=NULL
+                report_json=CASE WHEN cancel_requested=1 THEN NULL ELSE ? END,
+                has_drift=CASE WHEN cancel_requested=1 THEN NULL ELSE ? END,
+                error_code=CASE WHEN cancel_requested=1 THEN 'cancel_requested'
+                    ELSE ? END,
+                finished_at=?, input_json=NULL
                 WHERE id=? AND status='running'""",
                 (
                     status,

@@ -271,6 +271,12 @@ chờ connect/read timeout trước khi hủy hoàn tất. Shutdown ngừng clai
 ngắt việc đang chạy rồi giữ queued để lần khởi động sau tiếp tục. Sau hard crash,
 running thành interrupted/cancelled; không tự retry, không force-unlock Terraform.
 
+Nếu yêu cầu hủy được lưu trước lúc worker commit kết quả, trạng thái cuối là
+cancelled/error_code cancel_requested, không lưu report, has_drift hoặc gate.
+Quyết định này được thực hiện nguyên tử trong SQLite, kể cả khi engine vừa chạy
+xong hoặc trả lỗi trace. Nếu kết quả đã commit trước, cancel trả 409 và giữ
+nguyên báo cáo đã hoàn tất.
+
 ## So sánh lịch sử
 
 Mặc định lấy lượt succeeded trước đó cùng project, mode và scope cấu hình
