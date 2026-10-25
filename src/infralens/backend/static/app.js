@@ -88,12 +88,13 @@
   function time(value) { return value ? new Date(value).toLocaleString("vi-VN") : "—"; }
   async function history() {
     const p = project(); if (!p || !token) return;
-    const stamp = epoch, projectId = p.id, cursor = pageBefore, filter = $("status-filter").value;
+    const stamp = epoch, projectId = p.id, cursor = pageBefore, filter = $("status-filter").value, gateFilter = $("gate-status-filter").value;
     const query = new URLSearchParams({limit:"20"});
     if (cursor) query.set("before", cursor);
     if (filter) query.set("status", filter);
+    if (gateFilter) query.set("gate_status", gateFilter);
     const data = await api(`/api/v1/projects/${encodeURIComponent(projectId)}/runs?${query}`);
-    if (stamp !== epoch || project()?.id !== projectId || pageBefore !== cursor || $("status-filter").value !== filter) return;
+    if (stamp !== epoch || project()?.id !== projectId || pageBefore !== cursor || $("status-filter").value !== filter || $("gate-status-filter").value !== gateFilter) return;
     nextBefore = data.next_before; $("older").disabled = nextBefore === null;
     $("history-note").textContent = cursor ? "Trang lịch sử cũ · Làm mới để về lượt gần nhất" : "20 lượt mỗi trang · tự cập nhật mỗi 3 giây";
     const key = JSON.stringify([data, selected?.id]);
@@ -298,7 +299,7 @@
       const data = await api(`/api/v1/projects/${encodeURIComponent(p.id)}/runs`, {method:"POST", body, headers:{"Idempotency-Key":attempt.key}});
       if (stamp !== epoch) return;
       if (project()?.id !== p.id) { notice("Lượt đã được tạo cho dự án trước đó; chọn lại dự án để xem."); return; }
-      pageBefore = null; $("status-filter").value = "";
+      pageBefore = null; $("status-filter").value = ""; $("gate-status-filter").value = "";
       await inspect(data.run.id); await history();
       if (stamp !== epoch) return;
       attempt = null; notice(`${data.created ? "Đã tạo" : "Đã nhận lại"} lượt #${data.run.sequence}.`);
@@ -310,7 +311,7 @@
     try { await api(`/api/v1/runs/${id}/cancel`, {method:"POST"}); if (stamp === epoch && selected?.id === id) await inspect(id, true); await history(); }
     catch (e) { error(e); if (stamp === epoch && selected?.id === id) $("cancel-run").disabled = false; }
   });
-  $("status-filter").addEventListener("change", () => { pageBefore = null; history().catch(error); });
+  for (const id of ["status-filter", "gate-status-filter"]) $(id).addEventListener("change", () => { pageBefore = null; nextBefore = null; $("older").disabled = true; history().catch(error); });
   $("refresh-history").addEventListener("click", () => { pageBefore = null; notice(); history().catch(error); health(); });
   $("older").addEventListener("click", () => { if (nextBefore !== null) { pageBefore = nextBefore; history().catch(error); } });
   $("resource-filter").addEventListener("input", renderResources);

@@ -175,7 +175,7 @@ class Store:
             row = c.execute("SELECT * FROM runs WHERE id=?", (identity,)).fetchone()
             return dict(row) if row is not None else None
 
-    def history(self, project_id, limit=20, before=None, status=None):
+    def history(self, project_id, limit=20, before=None, status=None, gate_status=None):
         clauses, params = ["project_id=?"], [project_id]
         if before is not None:
             clauses.append("sequence<?")
@@ -183,6 +183,26 @@ class Store:
         if status is not None:
             clauses.append("status=?")
             params.append(status)
+        # Filter before pagination so each cursor walks matching rows only.
+        # Request metadata distinguishes a disabled gate from an enabled gate
+        # which has not produced a decision. Old requests have no gate key.
+        if gate_status in ("passed", "failed", "incomplete"):
+            clauses.append("json_extract(report_json, '$.gate.status')=?")
+            params.append(gate_status)
+        elif gate_status == "disabled":
+            clauses.append("json_extract(request_json, '$.gate') IS NULL")
+        elif gate_status in ("pending", "unavailable"):
+            clauses.extend(
+                [
+                    "json_extract(request_json, '$.gate') IS NOT NULL",
+                    "json_extract(report_json, '$.gate.status') IS NULL",
+                    "status IN ('queued','running')"
+                    if gate_status == "pending"
+                    else "status NOT IN ('queued','running')",
+                ]
+            )
+        elif gate_status is not None:
+            raise ValueError("Unsupported gate history filter.")
         with self.connection() as c:
             rows = c.execute(
                 "SELECT * FROM runs WHERE "

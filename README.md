@@ -16,6 +16,7 @@ hàng đợi/lịch sử SQLite, hủy lượt chạy và so sánh các lần ki
 `http://127.0.0.1:8765/docs` sau khi khởi động server. CLI và backend dùng chung engine.
 Dashboard tiếng Việt ở `http://127.0.0.1:8765/`: chọn dự án, import plan hoặc
 refresh, đọc báo cáo, tải JSON và so sánh lịch sử ngay trên trình duyệt.
+Lịch sử lọc riêng kết quả gate và trạng thái thực thi, kết hợp được với phân trang.
 Đánh giá drift đã hỗ trợ cả Security Group inline và rule tách riêng;
 [demo 6 tình huống mạng](examples/network-rules/README.md) chạy offline.
 

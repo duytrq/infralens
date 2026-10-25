@@ -5,3 +5,5 @@
 .report-notes summary{cursor:pointer;color:#3f6f51;font-size:11px}.report-notes details{margin-top:10px}.report-notes details p{margin-top:10px}
 
 .badge.gate-passed{background:#e5f2e9;color:#267251}.badge.gate-failed{background:#fae9e2;color:#ab4934}.badge.gate-incomplete{background:#fff3d6;color:#907022}.gate-result{margin:0 24px 20px;padding:18px;border:1px solid #cbded0;border-left:4px solid #087c6e;border-radius:7px;background:#f4faf5;font-size:12px;overflow-wrap:anywhere}.gate-result.failed{background:#fff7f2;border-color:#e8cbbd;border-left-color:#ab4934}.gate-result.incomplete{background:#fffbef;border-color:#e6dbb6;border-left-color:#907022}.gate-result p{margin:10px 0 0}.gate-result summary{cursor:pointer;margin-top:12px}.gate-result ul{padding-left:20px;line-height:1.8}#gate-result>.muted{margin:0 24px 20px}@media(max-width:760px){.gate-result{margin-inline:12px}#gate-result>.muted{margin-inline:16px}}
+
+.history-controls{flex-wrap:wrap;justify-content:flex-end}.history-controls select{width:auto}@media(max-width:1100px){.history-controls{justify-content:flex-start}}

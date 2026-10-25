@@ -41,7 +41,7 @@ Trang HTML/CSS/JS và plan ví dụ là public; dữ liệu dự án/lịch sử
 3. Chọn file Terraform show JSON (tối đa 1,9 MB trong giao diện), hoặc bấm
    **Nạp ví dụ 4 drift**, rồi **Tạo lượt kiểm tra**. Backend vẫn kiểm tra giới hạn
    request 2 MiB; file lớn hơn dùng CLI. File JSON lỗi không được echo vào lỗi UI.
-4. Lịch sử tự cập nhật mỗi 3 giây, có filter status và phân trang 20 lượt.
+4. Lịch sử tự cập nhật mỗi 3 giây, có filter status/gate và phân trang 20 lượt.
    Bấm **Xem** để chọn lượt; các chỉ số phía trên luôn thuộc lượt đang chọn.
    **Làm mới** quay về trang gần nhất. Có thể hủy queued/running khi chưa kết thúc.
 5. Báo cáo hiển thị saved state/observed, sensitive/unknown/absent/null, vị trí
@@ -264,6 +264,33 @@ GET/POST và các header cần thiết. Swagger có nút Authorize để nhập 
 - Body thực nhận giới hạn 2 MiB, gồm cả request chunked. Lookback 1–90 ngày,
   timeout tối đa theo project và trần 600 giây. Các timeout engine vẫn áp dụng
   theo từng phase; đây không phải deadline tổng của toàn công việc.
+
+Lọc gate qua query `gate_status` trên endpoint lịch sử. Có thể kết hợp với
+`status`, `limit` và `before`; bộ lọc áp dụng trước khi phân trang. Giữ nguyên
+các bộ lọc khi dùng `next_before`. Không truyền gate_status trả lịch sử như cũ.
+
+| gate_status | Các lượt được chọn |
+| --- | --- |
+| passed | Đã có quyết định gate đạt |
+| failed | Đã có quyết định gate chặn, kể cả execution succeeded |
+| incomplete | Gate chưa kết luận vì trace lỗi |
+| disabled | Không bật gate, gồm request/report cũ trước tính năng gate |
+| pending | Có cấu hình gate, chưa có quyết định, execution queued/running |
+| unavailable | Có cấu hình gate, đã kết thúc nhưng chưa có quyết định |
+
+Ví dụ tìm các lượt thu thập thành công nhưng bị gate chặn:
+
+```text
+GET /api/v1/projects/drift-demo/runs?gate_status=failed&status=succeeded&limit=20
+```
+
+Giá trị sai trả 422 và không echo input. `gate_status=failed&status=failed`
+có thể trả danh sách rỗng vì lỗi thực thi khác với gate chặn. Dashboard có hai
+bộ lọc độc lập; đổi bộ lọc quay về trang đầu và bỏ cursor cũ. Khi tạo lượt mới,
+cả hai bộ lọc được xóa để lượt vừa tạo không bị ẩn. Polling giữ lựa chọn hiện tại
+và bỏ qua response của bộ lọc cũ nếu người dùng đã đổi lựa chọn.
+
+Kiểm chứng: [lọc lịch sử gate — 2026-10-25](verification/GATE_HISTORY_2026-10-25.md).
 
 Hủy là hợp tác: Terraform process được dọn cùng tiến trình con; source parsing
 và SDK chuyển phase mới sau checkpoint. Một SDK request đang chạy có thể cần

@@ -27,6 +27,9 @@ from infralens.errors import ExecutionError
 RunStatus = Literal[
     "queued", "running", "succeeded", "failed", "cancelled", "interrupted"
 ]
+GateStatus = Literal[
+    "passed", "failed", "incomplete", "disabled", "pending", "unavailable"
+]
 
 
 class GateRequest(BaseModel):
@@ -329,9 +332,10 @@ def create_app(settings: Settings, *, executor=None, start_worker=True):
         limit: Annotated[int, Query(ge=1, le=100)] = 20,
         before: Annotated[int | None, Query(ge=1)] = None,
         status: RunStatus | None = None,
+        gate_status: GateStatus | None = None,
     ):
         project_for(project_id)
-        return store.history(project_id, limit, before, status)
+        return store.history(project_id, limit, before, status, gate_status)
 
     @app.get("/api/v1/runs/{run_id}", dependencies=authenticated)
     def get_run(run_id: str):

@@ -14,6 +14,7 @@ from infralens.backend.comparison import compare_runs
 from infralens.backend.config import Project, Settings, load_projects
 from infralens.backend.store import Store, StoreConflict
 from infralens.drift import parse_plan
+from infralens.drift_gate import evaluate_gate
 from infralens.errors import ExecutionCancelled
 
 TOKEN = "backend_test_token_not_a_real_secret_123456"
@@ -403,6 +404,162 @@ def test_completed_run_wins_before_cancel_and_keeps_report(settings):
             == 409
         )
         assert client.get(f"/api/v1/runs/{identity}", headers=AUTH).json() == before
+
+
+def seed_gate_history(store, settings):
+    """Mix decisions, enabled gates without results and pre-gate history."""
+    rows = {}
+    request = {"mode": "import", "trace": False, "lookback_days": 7, "timeout": 120}
+    gate = {"any_drift": True, "minimum_priority": None, "unknown_priority": False}
+
+    def add(label, status, *, enabled=True, decision=None, project=None):
+        payload = {**request, **({"gate": gate} if enabled else {})}
+        row, _ = store.enqueue(project or settings.projects["demo"], payload)
+        rows[label] = row
+        if status == "queued":
+            return
+        assert store.claim()["id"] == row["id"]
+        if status == "running":
+            return
+        report = None
+        if decision or status == "succeeded":
+            result = parse_plan(
+                json.dumps(plan([entry()] if decision != "passed" else []))
+            )
+            if decision == "incomplete":
+                result = replace(
+                    result, trace={"status": "partial", "has_errors": True}
+                )
+            report = result.to_dict()
+            if decision:
+                report["gate"] = evaluate_gate(result, fail_on_drift=True)
+        if status == "cancelled":
+            store.cancel(row["id"])
+        store.finish(row["id"], status, report)
+
+    add("legacy", "succeeded", enabled=False)
+    add("passed", "succeeded", decision="passed")
+    add("blocked", "succeeded", decision="failed")
+    add("incomplete", "failed", decision="incomplete")
+    add("execution_failed", "failed")
+    add("cancelled", "cancelled")
+    add("interrupted", "interrupted")
+    add("disabled_failed", "failed", enabled=False)
+    add(
+        "other_project",
+        "succeeded",
+        decision="passed",
+        project=replace(settings.projects["demo"], id="other"),
+    )
+    add("running", "running")
+    add("queued", "queued")
+    add("disabled_queued", "queued", enabled=False)
+    return rows
+
+
+@pytest.mark.parametrize(
+    "gate_status,labels",
+    [
+        ("passed", ["passed"]),
+        ("failed", ["blocked"]),
+        ("incomplete", ["incomplete"]),
+        ("disabled", ["disabled_queued", "disabled_failed", "legacy"]),
+        ("pending", ["queued", "running"]),
+        ("unavailable", ["interrupted", "cancelled", "execution_failed"]),
+    ],
+)
+def test_history_gate_filter_has_distinct_states_and_project_scope(
+    settings, gate_status, labels
+):
+    with TestClient(create_app(settings, start_worker=False)) as client:
+        rows = seed_gate_history(client.app.state.store, settings)
+        response = client.get(
+            "/api/v1/projects/demo/runs",
+            headers=AUTH,
+            params={"gate_status": gate_status},
+        )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert [r["id"] for r in data["items"]] == [
+            rows[label]["id"] for label in labels
+        ]
+        assert data["next_before"] is None
+        all_runs = client.get("/api/v1/projects/demo/runs", headers=AUTH).json()[
+            "items"
+        ]
+        assert len(all_runs) == 11
+
+
+@pytest.mark.parametrize("gate_status", ["disabled", "pending", "unavailable"])
+def test_filtered_history_paginates_matching_rows_without_skips(settings, gate_status):
+    with TestClient(create_app(settings, start_worker=False)) as client:
+        seed_gate_history(client.app.state.store, settings)
+        url = "/api/v1/projects/demo/runs"
+        params = {"gate_status": gate_status}
+        expected = client.get(url, headers=AUTH, params=params).json()["items"]
+        actual, cursors = [], []
+        for _ in range(5):
+            page = client.get(url, headers=AUTH, params={**params, "limit": 1}).json()
+            actual.extend(page["items"])
+            if page["next_before"] is None:
+                break
+            assert page["next_before"] == page["items"][-1]["sequence"]
+            assert page["next_before"] not in cursors
+            cursors.append(page["next_before"])
+            params["before"] = page["next_before"]
+        else:
+            pytest.fail("Filtered history cursor did not end")
+        assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "gate_status,status,labels",
+    [
+        ("failed", "succeeded", ["blocked"]),
+        ("failed", "failed", []),
+        ("unavailable", "cancelled", ["cancelled"]),
+        ("pending", "running", ["running"]),
+        ("disabled", "queued", ["disabled_queued"]),
+    ],
+)
+def test_history_combines_gate_and_execution_filters(
+    settings, gate_status, status, labels
+):
+    with TestClient(create_app(settings, start_worker=False)) as client:
+        rows = seed_gate_history(client.app.state.store, settings)
+        response = client.get(
+            "/api/v1/projects/demo/runs",
+            headers=AUTH,
+            params={"gate_status": gate_status, "status": status},
+        )
+        assert [r["id"] for r in response.json()["items"]] == [
+            rows[label]["id"] for label in labels
+        ]
+
+
+@pytest.mark.parametrize("value", ["high", "FAILED", "", "null", "1", SECRET])
+def test_invalid_gate_history_filter_is_not_echoed(settings, value):
+    with TestClient(create_app(settings, start_worker=False)) as client:
+        response = client.get(
+            "/api/v1/projects/demo/runs", headers=AUTH, params={"gate_status": value}
+        )
+        assert response.status_code == 422 and SECRET not in response.text
+
+
+def test_gate_history_filter_requires_authentication_and_known_project(settings):
+    with TestClient(create_app(settings, start_worker=False)) as client:
+        assert (
+            client.get("/api/v1/projects/demo/runs?gate_status=failed").status_code
+            == 401
+        )
+        assert (
+            client.get(
+                "/api/v1/projects/missing/runs?gate_status=failed", headers=AUTH
+            ).status_code
+            == 404
+        )
+        with pytest.raises(ValueError, match="Unsupported gate history filter"):
+            client.app.state.store.history("demo", gate_status="' OR 1=1 --")
 
 
 def test_queue_survives_restart_and_stale_running_work_is_interrupted(settings):
