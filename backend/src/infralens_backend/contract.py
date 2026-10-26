@@ -1,5 +1,12 @@
 """OpenAPI 3.1 contract generated from the runtime request schemas."""
 
+from infralens_backend.drift_schemas import (
+    COMPARISON,
+    DRIFT_RUN,
+    REPORT,
+    RESULT,
+    RUN_INPUT,
+)
 from infralens_backend.schemas import COUNT, PROJECT, RUN, SEVERITIES, TIME, obj
 
 
@@ -75,6 +82,17 @@ RUN_ITEM = obj(
     },
     optional=("analysis",),
 )
+SECURITY_RUN_ITEM = RUN_ITEM
+DRIFT_RUN_ITEM = obj(
+    {
+        **DRIFT_RUN["properties"],
+        **{
+            key: RUN_ITEM["properties"][key]
+            for key in ("received_at", "uploaded_at", "upload_status")
+        },
+    }
+)
+RUN_ITEM = {"oneOf": [SECURITY_RUN_ITEM, DRIFT_RUN_ITEM]}
 LATEST = obj(
     {
         key: RUN["properties"][key]
@@ -87,16 +105,35 @@ PROJECT_ITEM = obj(
         "project_id": STRING,
         "created_at": TIME,
         "latest_scan": {"anyOf": [LATEST, {"type": "null"}]},
+        "latest_drift": {
+            "anyOf": [
+                obj(
+                    {
+                        **{
+                            key: DRIFT_RUN["properties"][key]
+                            for key in ("run_id", "started_at", "finished_at", "scope")
+                        },
+                        "result": RESULT,
+                        "input_mode": REPORT["properties"]["input_mode"],
+                    }
+                ),
+                {"type": "null"},
+            ]
+        },
     },
-    optional=("latest_scan",),
+    optional=("latest_scan", "latest_drift"),
 )
 ERROR = obj({"error": obj({"code": STRING, "message": STRING})})
 
 SCHEMAS = {
     "ProjectInput": PROJECT,
-    "RunInput": RUN,
+    "RunInput": RUN_INPUT,
     "Project": PROJECT_ITEM,
     "Run": RUN_ITEM,
+    "SecurityRun": SECURITY_RUN_ITEM,
+    "DriftRun": DRIFT_RUN_ITEM,
+    "DriftReport": REPORT,
+    "DriftComparison": COMPARISON,
     "Analysis": ANALYSIS,
     "Finding": FINDING,
     "FindingSummary": FINDING_SUMMARY,
@@ -143,6 +180,7 @@ SCHEMAS = {
                 {
                     "formats": {"const": ["json"]},
                     "max_report_bytes": {"type": "integer", "minimum": 1},
+                    "max_drift_report_bytes": {"type": "integer", "minimum": 1},
                     "url_expires_seconds": {"type": "integer", "minimum": 1},
                 }
             ),
@@ -231,8 +269,25 @@ HISTORY = (
     parameter("project_id"),
     parameter("from", TIME),
     parameter("to", TIME),
+    parameter(
+        "run_type", {"enum": ["security_scan", "drift"], "default": "security_scan"}
+    ),
+    parameter("scope"),
+    parameter("gate_status", {"enum": ["disabled", "passed", "failed", "incomplete"]}),
 )
-INCLUDE_LATEST = (parameter("include", {"enum": ["latest_scan"]}),)
+INCLUDE_LATEST = (
+    parameter(
+        "include",
+        {
+            "enum": [
+                "latest_scan",
+                "latest_drift",
+                "latest_scan,latest_drift",
+                "latest_drift,latest_scan",
+            ]
+        },
+    ),
+)
 FINDING_FILTERS = (
     *PAGINATION,
     parameter("severity", {"enum": list(SEVERITIES)}),
@@ -246,9 +301,9 @@ def openapi():
         "openapi": "3.1.0",
         "info": {
             "title": "InfraLens storage API",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "description": (
-                "User-private projects and immutable native Trivy JSON reports. "
+                "User-private projects and immutable Trivy/drift reports. "
                 "Caller-reported scan metadata is not independently attested."
             ),
         },
@@ -329,6 +384,18 @@ def openapi():
             "/v1/runs/{run_id}/analysis/retry": {
                 "parameters": [parameter("run_id", location="path")],
                 "post": operation("retryAnalysis", {200: "Run", 202: "Run"}),
+            },
+            "/v1/runs/{run_id}/drift/report": {
+                "parameters": [parameter("run_id", location="path")],
+                "get": operation("getDriftReport", {200: "DriftReport"}),
+            },
+            "/v1/runs/{run_id}/drift/comparison": {
+                "parameters": [parameter("run_id", location="path")],
+                "get": operation(
+                    "compareDrift",
+                    {200: "DriftComparison"},
+                    params=(*PAGINATION, parameter("baseline_id")),
+                ),
             },
         },
     }

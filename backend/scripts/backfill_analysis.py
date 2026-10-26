@@ -18,11 +18,14 @@ def backfill(app, apply=False, include_failed=False, maximum=100):
     while counts["eligible"] < maximum:
         kwargs = {"ExclusiveStartKey": cursor} if cursor else {}
         page = app.table.scan(
-            FilterExpression=Attr("data.upload_status").eq("ready"),
+            FilterExpression=Attr("data.upload_status").eq("ready")
+            & Attr("data.run_type").eq("security_scan"),
             Limit=100,
             **kwargs,
         )
         for item in page.get("Items", []):
+            if item["data"].get("run_type") != "security_scan":
+                continue
             status = item["data"].get("analysis", {}).get("status")
             if status is not None and not (include_failed and status == "failed"):
                 continue

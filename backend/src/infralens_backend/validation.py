@@ -10,7 +10,7 @@ from uuid import UUID
 from jsonschema import Draft202012Validator, FormatChecker
 
 from infralens_backend.errors import ApiError, invalid
-from infralens_backend.schemas import RUN, SEVERITIES, TIME_PATTERN
+from infralens_backend.schemas import SEVERITIES, TIME_PATTERN
 
 PROJECT_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,63}$"
 
@@ -103,20 +103,22 @@ def validate(value, schema):
 
 
 def scan(payload, max_report_bytes):
-    validate(payload, RUN)
+    from infralens_backend.drift_schemas import RUN_INPUT
+
+    validate(payload, RUN_INPUT)
     run_id(payload["run_id"])
     start = timestamp(payload["started_at"])
     finish = timestamp(payload["finished_at"])
     if finish < start or payload["artifact"]["size_bytes"] > max_report_bytes:
         raise invalid()
-    path = payload["source"]["relative_path"]
-    if (
-        path.startswith("/")
-        or "\\" in path
-        or ":" in path
-        or any(p in ("", "..") for p in path.split("/"))
-    ):
-        raise invalid("Source path must be relative and cannot contain '..'.")
+    relative_path(payload["source"]["relative_path"])
+    if payload["run_type"] == "drift":
+        from infralens_backend.drift import validate_metadata
+
+        validate_metadata(payload)
+        payload["started_at"] = iso(start)
+        payload["finished_at"] = iso(finish)
+        return payload
     counts = payload["result"]["findings"]["by_severity"]
     if payload["result"]["findings"]["total"] != sum(counts.values()):
         raise invalid("Finding total must equal the sum of severity counts.")
@@ -133,6 +135,17 @@ def scan(payload, max_report_bytes):
     payload["started_at"] = iso(start)
     payload["finished_at"] = iso(finish)
     return payload
+
+
+def relative_path(path):
+    if (
+        path.startswith("/")
+        or "\\" in path
+        or ":" in path
+        or any(p in ("", "..") for p in path.split("/"))
+    ):
+        raise invalid("Source path must be relative and cannot contain '..'.")
+    return path
 
 
 def query(event, allowed):

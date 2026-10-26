@@ -77,6 +77,7 @@ def analysis_handler(event, context):
         if (
             analysis.get("status") != "pending"
             or item["data"].get("upload_status") != "ready"
+            or item["data"].get("run_type") != "security_scan"
         ):
             continue
         service.process(

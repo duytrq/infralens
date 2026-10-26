@@ -388,6 +388,12 @@ Resources:
         AnalysisRetry:
           Type: HttpApi
           Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/analysis/retry', Method: POST}
+        DriftReport:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/drift/report', Method: GET}
+        DriftComparison:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/runs/{run_id}/drift/comparison', Method: GET}
 
   CleanupFunction:
     Type: AWS::Serverless::Function

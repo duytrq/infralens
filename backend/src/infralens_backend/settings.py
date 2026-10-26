@@ -56,6 +56,7 @@ class Settings:
             "upload": {
                 "formats": ["json"],
                 "max_report_bytes": self.max_report_bytes,
+                "max_drift_report_bytes": 2 * 1024 * 1024,
                 "url_expires_seconds": self.upload_seconds,
             },
         }

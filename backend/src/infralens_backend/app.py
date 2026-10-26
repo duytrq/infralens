@@ -12,9 +12,11 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from infralens_backend import validation as v
 from infralens_backend.analysis import Analysis
+from infralens_backend.drift import Drift
+from infralens_backend.drift_schemas import RUN_INPUT
 from infralens_backend.errors import ApiError, conflict, not_found
 from infralens_backend.runs import Runs
-from infralens_backend.schemas import PROJECT, RUN
+from infralens_backend.schemas import PROJECT
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,7 @@ class Application:
         self.s3 = s3
         self.now = lambda: datetime.now(UTC)
         self.runs = Runs(settings, table, s3, lambda: self.now())
+        self.drift = Drift(self.runs)
         self.analysis = (
             Analysis(self.runs, findings_table) if findings_table is not None else None
         )
@@ -114,6 +117,13 @@ class Application:
                 )
             return 200, self.settings.dashboard()
         owner = self.identity(event)
+        match = re.fullmatch(r"/v1/runs/([^/]+)/drift/(report|comparison)", path)
+        if match and method == "GET":
+            run = v.run_id(match[1])
+            if match[2] == "report":
+                v.query(event, [])
+                return 200, self.drift.report(owner, run)
+            return 200, self.drift.comparison(owner, run, event)
         match = re.fullmatch(
             r"/v1/runs/([^/]+)/(findings(?:/([^/]+))?|analysis/retry)", path
         )
@@ -133,7 +143,7 @@ class Application:
                 return 200, self.analysis.page(owner, run, event)
         if path == "/v1/runs" and method == "POST":
             v.query(event, [])
-            payload = v.scan(v.body(event, RUN), self.settings.max_report_bytes)
+            payload = v.scan(v.body(event, RUN_INPUT), self.settings.max_report_bytes)
             self.project(owner, payload["project_id"])
             return self.runs.register(owner, payload)
         if path == "/v1/runs" and method == "GET":
@@ -229,13 +239,27 @@ class Application:
         params = v.query(
             event, ["include", "limit", "cursor"] if pagination else ["include"]
         )
-        if "include" in params and params["include"] != "latest_scan":
-            raise v.invalid("Only include=latest_scan is supported.")
-        return "include" in params
+        include = params.get("include", "").split(",") if params.get("include") else []
+        if set(include) - {"latest_scan", "latest_drift"} or len(include) != len(
+            set(include)
+        ):
+            raise v.invalid("Include supports latest_scan and latest_drift.")
+        return include
 
     def project_data(self, owner, data, include, budget=None):
         if not include:
             return data
+        result = dict(data)
+        budget = (
+            budget
+            if budget is not None
+            else {"pages": 120, "deadline": time.monotonic() + 8}
+        )
+        for name in include:
+            result[name] = self.latest(owner, data, name, budget)
+        return result
+
+    def latest(self, owner, data, name, budget):
         # Reuse history's strong state/generation checks, including empty GSI pages.
         cursor = None
         budget = (
@@ -252,6 +276,8 @@ class Application:
                 )
             budget["pages"] -= 1
             params = {"project_id": data["project_id"], "limit": "5" if cursor else "1"}
+            if name == "latest_drift":
+                params["run_type"] = "drift"
             if cursor:
                 params["cursor"] = cursor
             page = self.runs.history(owner, {"queryStringParameters": params})
@@ -261,7 +287,10 @@ class Application:
                     key: run[key]
                     for key in ("run_id", "started_at", "finished_at", "result")
                 }
-                return {**data, "latest_scan": summary}
+                if name == "latest_drift":
+                    summary["scope"] = run["scope"]
+                    summary["input_mode"] = run["drift_options"]["input_mode"]
+                return summary
             cursor = page["next_cursor"]
             if not cursor:
-                return {**data, "latest_scan": None}
+                return None
