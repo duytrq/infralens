@@ -1,0 +1,608 @@
+{
+  "recorded_at": "2026-10-23T09:09:59.968915+00:00",
+  "account": "695650811791",
+  "stack": {
+    "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+    "StackName": "infralens-dev-frontend",
+    "Description": "InfraLens static dashboard - private S3 with CloudFront OAC",
+    "Parameters": [
+      {
+        "ParameterKey": "IssuerOrigin",
+        "ParameterValue": "https://cognito-idp.ap-southeast-1.amazonaws.com"
+      },
+      {
+        "ParameterKey": "ApiOrigin",
+        "ParameterValue": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com"
+      },
+      {
+        "ParameterKey": "Environment",
+        "ParameterValue": "dev"
+      },
+      {
+        "ParameterKey": "Deployment",
+        "ParameterValue": "infralens-dev"
+      },
+      {
+        "ParameterKey": "AuthOrigin",
+        "ParameterValue": "https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com"
+      }
+    ],
+    "CreationTime": "2026-10-23 04:48:47.860000+00:00",
+    "DeletionTime": "2026-10-23 04:49:09.873000+00:00",
+    "RollbackConfiguration": {},
+    "StackStatus": "ROLLBACK_COMPLETE",
+    "DisableRollback": false,
+    "DeploymentConfig": {
+      "Mode": "STANDARD",
+      "DisableRollback": false
+    },
+    "NotificationARNs": [],
+    "Tags": [
+      {
+        "Key": "Project",
+        "Value": "infralens"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "cloudformation"
+      },
+      {
+        "Key": "Deployment",
+        "Value": "infralens-dev"
+      },
+      {
+        "Key": "Environment",
+        "Value": "dev"
+      }
+    ],
+    "EnableTerminationProtection": false,
+    "DriftInformation": {
+      "StackDriftStatus": "NOT_CHECKED"
+    },
+    "LastOperations": [
+      {
+        "OperationType": "ROLLBACK",
+        "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d"
+      },
+      {
+        "OperationType": "CREATE_STACK",
+        "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09"
+      }
+    ]
+  },
+  "resources": [
+    {
+      "LogicalResourceId": "AssetCachePolicy",
+      "PhysicalResourceId": "9ed8760f-b657-45ab-9f96-795e02342ea8",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:39.469000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    },
+    {
+      "LogicalResourceId": "Distribution",
+      "ResourceType": "AWS::CloudFront::Distribution",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:37.889000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    },
+    {
+      "LogicalResourceId": "FrontendBucket",
+      "PhysicalResourceId": "infralens-dev-frontend-frontendbucket-n58kza257mdd",
+      "ResourceType": "AWS::S3::Bucket",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:38.661000+00:00",
+      "ResourceStatus": "DELETE_SKIPPED",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    },
+    {
+      "LogicalResourceId": "HtmlCachePolicy",
+      "PhysicalResourceId": "8655b04a-7ebb-40e3-877d-5e615150f82f",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:39.358000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    },
+    {
+      "LogicalResourceId": "OriginAccessControl",
+      "PhysicalResourceId": "E20FA5LAMCP1L6",
+      "ResourceType": "AWS::CloudFront::OriginAccessControl",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:39.519000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    },
+    {
+      "LogicalResourceId": "ResponseHeaders",
+      "PhysicalResourceId": "3efabe29-8fb6-4a68-a790-eb8b84192df2",
+      "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:39.571000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    },
+    {
+      "LogicalResourceId": "RouteRewrite",
+      "PhysicalResourceId": "arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes",
+      "ResourceType": "AWS::CloudFront::Function",
+      "LastUpdatedTimestamp": "2026-10-23 04:51:42.034000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "DriftInformation": {
+        "StackResourceDriftStatus": "NOT_CHECKED"
+      }
+    }
+  ],
+  "events": [
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "70d37690-ce9d-11f1-988e-0affe38a716f",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "infralens-dev-frontend",
+      "PhysicalResourceId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "ResourceType": "AWS::CloudFormation::Stack",
+      "Timestamp": "2026-10-23 04:51:42.315000+00:00",
+      "ResourceStatus": "ROLLBACK_COMPLETE",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "RouteRewrite-DELETE_COMPLETE-2026-10-23T04:51:42.034Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "RouteRewrite",
+      "PhysicalResourceId": "arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes",
+      "ResourceType": "AWS::CloudFront::Function",
+      "Timestamp": "2026-10-23 04:51:42.034000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "ResourceProperties": "{\"FunctionConfig\":{\"Comment\":\"Rewrite dashboard routes only; preserve missing asset errors\",\"Runtime\":\"cloudfront-js-2.0\"},\"AutoPublish\":\"true\",\"FunctionCode\":\"function handler(event) {\\n  var request = event.request;\\n  var uri = request.uri;\\n  if (uri === '/' || uri === '/auth/callback' ||\\n      /^\\\\/projects(?:\\\\/[^/]+)?\\\\/?$/.test(uri) ||\\n      /^\\\\/runs\\\\/[^/]+(?:\\\\/findings\\\\/[^/]+)?\\\\/?$/.test(uri)) {\\n    request.uri = '/index.html';\\n  }\\n  return request;\\n}\\n\",\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}],\"Name\":\"infralens-dev-frontend-routes\"}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "ResponseHeaders-DELETE_COMPLETE-2026-10-23T04:51:39.571Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "ResponseHeaders",
+      "PhysicalResourceId": "3efabe29-8fb6-4a68-a790-eb8b84192df2",
+      "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+      "Timestamp": "2026-10-23 04:51:39.571000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "ResourceProperties": "{\"ResponseHeadersPolicyConfig\":{\"SecurityHeadersConfig\":{\"ContentSecurityPolicy\":{\"ContentSecurityPolicy\":\"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com https://cognito-idp.ap-southeast-1.amazonaws.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com\",\"Override\":\"true\"},\"FrameOptions\":{\"FrameOption\":\"DENY\",\"Override\":\"true\"},\"ContentTypeOptions\":{\"Override\":\"true\"},\"StrictTransportSecurity\":{\"AccessControlMaxAgeSec\":\"31536000\",\"IncludeSubdomains\":\"true\",\"Override\":\"true\"},\"ReferrerPolicy\":{\"ReferrerPolicy\":\"no-referrer\",\"Override\":\"true\"}},\"Name\":\"infralens-dev-frontend-security\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "OriginAccessControl-DELETE_COMPLETE-2026-10-23T04:51:39.519Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "OriginAccessControl",
+      "PhysicalResourceId": "E20FA5LAMCP1L6",
+      "ResourceType": "AWS::CloudFront::OriginAccessControl",
+      "Timestamp": "2026-10-23 04:51:39.519000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "ResourceProperties": "{\"OriginAccessControlConfig\":{\"SigningBehavior\":\"always\",\"OriginAccessControlOriginType\":\"s3\",\"SigningProtocol\":\"sigv4\",\"Name\":\"infralens-dev-frontend-s3\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "AssetCachePolicy-DELETE_COMPLETE-2026-10-23T04:51:39.469Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "AssetCachePolicy",
+      "PhysicalResourceId": "9ed8760f-b657-45ab-9f96-795e02342ea8",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:51:39.469000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"31536000\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"true\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"true\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"31536000\",\"Name\":\"infralens-dev-frontend-assets\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "HtmlCachePolicy-DELETE_COMPLETE-2026-10-23T04:51:39.358Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "HtmlCachePolicy",
+      "PhysicalResourceId": "8655b04a-7ebb-40e3-877d-5e615150f82f",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:51:39.358000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"0\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"false\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"false\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"0\",\"Name\":\"infralens-dev-frontend-html\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "FrontendBucket-DELETE_SKIPPED-2026-10-23T04:51:38.661Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "FrontendBucket",
+      "PhysicalResourceId": "infralens-dev-frontend-frontendbucket-n58kza257mdd",
+      "ResourceType": "AWS::S3::Bucket",
+      "Timestamp": "2026-10-23 04:51:38.661000+00:00",
+      "ResourceStatus": "DELETE_SKIPPED",
+      "ResourceProperties": "{\"PublicAccessBlockConfiguration\":{\"RestrictPublicBuckets\":\"true\",\"BlockPublicPolicy\":\"true\",\"BlockPublicAcls\":\"true\",\"IgnorePublicAcls\":\"true\"},\"OwnershipControls\":{\"Rules\":[{\"ObjectOwnership\":\"BucketOwnerEnforced\"}]},\"BucketEncryption\":{\"ServerSideEncryptionConfiguration\":[{\"ServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"AES256\"}}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "RouteRewrite-DELETE_IN_PROGRESS-2026-10-23T04:51:38.211Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "RouteRewrite",
+      "PhysicalResourceId": "arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes",
+      "ResourceType": "AWS::CloudFront::Function",
+      "Timestamp": "2026-10-23 04:51:38.211000+00:00",
+      "ResourceStatus": "DELETE_IN_PROGRESS",
+      "ResourceProperties": "{\"FunctionConfig\":{\"Comment\":\"Rewrite dashboard routes only; preserve missing asset errors\",\"Runtime\":\"cloudfront-js-2.0\"},\"AutoPublish\":\"true\",\"FunctionCode\":\"function handler(event) {\\n  var request = event.request;\\n  var uri = request.uri;\\n  if (uri === '/' || uri === '/auth/callback' ||\\n      /^\\\\/projects(?:\\\\/[^/]+)?\\\\/?$/.test(uri) ||\\n      /^\\\\/runs\\\\/[^/]+(?:\\\\/findings\\\\/[^/]+)?\\\\/?$/.test(uri)) {\\n    request.uri = '/index.html';\\n  }\\n  return request;\\n}\\n\",\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}],\"Name\":\"infralens-dev-frontend-routes\"}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "OriginAccessControl-DELETE_IN_PROGRESS-2026-10-23T04:51:38.190Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "OriginAccessControl",
+      "PhysicalResourceId": "E20FA5LAMCP1L6",
+      "ResourceType": "AWS::CloudFront::OriginAccessControl",
+      "Timestamp": "2026-10-23 04:51:38.190000+00:00",
+      "ResourceStatus": "DELETE_IN_PROGRESS",
+      "ResourceProperties": "{\"OriginAccessControlConfig\":{\"SigningBehavior\":\"always\",\"OriginAccessControlOriginType\":\"s3\",\"SigningProtocol\":\"sigv4\",\"Name\":\"infralens-dev-frontend-s3\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "AssetCachePolicy-DELETE_IN_PROGRESS-2026-10-23T04:51:38.186Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "AssetCachePolicy",
+      "PhysicalResourceId": "9ed8760f-b657-45ab-9f96-795e02342ea8",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:51:38.186000+00:00",
+      "ResourceStatus": "DELETE_IN_PROGRESS",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"31536000\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"true\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"true\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"31536000\",\"Name\":\"infralens-dev-frontend-assets\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "ResponseHeaders-DELETE_IN_PROGRESS-2026-10-23T04:51:38.180Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "ResponseHeaders",
+      "PhysicalResourceId": "3efabe29-8fb6-4a68-a790-eb8b84192df2",
+      "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+      "Timestamp": "2026-10-23 04:51:38.180000+00:00",
+      "ResourceStatus": "DELETE_IN_PROGRESS",
+      "ResourceProperties": "{\"ResponseHeadersPolicyConfig\":{\"SecurityHeadersConfig\":{\"ContentSecurityPolicy\":{\"ContentSecurityPolicy\":\"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com https://cognito-idp.ap-southeast-1.amazonaws.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com\",\"Override\":\"true\"},\"FrameOptions\":{\"FrameOption\":\"DENY\",\"Override\":\"true\"},\"ContentTypeOptions\":{\"Override\":\"true\"},\"StrictTransportSecurity\":{\"AccessControlMaxAgeSec\":\"31536000\",\"IncludeSubdomains\":\"true\",\"Override\":\"true\"},\"ReferrerPolicy\":{\"ReferrerPolicy\":\"no-referrer\",\"Override\":\"true\"}},\"Name\":\"infralens-dev-frontend-security\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "HtmlCachePolicy-DELETE_IN_PROGRESS-2026-10-23T04:51:38.179Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "HtmlCachePolicy",
+      "PhysicalResourceId": "8655b04a-7ebb-40e3-877d-5e615150f82f",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:51:38.179000+00:00",
+      "ResourceStatus": "DELETE_IN_PROGRESS",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"0\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"false\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"false\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"0\",\"Name\":\"infralens-dev-frontend-html\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "Distribution-DELETE_COMPLETE-2026-10-23T04:51:37.889Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "Distribution",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::Distribution",
+      "Timestamp": "2026-10-23 04:51:37.889000+00:00",
+      "ResourceStatus": "DELETE_COMPLETE",
+      "ResourceProperties": "{\"DistributionConfig\":{\"Comment\":\"InfraLens dev dashboard\",\"DefaultRootObject\":\"index.html\",\"ViewerCertificate\":{\"CloudFrontDefaultCertificate\":\"true\"},\"Origins\":[{\"OriginAccessControlId\":\"E20FA5LAMCP1L6\",\"DomainName\":\"infralens-dev-frontend-frontendbucket-n58kza257mdd.s3.ap-southeast-1.amazonaws.com\",\"S3OriginConfig\":{\"OriginAccessIdentity\":\"\"},\"Id\":\"frontend\"}],\"PriceClass\":\"PriceClass_All\",\"DefaultCacheBehavior\":{\"Compress\":\"true\",\"FunctionAssociations\":[{\"FunctionARN\":\"arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes\",\"EventType\":\"viewer-request\"}],\"AllowedMethods\":[\"GET\",\"HEAD\"],\"CachedMethods\":[\"GET\",\"HEAD\"],\"TargetOriginId\":\"frontend\",\"ViewerProtocolPolicy\":\"redirect-to-https\",\"ResponseHeadersPolicyId\":\"3efabe29-8fb6-4a68-a790-eb8b84192df2\",\"CachePolicyId\":\"8655b04a-7ebb-40e3-877d-5e615150f82f\"},\"IPV6Enabled\":\"true\",\"CustomErrorResponses\":[{\"ErrorCachingMinTTL\":\"0\",\"ErrorCode\":\"403\"},{\"ErrorCachingMinTTL\":\"0\",\"ErrorCode\":\"404\"}],\"Enabled\":\"true\",\"HttpVersion\":\"http2and3\",\"CacheBehaviors\":[{\"Compress\":\"true\",\"PathPattern\":\"/assets/*\",\"AllowedMethods\":[\"GET\",\"HEAD\"],\"CachedMethods\":[\"GET\",\"HEAD\"],\"TargetOriginId\":\"frontend\",\"ViewerProtocolPolicy\":\"redirect-to-https\",\"ResponseHeadersPolicyId\":\"3efabe29-8fb6-4a68-a790-eb8b84192df2\",\"CachePolicyId\":\"9ed8760f-b657-45ab-9f96-795e02342ea8\"}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "15f80880-ce9d-11f1-9cd4-06ffe479a5cf",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "790a495f-7141-4a79-a09c-840f45f9529d",
+      "LogicalResourceId": "infralens-dev-frontend",
+      "PhysicalResourceId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "ResourceType": "AWS::CloudFormation::Stack",
+      "Timestamp": "2026-10-23 04:49:09.873000+00:00",
+      "ResourceStatus": "ROLLBACK_IN_PROGRESS",
+      "ResourceStatusReason": "The following resource(s) failed to create: [Distribution]. Rollback requested by user.",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "Distribution-CREATE_FAILED-2026-10-23T04:49:09.613Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "Distribution",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::Distribution",
+      "Timestamp": "2026-10-23 04:49:09.613000+00:00",
+      "ResourceStatus": "CREATE_FAILED",
+      "ResourceStatusReason": "Resource handler returned message: \"Access denied for operation 'AWS::CloudFront::Distribution: Your account must be verified before you can add new CloudFront resources. To verify your account, please contact AWS Support (https://console.aws.amazon.com/support/home#/) and include this error message. (Service: CloudFront, Status Code: 403, Request ID: 42ee5e27-1276-41ef-9420-88ae06d869d5) (SDK Attempt Count: 1)'.\" (RequestToken: f8411ce7-8775-1210-c15b-bad6ab5e8e5d, HandlerErrorCode: AccessDenied)",
+      "ResourceProperties": "{\"DistributionConfig\":{\"Comment\":\"InfraLens dev dashboard\",\"DefaultRootObject\":\"index.html\",\"ViewerCertificate\":{\"CloudFrontDefaultCertificate\":\"true\"},\"Origins\":[{\"OriginAccessControlId\":\"E20FA5LAMCP1L6\",\"DomainName\":\"infralens-dev-frontend-frontendbucket-n58kza257mdd.s3.ap-southeast-1.amazonaws.com\",\"S3OriginConfig\":{\"OriginAccessIdentity\":\"\"},\"Id\":\"frontend\"}],\"PriceClass\":\"PriceClass_All\",\"DefaultCacheBehavior\":{\"Compress\":\"true\",\"FunctionAssociations\":[{\"FunctionARN\":\"arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes\",\"EventType\":\"viewer-request\"}],\"AllowedMethods\":[\"GET\",\"HEAD\"],\"CachedMethods\":[\"GET\",\"HEAD\"],\"TargetOriginId\":\"frontend\",\"ViewerProtocolPolicy\":\"redirect-to-https\",\"ResponseHeadersPolicyId\":\"3efabe29-8fb6-4a68-a790-eb8b84192df2\",\"CachePolicyId\":\"8655b04a-7ebb-40e3-877d-5e615150f82f\"},\"IPV6Enabled\":\"true\",\"CustomErrorResponses\":[{\"ErrorCachingMinTTL\":\"0\",\"ErrorCode\":\"403\"},{\"ErrorCachingMinTTL\":\"0\",\"ErrorCode\":\"404\"}],\"Enabled\":\"true\",\"HttpVersion\":\"http2and3\",\"CacheBehaviors\":[{\"Compress\":\"true\",\"PathPattern\":\"/assets/*\",\"AllowedMethods\":[\"GET\",\"HEAD\"],\"CachedMethods\":[\"GET\",\"HEAD\"],\"TargetOriginId\":\"frontend\",\"ViewerProtocolPolicy\":\"redirect-to-https\",\"ResponseHeadersPolicyId\":\"3efabe29-8fb6-4a68-a790-eb8b84192df2\",\"CachePolicyId\":\"9ed8760f-b657-45ab-9f96-795e02342ea8\"}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "Distribution-CREATE_IN_PROGRESS-2026-10-23T04:49:08.342Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "Distribution",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::Distribution",
+      "Timestamp": "2026-10-23 04:49:08.342000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"DistributionConfig\":{\"Comment\":\"InfraLens dev dashboard\",\"DefaultRootObject\":\"index.html\",\"ViewerCertificate\":{\"CloudFrontDefaultCertificate\":\"true\"},\"Origins\":[{\"OriginAccessControlId\":\"E20FA5LAMCP1L6\",\"DomainName\":\"infralens-dev-frontend-frontendbucket-n58kza257mdd.s3.ap-southeast-1.amazonaws.com\",\"S3OriginConfig\":{\"OriginAccessIdentity\":\"\"},\"Id\":\"frontend\"}],\"PriceClass\":\"PriceClass_All\",\"DefaultCacheBehavior\":{\"Compress\":\"true\",\"FunctionAssociations\":[{\"FunctionARN\":\"arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes\",\"EventType\":\"viewer-request\"}],\"AllowedMethods\":[\"GET\",\"HEAD\"],\"CachedMethods\":[\"GET\",\"HEAD\"],\"TargetOriginId\":\"frontend\",\"ViewerProtocolPolicy\":\"redirect-to-https\",\"ResponseHeadersPolicyId\":\"3efabe29-8fb6-4a68-a790-eb8b84192df2\",\"CachePolicyId\":\"8655b04a-7ebb-40e3-877d-5e615150f82f\"},\"IPV6Enabled\":\"true\",\"CustomErrorResponses\":[{\"ErrorCachingMinTTL\":\"0\",\"ErrorCode\":\"403\"},{\"ErrorCachingMinTTL\":\"0\",\"ErrorCode\":\"404\"}],\"Enabled\":\"true\",\"HttpVersion\":\"http2and3\",\"CacheBehaviors\":[{\"Compress\":\"true\",\"PathPattern\":\"/assets/*\",\"AllowedMethods\":[\"GET\",\"HEAD\"],\"CachedMethods\":[\"GET\",\"HEAD\"],\"TargetOriginId\":\"frontend\",\"ViewerProtocolPolicy\":\"redirect-to-https\",\"ResponseHeadersPolicyId\":\"3efabe29-8fb6-4a68-a790-eb8b84192df2\",\"CachePolicyId\":\"9ed8760f-b657-45ab-9f96-795e02342ea8\"}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "FrontendBucket-CREATE_COMPLETE-2026-10-23T04:49:06.301Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "FrontendBucket",
+      "PhysicalResourceId": "infralens-dev-frontend-frontendbucket-n58kza257mdd",
+      "ResourceType": "AWS::S3::Bucket",
+      "Timestamp": "2026-10-23 04:49:06.301000+00:00",
+      "ResourceStatus": "CREATE_COMPLETE",
+      "ResourceProperties": "{\"PublicAccessBlockConfiguration\":{\"RestrictPublicBuckets\":\"true\",\"BlockPublicPolicy\":\"true\",\"BlockPublicAcls\":\"true\",\"IgnorePublicAcls\":\"true\"},\"OwnershipControls\":{\"Rules\":[{\"ObjectOwnership\":\"BucketOwnerEnforced\"}]},\"BucketEncryption\":{\"ServerSideEncryptionConfiguration\":[{\"ServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"AES256\"}}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "RouteRewrite-CREATE_COMPLETE-2026-10-23T04:48:55.465Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "RouteRewrite",
+      "PhysicalResourceId": "arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes",
+      "ResourceType": "AWS::CloudFront::Function",
+      "Timestamp": "2026-10-23 04:48:55.465000+00:00",
+      "ResourceStatus": "CREATE_COMPLETE",
+      "ResourceProperties": "{\"FunctionConfig\":{\"Comment\":\"Rewrite dashboard routes only; preserve missing asset errors\",\"Runtime\":\"cloudfront-js-2.0\"},\"AutoPublish\":\"true\",\"FunctionCode\":\"function handler(event) {\\n  var request = event.request;\\n  var uri = request.uri;\\n  if (uri === '/' || uri === '/auth/callback' ||\\n      /^\\\\/projects(?:\\\\/[^/]+)?\\\\/?$/.test(uri) ||\\n      /^\\\\/runs\\\\/[^/]+(?:\\\\/findings\\\\/[^/]+)?\\\\/?$/.test(uri)) {\\n    request.uri = '/index.html';\\n  }\\n  return request;\\n}\\n\",\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}],\"Name\":\"infralens-dev-frontend-routes\"}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "RouteRewrite-CREATE_IN_PROGRESS-2026-10-23T04:48:54.098Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "RouteRewrite",
+      "PhysicalResourceId": "arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes",
+      "ResourceType": "AWS::CloudFront::Function",
+      "Timestamp": "2026-10-23 04:48:54.098000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "Resource creation Initiated",
+      "ResourceProperties": "{\"FunctionConfig\":{\"Comment\":\"Rewrite dashboard routes only; preserve missing asset errors\",\"Runtime\":\"cloudfront-js-2.0\"},\"AutoPublish\":\"true\",\"FunctionCode\":\"function handler(event) {\\n  var request = event.request;\\n  var uri = request.uri;\\n  if (uri === '/' || uri === '/auth/callback' ||\\n      /^\\\\/projects(?:\\\\/[^/]+)?\\\\/?$/.test(uri) ||\\n      /^\\\\/runs\\\\/[^/]+(?:\\\\/findings\\\\/[^/]+)?\\\\/?$/.test(uri)) {\\n    request.uri = '/index.html';\\n  }\\n  return request;\\n}\\n\",\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}],\"Name\":\"infralens-dev-frontend-routes\"}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "ResponseHeaders-CREATE_COMPLETE-2026-10-23T04:48:53.418Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "ResponseHeaders",
+      "PhysicalResourceId": "3efabe29-8fb6-4a68-a790-eb8b84192df2",
+      "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+      "Timestamp": "2026-10-23 04:48:53.418000+00:00",
+      "ResourceStatus": "CREATE_COMPLETE",
+      "ResourceProperties": "{\"ResponseHeadersPolicyConfig\":{\"SecurityHeadersConfig\":{\"ContentSecurityPolicy\":{\"ContentSecurityPolicy\":\"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com https://cognito-idp.ap-southeast-1.amazonaws.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com\",\"Override\":\"true\"},\"FrameOptions\":{\"FrameOption\":\"DENY\",\"Override\":\"true\"},\"ContentTypeOptions\":{\"Override\":\"true\"},\"StrictTransportSecurity\":{\"AccessControlMaxAgeSec\":\"31536000\",\"IncludeSubdomains\":\"true\",\"Override\":\"true\"},\"ReferrerPolicy\":{\"ReferrerPolicy\":\"no-referrer\",\"Override\":\"true\"}},\"Name\":\"infralens-dev-frontend-security\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "HtmlCachePolicy-CREATE_COMPLETE-2026-10-23T04:48:53.198Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "HtmlCachePolicy",
+      "PhysicalResourceId": "8655b04a-7ebb-40e3-877d-5e615150f82f",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:48:53.198000+00:00",
+      "ResourceStatus": "CREATE_COMPLETE",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"0\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"false\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"false\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"0\",\"Name\":\"infralens-dev-frontend-html\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "OriginAccessControl-CREATE_COMPLETE-2026-10-23T04:48:53.103Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "OriginAccessControl",
+      "PhysicalResourceId": "E20FA5LAMCP1L6",
+      "ResourceType": "AWS::CloudFront::OriginAccessControl",
+      "Timestamp": "2026-10-23 04:48:53.103000+00:00",
+      "ResourceStatus": "CREATE_COMPLETE",
+      "ResourceProperties": "{\"OriginAccessControlConfig\":{\"SigningBehavior\":\"always\",\"OriginAccessControlOriginType\":\"s3\",\"SigningProtocol\":\"sigv4\",\"Name\":\"infralens-dev-frontend-s3\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "AssetCachePolicy-CREATE_COMPLETE-2026-10-23T04:48:53.033Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "AssetCachePolicy",
+      "PhysicalResourceId": "9ed8760f-b657-45ab-9f96-795e02342ea8",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:48:53.033000+00:00",
+      "ResourceStatus": "CREATE_COMPLETE",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"31536000\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"true\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"true\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"31536000\",\"Name\":\"infralens-dev-frontend-assets\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "ResponseHeaders-CREATE_IN_PROGRESS-2026-10-23T04:48:52.598Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "ResponseHeaders",
+      "PhysicalResourceId": "3efabe29-8fb6-4a68-a790-eb8b84192df2",
+      "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+      "Timestamp": "2026-10-23 04:48:52.598000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "Resource creation Initiated",
+      "ResourceProperties": "{\"ResponseHeadersPolicyConfig\":{\"SecurityHeadersConfig\":{\"ContentSecurityPolicy\":{\"ContentSecurityPolicy\":\"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com https://cognito-idp.ap-southeast-1.amazonaws.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com\",\"Override\":\"true\"},\"FrameOptions\":{\"FrameOption\":\"DENY\",\"Override\":\"true\"},\"ContentTypeOptions\":{\"Override\":\"true\"},\"StrictTransportSecurity\":{\"AccessControlMaxAgeSec\":\"31536000\",\"IncludeSubdomains\":\"true\",\"Override\":\"true\"},\"ReferrerPolicy\":{\"ReferrerPolicy\":\"no-referrer\",\"Override\":\"true\"}},\"Name\":\"infralens-dev-frontend-security\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "HtmlCachePolicy-CREATE_IN_PROGRESS-2026-10-23T04:48:52.492Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "HtmlCachePolicy",
+      "PhysicalResourceId": "8655b04a-7ebb-40e3-877d-5e615150f82f",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:48:52.492000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "Resource creation Initiated",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"0\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"false\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"false\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"0\",\"Name\":\"infralens-dev-frontend-html\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "FrontendBucket-CREATE_IN_PROGRESS-2026-10-23T04:48:52.409Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "FrontendBucket",
+      "PhysicalResourceId": "infralens-dev-frontend-frontendbucket-n58kza257mdd",
+      "ResourceType": "AWS::S3::Bucket",
+      "Timestamp": "2026-10-23 04:48:52.409000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "Resource creation Initiated",
+      "ResourceProperties": "{\"PublicAccessBlockConfiguration\":{\"RestrictPublicBuckets\":\"true\",\"BlockPublicPolicy\":\"true\",\"BlockPublicAcls\":\"true\",\"IgnorePublicAcls\":\"true\"},\"OwnershipControls\":{\"Rules\":[{\"ObjectOwnership\":\"BucketOwnerEnforced\"}]},\"BucketEncryption\":{\"ServerSideEncryptionConfiguration\":[{\"ServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"AES256\"}}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "OriginAccessControl-CREATE_IN_PROGRESS-2026-10-23T04:48:52.359Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "OriginAccessControl",
+      "PhysicalResourceId": "E20FA5LAMCP1L6",
+      "ResourceType": "AWS::CloudFront::OriginAccessControl",
+      "Timestamp": "2026-10-23 04:48:52.359000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "Resource creation Initiated",
+      "ResourceProperties": "{\"OriginAccessControlConfig\":{\"SigningBehavior\":\"always\",\"OriginAccessControlOriginType\":\"s3\",\"SigningProtocol\":\"sigv4\",\"Name\":\"infralens-dev-frontend-s3\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "AssetCachePolicy-CREATE_IN_PROGRESS-2026-10-23T04:48:52.353Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "AssetCachePolicy",
+      "PhysicalResourceId": "9ed8760f-b657-45ab-9f96-795e02342ea8",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:48:52.353000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "Resource creation Initiated",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"31536000\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"true\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"true\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"31536000\",\"Name\":\"infralens-dev-frontend-assets\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "RouteRewrite-CREATE_IN_PROGRESS-2026-10-23T04:48:51.478Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "RouteRewrite",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::Function",
+      "Timestamp": "2026-10-23 04:48:51.478000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"FunctionConfig\":{\"Comment\":\"Rewrite dashboard routes only; preserve missing asset errors\",\"Runtime\":\"cloudfront-js-2.0\"},\"AutoPublish\":\"true\",\"FunctionCode\":\"function handler(event) {\\n  var request = event.request;\\n  var uri = request.uri;\\n  if (uri === '/' || uri === '/auth/callback' ||\\n      /^\\\\/projects(?:\\\\/[^/]+)?\\\\/?$/.test(uri) ||\\n      /^\\\\/runs\\\\/[^/]+(?:\\\\/findings\\\\/[^/]+)?\\\\/?$/.test(uri)) {\\n    request.uri = '/index.html';\\n  }\\n  return request;\\n}\\n\",\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}],\"Name\":\"infralens-dev-frontend-routes\"}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "HtmlCachePolicy-CREATE_IN_PROGRESS-2026-10-23T04:48:51.473Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "HtmlCachePolicy",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:48:51.473000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"0\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"false\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"false\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"0\",\"Name\":\"infralens-dev-frontend-html\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "ResponseHeaders-CREATE_IN_PROGRESS-2026-10-23T04:48:51.444Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "ResponseHeaders",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+      "Timestamp": "2026-10-23 04:48:51.444000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"ResponseHeadersPolicyConfig\":{\"SecurityHeadersConfig\":{\"ContentSecurityPolicy\":{\"ContentSecurityPolicy\":\"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com https://cognito-idp.ap-southeast-1.amazonaws.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com\",\"Override\":\"true\"},\"FrameOptions\":{\"FrameOption\":\"DENY\",\"Override\":\"true\"},\"ContentTypeOptions\":{\"Override\":\"true\"},\"StrictTransportSecurity\":{\"AccessControlMaxAgeSec\":\"31536000\",\"IncludeSubdomains\":\"true\",\"Override\":\"true\"},\"ReferrerPolicy\":{\"ReferrerPolicy\":\"no-referrer\",\"Override\":\"true\"}},\"Name\":\"infralens-dev-frontend-security\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "FrontendBucket-CREATE_IN_PROGRESS-2026-10-23T04:48:51.406Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "FrontendBucket",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::S3::Bucket",
+      "Timestamp": "2026-10-23 04:48:51.406000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"PublicAccessBlockConfiguration\":{\"RestrictPublicBuckets\":\"true\",\"BlockPublicPolicy\":\"true\",\"BlockPublicAcls\":\"true\",\"IgnorePublicAcls\":\"true\"},\"OwnershipControls\":{\"Rules\":[{\"ObjectOwnership\":\"BucketOwnerEnforced\"}]},\"BucketEncryption\":{\"ServerSideEncryptionConfiguration\":[{\"ServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"AES256\"}}]},\"Tags\":[{\"Value\":\"infralens\",\"Key\":\"Project\"},{\"Value\":\"dev\",\"Key\":\"Environment\"},{\"Value\":\"cloudformation\",\"Key\":\"ManagedBy\"},{\"Value\":\"infralens-dev\",\"Key\":\"Deployment\"}]}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "OriginAccessControl-CREATE_IN_PROGRESS-2026-10-23T04:48:51.396Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "OriginAccessControl",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::OriginAccessControl",
+      "Timestamp": "2026-10-23 04:48:51.396000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"OriginAccessControlConfig\":{\"SigningBehavior\":\"always\",\"OriginAccessControlOriginType\":\"s3\",\"SigningProtocol\":\"sigv4\",\"Name\":\"infralens-dev-frontend-s3\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "AssetCachePolicy-CREATE_IN_PROGRESS-2026-10-23T04:48:51.394Z",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "AssetCachePolicy",
+      "PhysicalResourceId": "",
+      "ResourceType": "AWS::CloudFront::CachePolicy",
+      "Timestamp": "2026-10-23 04:48:51.394000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceProperties": "{\"CachePolicyConfig\":{\"MinTTL\":\"0\",\"MaxTTL\":\"31536000\",\"ParametersInCacheKeyAndForwardedToOrigin\":{\"EnableAcceptEncodingBrotli\":\"true\",\"HeadersConfig\":{\"HeaderBehavior\":\"none\"},\"EnableAcceptEncodingGzip\":\"true\",\"CookiesConfig\":{\"CookieBehavior\":\"none\"},\"QueryStringsConfig\":{\"QueryStringBehavior\":\"none\"}},\"DefaultTTL\":\"31536000\",\"Name\":\"infralens-dev-frontend-assets\"}}",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    },
+    {
+      "StackId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "EventId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "StackName": "infralens-dev-frontend",
+      "OperationId": "08cfcee0-ce9d-11f1-8e24-02fffc242b09",
+      "LogicalResourceId": "infralens-dev-frontend",
+      "PhysicalResourceId": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/08cebd70-ce9d-11f1-8e24-02fffc242b09",
+      "ResourceType": "AWS::CloudFormation::Stack",
+      "Timestamp": "2026-10-23 04:48:47.860000+00:00",
+      "ResourceStatus": "CREATE_IN_PROGRESS",
+      "ResourceStatusReason": "User Initiated",
+      "ClientRequestToken": "1a8aa6b0-2f8a-49e0-8134-b4b30dbb1664"
+    }
+  ],
+  "empty_retained_bucket": "infralens-dev-frontend-frontendbucket-n58kza257mdd"
+}

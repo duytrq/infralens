@@ -1,7 +1,7 @@
 {
   "account": "695650811791",
   "region": "ap-southeast-1",
-  "recorded_at": "2026-10-22T14:12:08.702758+00:00",
+  "recorded_at": "2026-10-23T09:20:22.733043+00:00",
   "tags": {
     "Project": "infralens",
     "Environment": "dev",
@@ -44,7 +44,7 @@
         },
         {
           "OutputKey": "DashboardOrigin",
-          "OutputValue": "http://localhost:5173"
+          "OutputValue": "https://ddsw2osqv2rj2.cloudfront.net"
         },
         {
           "OutputKey": "DashboardClientId",
@@ -351,7 +351,7 @@
           "LogicalResourceId": "DashboardClient",
           "PhysicalResourceId": "kqvqvfdm7hndugc1ih9t4cr4k",
           "ResourceType": "AWS::Cognito::UserPoolClient",
-          "ResourceStatus": "CREATE_COMPLETE",
+          "ResourceStatus": "UPDATE_COMPLETE",
           "tagging": "unsupported",
           "cleanup_note": "Owned by its user pool"
         },
@@ -507,6 +507,113 @@
           "ResourceStatus": "CREATE_COMPLETE",
           "tagging": "unsupported",
           "cleanup_note": "Owned by its bucket"
+        }
+      ]
+    },
+    {
+      "name": "infralens-dev-frontend",
+      "id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/93a04440-cec1-11f1-9bc7-02ffc726bce1",
+      "status": "CREATE_COMPLETE",
+      "outputs": [
+        {
+          "OutputKey": "DistributionDomain",
+          "OutputValue": "ddsw2osqv2rj2.cloudfront.net"
+        },
+        {
+          "OutputKey": "DistributionId",
+          "OutputValue": "E3L2AM9X65Z1OP"
+        },
+        {
+          "OutputKey": "FrontendBucket",
+          "OutputValue": "infralens-dev-frontend-frontendbucket-vhzky2sdozev"
+        },
+        {
+          "OutputKey": "FrontendUrl",
+          "OutputValue": "https://ddsw2osqv2rj2.cloudfront.net"
+        }
+      ],
+      "resources": [
+        {
+          "LogicalResourceId": "AssetCachePolicy",
+          "PhysicalResourceId": "cba7beb4-1cbb-44f0-9a7a-ebe6ff3547cc",
+          "ResourceType": "AWS::CloudFront::CachePolicy",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Stack-managed cache policy"
+        },
+        {
+          "LogicalResourceId": "Distribution",
+          "PhysicalResourceId": "E3L2AM9X65Z1OP",
+          "ResourceType": "AWS::CloudFront::Distribution",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation",
+            "Project": "infralens"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "FrontendBucket",
+          "PhysicalResourceId": "infralens-dev-frontend-frontendbucket-vhzky2sdozev",
+          "ResourceType": "AWS::S3::Bucket",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Project": "infralens",
+            "aws:cloudformation:stack-name": "infralens-dev-frontend",
+            "ManagedBy": "cloudformation",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:ap-southeast-1:695650811791:stack/infralens-dev-frontend/93a04440-cec1-11f1-9bc7-02ffc726bce1",
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "aws:cloudformation:logical-id": "FrontendBucket"
+          },
+          "tagging": "verified"
+        },
+        {
+          "LogicalResourceId": "FrontendBucketPolicy",
+          "PhysicalResourceId": "infralens-dev-frontend-frontendbucket-vhzky2sdozev",
+          "ResourceType": "AWS::S3::BucketPolicy",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its bucket"
+        },
+        {
+          "LogicalResourceId": "HtmlCachePolicy",
+          "PhysicalResourceId": "26dd7d22-1e60-4fd0-953a-ac5398f9a25b",
+          "ResourceType": "AWS::CloudFront::CachePolicy",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Stack-managed cache policy"
+        },
+        {
+          "LogicalResourceId": "OriginAccessControl",
+          "PhysicalResourceId": "E33SXP1VV0MOE2",
+          "ResourceType": "AWS::CloudFront::OriginAccessControl",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Stack-managed origin access control"
+        },
+        {
+          "LogicalResourceId": "ResponseHeaders",
+          "PhysicalResourceId": "204a5dbf-c8b0-485a-ad20-bbf7ee08c763",
+          "ResourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Stack-managed response headers policy"
+        },
+        {
+          "LogicalResourceId": "RouteRewrite",
+          "PhysicalResourceId": "arn:aws:cloudfront::695650811791:function/infralens-dev-frontend-routes",
+          "ResourceType": "AWS::CloudFront::Function",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tags": {
+            "Deployment": "infralens-dev",
+            "Environment": "dev",
+            "ManagedBy": "cloudformation",
+            "Project": "infralens"
+          },
+          "tagging": "verified"
         }
       ]
     }
