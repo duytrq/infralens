@@ -190,7 +190,9 @@ NETWORK_FIELDS["aws_vpc_security_group_egress_rule"] = NETWORK_FIELDS[
 NETWORK_VALUES = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {name: VALUE for name in set(sum(NETWORK_FIELDS.values(), ()))},
+    "properties": {
+        name: VALUE for name in sorted(set(sum(NETWORK_FIELDS.values(), ())))
+    },
 }
 RESOURCE = obj(
     {

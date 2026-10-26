@@ -3068,6 +3068,46 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "cidr_blocks": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
                         "cidr_ipv4": {
                           "oneOf": [
                             {
@@ -3108,167 +3148,7 @@
                             }
                           ]
                         },
-                        "ip_protocol": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "to_port": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "referenced_security_group_id": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "protocol": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "type": {
+                        "cidr_ipv6": {
                           "oneOf": [
                             {
                               "type": "object",
@@ -3348,247 +3228,7 @@
                             }
                           ]
                         },
-                        "region": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "cidr_blocks": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "prefix_list_ids": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "self": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "prefix_list_id": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "security_group_id": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "source_security_group_id": {
+                        "ip_protocol": {
                           "oneOf": [
                             {
                               "type": "object",
@@ -3668,7 +3308,367 @@
                             }
                           ]
                         },
-                        "cidr_ipv6": {
+                        "prefix_list_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "prefix_list_ids": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "protocol": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "referenced_security_group_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "region": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "security_group_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "self": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "source_security_group_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "to_port": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "type": {
                           "oneOf": [
                             {
                               "type": "object",
@@ -3714,6 +3714,46 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "cidr_blocks": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
                         "cidr_ipv4": {
                           "oneOf": [
                             {
@@ -3754,167 +3794,7 @@
                             }
                           ]
                         },
-                        "ip_protocol": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "to_port": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "referenced_security_group_id": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "protocol": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "type": {
+                        "cidr_ipv6": {
                           "oneOf": [
                             {
                               "type": "object",
@@ -3994,247 +3874,7 @@
                             }
                           ]
                         },
-                        "region": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "cidr_blocks": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "prefix_list_ids": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "self": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "prefix_list_id": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "security_group_id": {
-                          "oneOf": [
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "const": "known"
-                                },
-                                "value": {},
-                                "source": {
-                                  "enum": [
-                                    "saved",
-                                    "observed"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status",
-                                "value"
-                              ]
-                            },
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "properties": {
-                                "status": {
-                                  "enum": [
-                                    "sensitive",
-                                    "unknown",
-                                    "absent"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "status"
-                              ]
-                            }
-                          ]
-                        },
-                        "source_security_group_id": {
+                        "ip_protocol": {
                           "oneOf": [
                             {
                               "type": "object",
@@ -4314,7 +3954,367 @@
                             }
                           ]
                         },
-                        "cidr_ipv6": {
+                        "prefix_list_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "prefix_list_ids": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "protocol": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "referenced_security_group_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "region": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "security_group_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "self": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "source_security_group_id": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "to_port": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "const": "known"
+                                },
+                                "value": {},
+                                "source": {
+                                  "enum": [
+                                    "saved",
+                                    "observed"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "sensitive",
+                                    "unknown",
+                                    "absent"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ]
+                            }
+                          ]
+                        },
+                        "type": {
                           "oneOf": [
                             {
                               "type": "object",

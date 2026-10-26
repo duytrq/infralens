@@ -15,6 +15,25 @@ def test_exported_contract_is_valid_and_current():
     assert json.loads((ROOT / "contracts/openapi.json").read_text()) == contract
 
 
+def test_contract_export_is_stable_across_python_hash_seeds():
+    import os
+    import subprocess
+    import sys
+
+    for seed in ("1", "2"):
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "backend/scripts/export_contract.py"),
+                "--check",
+            ],
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
 def test_all_contract_routes_are_deployed_and_only_config_is_public():
     template, errors = decode(str(ROOT / "infra/template.yaml"))
     assert not errors
