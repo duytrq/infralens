@@ -18,6 +18,9 @@ UNTAGGABLE = {
     "AWS::Cognito::UserPoolClient": "Owned by its user pool",
     "AWS::Cognito::UserPoolDomain": "Delete domain before deleting its user pool",
     "AWS::Cognito::UserPoolResourceServer": "Owned by its user pool",
+    "AWS::CloudFront::OriginAccessControl": "Stack-managed origin access control",
+    "AWS::CloudFront::CachePolicy": "Stack-managed cache policy",
+    "AWS::CloudFront::ResponseHeadersPolicy": "Stack-managed response headers policy",
 }
 
 
@@ -60,6 +63,16 @@ def resource_tags(session, kind, physical, account, region, api_id):
     if kind == "AWS::Cognito::UserPool":
         pool = client("cognito-idp").describe_user_pool(UserPoolId=physical)["UserPool"]
         return pool.get("UserPoolTags", {})
+    if kind in {"AWS::CloudFront::Distribution", "AWS::CloudFront::Function"}:
+        resource = "distribution" if kind.endswith("Distribution") else "function"
+        arn = (
+            physical
+            if physical.startswith("arn:")
+            else f"arn:aws:cloudfront::{account}:{resource}/{physical}"
+        )
+        return tag_map(
+            client("cloudfront").list_tags_for_resource(Resource=arn)["Tags"]["Items"]
+        )
     if kind == "AWS::ApiGatewayV2::Api":
         arn = f"arn:aws:apigateway:{region}::/apis/{physical}"
         return client("apigatewayv2").get_tags(ResourceArn=arn).get("Tags", {})
@@ -129,8 +142,12 @@ def main():
                     "ResourceType",
                     "ResourceStatus",
                 )
+                if key in resource
             }
-            if kind in UNTAGGABLE:
+            if resource["ResourceStatus"] == "DELETE_COMPLETE":
+                row["tagging"] = "deleted"
+                row["cleanup_note"] = "Resource deleted during stack operation"
+            elif kind in UNTAGGABLE:
                 row["tagging"] = "unsupported"
                 row["cleanup_note"] = UNTAGGABLE[kind]
             else:

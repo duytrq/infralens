@@ -35,3 +35,40 @@ def test_inventory_records_absent_bucket_tags_without_hiding_permission_errors(c
             with pytest.raises(ClientError) as error:
                 inventory.resource_tags(*args)
             assert error.value.response["Error"]["Code"] == "AccessDenied"
+
+
+@pytest.mark.parametrize(
+    "kind,physical,arn",
+    [
+        (
+            "AWS::CloudFront::Distribution",
+            "E123",
+            "arn:aws:cloudfront::123:distribution/E123",
+        ),
+        (
+            "AWS::CloudFront::Function",
+            "arn:aws:cloudfront::123:function/routes",
+            "arn:aws:cloudfront::123:function/routes",
+        ),
+    ],
+)
+def test_inventory_accepts_cloudfront_function_arns_and_distribution_ids(
+    kind, physical, arn
+):
+    path = Path(__file__).resolve().parents[2] / "infra/inventory.py"
+    spec = importlib.util.spec_from_file_location("inventory_cloudfront", path)
+    inventory = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(inventory)
+    client = boto3.client(
+        "cloudfront", aws_access_key_id="testing", aws_secret_access_key="testing"
+    )
+    session = SimpleNamespace(client=lambda service, **kwargs: client)
+    with Stubber(client) as stub:
+        stub.add_response(
+            "list_tags_for_resource",
+            {"Tags": {"Items": [{"Key": "Project", "Value": "infralens"}]}},
+            {"Resource": arn},
+        )
+        assert inventory.resource_tags(
+            session, kind, physical, "123", "region", None
+        ) == {"Project": "infralens"}
