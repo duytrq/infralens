@@ -144,9 +144,21 @@ def verify(environment, reserve):
     assert pattern["dynamodb"]["NewImage"]["data"]["M"]["analysis"]["M"]["status"][
         "S"
     ] == ["pending"]
-    assert resources["HttpApi"]["Properties"]["Body"]["x-amazon-apigateway-cors"][
+    origins = resources["HttpApi"]["Properties"]["Body"]["x-amazon-apigateway-cors"][
         "allowOrigins"
-    ] == ["http://localhost:5173"]
+    ]
+    assert origins[0] == "http://localhost:5173"
+    assert origins[1] == {
+        "Fn::If": [
+            "UseLocalDashboard",
+            "http://localhost:5173",
+            {"Ref": "AWS::NoValue"},
+        ]
+    }
+    assert rendered["Conditions"]["UseLocalDashboard"]["Fn::And"][:2] == [
+        {"Fn::Equals": [{"Ref": "Environment"}, "dev"]},
+        {"Fn::Equals": [{"Ref": "EnableLocalDashboard"}, "true"]},
+    ]
     print(
         json.dumps(
             {

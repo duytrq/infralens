@@ -1,7 +1,7 @@
 # Dashboard API
 
 Backend contracts for the planned projects, history and scan-detail screens.
-There is no frontend in this package. OpenAPI: `../contracts/openapi.json`.
+The frontend lives in `../frontend/`. OpenAPI: `../contracts/openapi.json`.
 
 ## Authentication and browser setup
 
@@ -17,7 +17,11 @@ Only make HTTP/HTTPS references clickable; never render report-provided HTML.
 Deploy parameter `DashboardOrigin` defaults to `http://localhost:5173` and registers
 `/auth/callback` and `/` for login/logout. Only that exact origin is allowed by
 API Gateway CORS (GET, PUT, POST, DELETE, OPTIONS; authorization/content-type).
-Change the parameter to the future dashboard HTTPS origin before publishing it.
+Set the parameter to the CloudFront HTTPS origin when publishing. Explicitly set
+`EnableLocalDashboard=true` to additionally register `http://localhost:5173` in
+dev; the flag is ineffective in prod. `auth.allowed_origins` in dashboard config
+lists the registered origins. The SPA selects its active registered origin for
+`/auth/callback` and `/`, while the existing config URLs remain the primary origin.
 S3 report downloads use browser navigation to the presigned attachment URL;
 browser code does not fetch or parse the full JSON, so S3 CORS is unnecessary.
 Presigned links expire after five minutes; request a new link when necessary.

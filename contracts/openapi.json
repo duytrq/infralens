@@ -1556,6 +1556,12 @@
               },
               "logout_endpoint": {
                 "type": "string"
+              },
+              "allowed_origins": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "required": [
@@ -1568,7 +1574,8 @@
               "scopes",
               "pkce_method",
               "logout_url",
-              "logout_endpoint"
+              "logout_endpoint",
+              "allowed_origins"
             ]
           },
           "upload": {

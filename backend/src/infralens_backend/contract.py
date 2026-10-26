@@ -157,6 +157,7 @@ SCHEMAS["DashboardConfig"] = obj(
                 **SCHEMAS["Config"]["properties"]["auth"]["properties"],
                 "logout_url": STRING,
                 "logout_endpoint": STRING,
+                "allowed_origins": {"type": "array", "items": STRING},
             }
         ),
     }
