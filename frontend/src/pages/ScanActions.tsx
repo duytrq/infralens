@@ -24,6 +24,7 @@ export function ScanActions({
   const queries = useQueryClient();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
+  const kind = run.run_type === "drift" ? "drift run" : "scan";
   const prefix = ["user", user.profile.sub];
   const download = useMutation({
     mutationFn: () =>
@@ -46,8 +47,11 @@ export function ScanActions({
         predicate: (query) =>
           query.queryKey[0] === "user" &&
           query.queryKey[1] === user.profile.sub &&
-          ["run", "findings", "finding"].includes(String(query.queryKey[2])) &&
-          query.queryKey[3] === run.run_id,
+          ((["run", "findings", "finding", "drift-report"].includes(
+            String(query.queryKey[2]),
+          ) &&
+            query.queryKey[3] === run.run_id) ||
+            query.queryKey[2] === "drift-comparison"),
       });
       queries.setQueriesData<InfiniteData<Page<Run>>>(
         { queryKey: [...prefix, "history"] },
@@ -67,15 +71,24 @@ export function ScanActions({
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              items: page.items.map((item) =>
-                item.latest_scan?.run_id === run.run_id
-                  ? { ...item, latest_scan: null }
-                  : item,
-              ),
+              items: page.items.map((item) => ({
+                ...item,
+                latest_scan:
+                  item.latest_scan?.run_id === run.run_id
+                    ? null
+                    : item.latest_scan,
+                latest_drift:
+                  item.latest_drift?.run_id === run.run_id
+                    ? null
+                    : item.latest_drift,
+              })),
             })),
           },
       );
-      navigate(`/projects/${run.project_id}`, { replace: true });
+      navigate(
+        `/projects/${run.project_id}${run.run_type === "drift" ? "?type=drift" : ""}`,
+        { replace: true },
+      );
       for (const kind of ["history", "projects", "project"])
         void queries.invalidateQueries({ queryKey: [...prefix, kind] });
     },
@@ -101,20 +114,20 @@ export function ScanActions({
         </button>
         <button className={styles.danger} onClick={() => setConfirming(true)}>
           <Trash2 size={15} aria-hidden="true" />
-          Delete scan
+          Delete {kind}
         </button>
       </div>
       {download.error && <ErrorState error={download.error} />}
       {confirming && (
         <Dialog
-          title="Delete this scan?"
+          title={`Delete this ${kind}?`}
           close={() => {
             if (!remove.isPending) setConfirming(false);
           }}
         >
           <div className={styles.form}>
             <p>
-              This removes the scan and its findings from your history
+              This removes the {kind} and its report details from your history
               immediately. Physical cleanup may finish later.
             </p>
             <p className={styles.subtle}>

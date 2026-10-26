@@ -7,7 +7,7 @@ import type {
   DashboardConfig,
   Finding,
   Project,
-  Run,
+  SecurityRun,
 } from "../../src/api/types";
 
 export const config: DashboardConfig = {
@@ -29,11 +29,12 @@ export const config: DashboardConfig = {
   upload: {
     formats: ["json"],
     max_report_bytes: 52428800,
+    max_drift_report_bytes: 2097152,
     url_expires_seconds: 900,
   },
 };
 
-export const run: Run = {
+export const run: SecurityRun = {
   schema_version: 1,
   run_id: "b7fe3c5e-6812-4d81-bbe2-7acb5ef6e770",
   project_id: "production-infra",

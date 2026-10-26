@@ -8,7 +8,7 @@ import {
   severities,
   type FindingSummary,
   type Page,
-  type Run,
+  type SecurityRun,
 } from "../api/types";
 import {
   Badge,
@@ -19,7 +19,7 @@ import {
 } from "../components/ui";
 import styles from "../styles.module.css";
 
-export function FindingsList({ run }: { run: Run }) {
+export function FindingsList({ run }: { run: SecurityRun }) {
   const { api, user } = useSession();
   const queries = useQueryClient();
   const [params, setParams] = useSearchParams();

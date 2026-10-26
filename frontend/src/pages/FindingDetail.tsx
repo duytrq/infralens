@@ -20,16 +20,17 @@ export function FindingDetail() {
   const [params] = useSearchParams();
   const { api, user } = useSession();
   const run = useRun(runId);
+  const scan = run.data?.run_type === "security_scan" ? run.data : undefined;
   const ready =
-    run.data?.upload_status === "ready" &&
-    run.data.analysis?.status === "ready";
+    scan?.upload_status === "ready" &&
+    scan.analysis?.status === "ready";
   const query = useQuery({
     queryKey: [
       "user",
       user.profile.sub,
       "finding",
       runId,
-      run.data?.analysis?.build_id,
+      scan?.analysis?.build_id,
       findingId,
     ],
     queryFn: ({ signal }) =>

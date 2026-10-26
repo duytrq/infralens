@@ -62,7 +62,7 @@ export function Shell() {
           <ShieldCheck size={18} aria-hidden="true" />
           <div>
             <strong>Your infrastructure, in focus.</strong>
-            <p>Terraform security insights powered by Trivy.</p>
+            <p>Terraform security and infrastructure drift insights.</p>
           </div>
         </div>
       </aside>
@@ -86,7 +86,7 @@ export function Shell() {
           <Outlet />
         </main>
         <footer className={styles.footer}>
-          InfraLens <span>Static analysis · Terraform</span>
+          InfraLens <span>Security · Drift · Terraform</span>
         </footer>
       </div>
     </div>
