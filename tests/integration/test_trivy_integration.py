@@ -24,7 +24,10 @@ def actual_engine(monkeypatch, tmp_path):
     monkeypatch.setenv(
         "PATH", str(Path(executable).parent) + os.pathsep + os.environ["PATH"]
     )
-    cache = os.environ.get("TRIVY_CACHE_DIR", str(tmp_path / "cache"))
+    # Some cases scan tmp_path itself; keep the test's cache outside its inputs.
+    cache = os.environ.get(
+        "TRIVY_CACHE_DIR", str(tmp_path.parent / (tmp_path.name + "-trivy-cache"))
+    )
     monkeypatch.setenv("TRIVY_CACHE_DIR", cache)
 
 
