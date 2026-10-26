@@ -88,5 +88,14 @@ The backend also owns a retained/deletion-protected `FindingsTable`, a tagged
 analysis Lambda/log group/stream mapping and a
 separate Cognito dashboard client. Add `FindingsTable` to the explicit retained
 table cleanup above. Set `DashboardOrigin` to the exact HTTPS frontend origin
-when publishing; current dev uses `http://localhost:5173`. See
+when publishing; dev uses `https://ddsw2osqv2rj2.cloudfront.net` with
+`EnableLocalDashboard=true` to retain localhost login. See
 [dashboard API and recovery](../backend/DASHBOARD.md).
+
+The React dashboard and S3/CloudFront deployment workflow are documented in
+[frontend operations](FRONTEND.md). The dev backend now includes the dashboard
+allowed-origins contract. The published dashboard is available at
+[the dev CloudFront URL](https://ddsw2osqv2rj2.cloudfront.net). The earlier account
+verification block was resolved, and the failed stack/empty retained bucket were
+removed before successful redeployment. See
+[frontend verification](../tasks/frontend-verification.md).

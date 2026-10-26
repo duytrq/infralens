@@ -34,7 +34,7 @@ jobs:
           uv export --project backend --locked --no-dev --no-emit-project --no-header --no-annotate --output-file "$RUNNER_TEMP/backend-requirements.txt" > /dev/null
           diff -u backend/requirements.txt "$RUNNER_TEMP/backend-requirements.txt"
       - run: uv run --project backend pytest -q backend/tests
-      - run: uv run --project backend cfn-lint infra/template.yaml infra/artifacts.yaml
+      - run: uv run --project backend cfn-lint infra/template.yaml infra/artifacts.yaml infra/frontend.yaml
       - run: uvx --from aws-sam-cli==1.169.0 sam validate --lint --template-file infra/template.yaml --region ap-southeast-1
       - run: uvx --from aws-sam-cli==1.169.0 python infra/verify_template.py
       - run: uvx --from aws-sam-cli==1.169.0 sam build --template-file infra/template.yaml

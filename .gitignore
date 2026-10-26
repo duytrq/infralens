@@ -13,3 +13,10 @@ samconfig.toml
 .terraform/
 *.tfstate
 *.tfstate.*
+node_modules/
+playwright-report/
+test-results/
+coverage/
+*.tsbuildinfo
+frontend/verification/
+!.env.example

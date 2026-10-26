@@ -1,0 +1,62 @@
+{
+  "checked_at": "2026-10-23T09:25:26.387421+00:00",
+  "status": "passed",
+  "account": "695650811791",
+  "frontend_url": "https://ddsw2osqv2rj2.cloudfront.net",
+  "distribution_id": "E3L2AM9X65Z1OP",
+  "distribution_status": "Deployed",
+  "frontend_stack_status": "CREATE_COMPLETE",
+  "backend_stack_status": "UPDATE_COMPLETE",
+  "frontend_bucket": "infralens-dev-frontend-frontendbucket-vhzky2sdozev",
+  "release": "20261023T092153Z-1539682b62c4",
+  "html_sha256": "98661ef54b6d7d83f52b98b0ce7d61d75f5700bd6ac5ee51c219b13a0f5278dd",
+  "html_cache_control": "no-store",
+  "security_headers": {
+    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com https://cognito-idp.ap-southeast-1.amazonaws.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://infralens-dev-695650811791-ap-southeast-1.auth.ap-southeast-1.amazoncognito.com",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer"
+  },
+  "assets": [
+    {
+      "path": "/assets/favicon-CbJo80fz.svg",
+      "status": 200,
+      "content_type": "image/svg+xml",
+      "cache_control": "public,max-age=31536000,immutable"
+    },
+    {
+      "path": "/assets/index-CEMrkNDZ.js",
+      "status": 200,
+      "content_type": "text/javascript",
+      "cache_control": "public,max-age=31536000,immutable"
+    },
+    {
+      "path": "/assets/index-C8KDFEFj.css",
+      "status": 200,
+      "content_type": "text/css",
+      "cache_control": "public,max-age=31536000,immutable"
+    }
+  ],
+  "deep_links_verified": [
+    "/projects",
+    "/projects/demo-infrastructure",
+    "/runs/0f39eb44-8f53-460a-bae9-59889a347a51",
+    "/runs/0f39eb44-8f53-460a-bae9-59889a347a51/findings/0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "/auth/callback?code=verification&state=verification"
+  ],
+  "missing_asset_status": 403,
+  "anonymous_s3_status": 403,
+  "public_access_block": {
+    "BlockPublicAcls": true,
+    "IgnorePublicAcls": true,
+    "BlockPublicPolicy": true,
+    "RestrictPublicBuckets": true
+  },
+  "cors": {
+    "https://ddsw2osqv2rj2.cloudfront.net": "https://ddsw2osqv2rj2.cloudfront.net",
+    "http://localhost:5173": "http://localhost:5173",
+    "https://untrusted.example.com": null
+  },
+  "cli_auth_preserved": true
+}

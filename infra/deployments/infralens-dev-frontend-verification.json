@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-10-23T09:27:51.944583+00:00",
+  "status": "passed",
+  "account": "695650811791",
+  "region": "ap-southeast-1",
+  "frontend_url": "https://ddsw2osqv2rj2.cloudfront.net",
+  "distribution_id": "E3L2AM9X65Z1OP",
+  "frontend_bucket": "infralens-dev-frontend-frontendbucket-vhzky2sdozev",
+  "backend_stack_status": "UPDATE_COMPLETE",
+  "frontend_stack_status": "CREATE_COMPLETE",
+  "selected_release": "20261023T092153Z-1539682b62c4",
+  "previous_release": "20261023T091810Z-1539682b62c4",
+  "http_to_https": {
+    "status": 301,
+    "location": "https://ddsw2osqv2rj2.cloudfront.net/"
+  },
+  "dashboard_callback_urls": [
+    "http://localhost:5173/auth/callback",
+    "https://ddsw2osqv2rj2.cloudfront.net/auth/callback"
+  ],
+  "dashboard_logout_urls": [
+    "http://localhost:5173/",
+    "https://ddsw2osqv2rj2.cloudfront.net/"
+  ],
+  "temporary_smoke_users_remaining": 0,
+  "browser_checks": 12,
+  "cdn_checks": "passed",
+  "rollback": "passed and latest restored",
+  "monitoring_last_20_minutes": {
+    "AnalysisFunction": {
+      "error_sum": 0.0,
+      "datapoints": 3
+    },
+    "ApiFunction": {
+      "error_sum": 0.0,
+      "datapoints": 9
+    },
+    "CleanupFunction": {
+      "error_sum": null,
+      "datapoints": 0
+    },
+    "CloudFront": {
+      "max_5xx_rate": 0.0,
+      "datapoints": 6
+    }
+  },
+  "previous_account_verification_blocker": "resolved"
+}

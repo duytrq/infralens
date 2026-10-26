@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-10-23T09:26:16.123Z",
+  "status": "passed",
+  "frontend_url": "https://ddsw2osqv2rj2.cloudfront.net",
+  "username": "demo@infralens.test",
+  "login_verified": true,
+  "project_count": 2,
+  "console_and_js_issues": [],
+  "accessibility_violations": 0
+}

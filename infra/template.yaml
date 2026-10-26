@@ -22,9 +22,18 @@ Parameters:
     Default: http://localhost:5173
     AllowedPattern: '^(http://localhost:5173|https://[a-zA-Z0-9.-]+(:[0-9]+)?)$'
     Description: Exact dashboard origin, without a trailing slash
+  EnableLocalDashboard:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Also register localhost dashboard; effective only in dev
 
 Conditions:
   UseReservedConcurrency: !Equals [!Ref ReserveConcurrency, 'true']
+  UseLocalDashboard: !And
+    - !Equals [!Ref Environment, dev]
+    - !Equals [!Ref EnableLocalDashboard, 'true']
+    - !Not [!Equals [!Ref DashboardOrigin, 'http://localhost:5173']]
 
 Globals:
   Function:
@@ -53,6 +62,8 @@ Globals:
         FINDINGS_TABLE: !Ref FindingsTable
         DASHBOARD_CLIENT_ID: !Ref DashboardClient
         DASHBOARD_ORIGIN: !Ref DashboardOrigin
+        ENVIRONMENT: !Ref Environment
+        ENABLE_LOCAL_DASHBOARD: !If [UseLocalDashboard, 'true', 'false']
 
 Resources:
   UserPool:
@@ -135,8 +146,12 @@ Resources:
       AllowedOAuthFlows: [code]
       AllowedOAuthScopes: [openid, infralens/api]
       SupportedIdentityProviders: [COGNITO]
-      CallbackURLs: [!Sub '${DashboardOrigin}/auth/callback']
-      LogoutURLs: [!Sub '${DashboardOrigin}/']
+      CallbackURLs:
+        - !Sub '${DashboardOrigin}/auth/callback'
+        - !If [UseLocalDashboard, 'http://localhost:5173/auth/callback', !Ref AWS::NoValue]
+      LogoutURLs:
+        - !Sub '${DashboardOrigin}/'
+        - !If [UseLocalDashboard, 'http://localhost:5173/', !Ref AWS::NoValue]
       ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
       PreventUserExistenceErrors: ENABLED
       EnableTokenRevocation: true
@@ -271,7 +286,9 @@ Resources:
         Deployment: !Ref AWS::StackName
       StageName: '$default'
       CorsConfiguration:
-        AllowOrigins: [!Ref DashboardOrigin]
+        AllowOrigins:
+          - !Ref DashboardOrigin
+          - !If [UseLocalDashboard, 'http://localhost:5173', !Ref AWS::NoValue]
         AllowMethods: [GET, PUT, POST, DELETE, OPTIONS]
         AllowHeaders: [authorization, content-type]
         MaxAge: 300

@@ -20,6 +20,8 @@ class Settings:
     findings_table_name: str = ""
     dashboard_client_id: str = ""
     dashboard_origin: str = "http://localhost:5173"
+    environment: str = "dev"
+    enable_local_dashboard: bool = False
 
     @classmethod
     def from_env(cls):
@@ -33,6 +35,8 @@ class Settings:
             findings_table_name=os.environ.get("FINDINGS_TABLE", ""),
             dashboard_client_id=os.environ.get("DASHBOARD_CLIENT_ID", ""),
             dashboard_origin=os.environ.get("DASHBOARD_ORIGIN", cls.dashboard_origin),
+            environment=os.environ.get("ENVIRONMENT", cls.environment),
+            enable_local_dashboard=os.environ.get("ENABLE_LOCAL_DASHBOARD") == "true",
         )
 
     def public(self):
@@ -62,4 +66,8 @@ class Settings:
         config["auth"]["callback_url"] = self.dashboard_origin + "/auth/callback"
         config["auth"]["logout_url"] = self.dashboard_origin + "/"
         config["auth"]["logout_endpoint"] = self.auth_domain + "/logout"
+        origins = [self.dashboard_origin]
+        if self.environment == "dev" and self.enable_local_dashboard:
+            origins.append("http://localhost:5173")
+        config["auth"]["allowed_origins"] = list(dict.fromkeys(origins))
         return config

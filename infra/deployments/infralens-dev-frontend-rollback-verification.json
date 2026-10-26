@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-10-23T09:23:25.316735+00:00",
+  "status": "passed",
+  "frontend_url": "https://ddsw2osqv2rj2.cloudfront.net",
+  "selected_release": "20261023T092153Z-1539682b62c4",
+  "previous_release": "20261023T091810Z-1539682b62c4",
+  "checks": [
+    {
+      "step": "rollback",
+      "release": "20261023T091810Z-1539682b62c4",
+      "html_sha256": "981c9b4f425c874022b090b8d20169c0e5cd497530ac1195f120571345aee3f2"
+    },
+    {
+      "step": "restore_latest",
+      "release": "20261023T092153Z-1539682b62c4",
+      "html_sha256": "98661ef54b6d7d83f52b98b0ce7d61d75f5700bd6ac5ee51c219b13a0f5278dd"
+    }
+  ],
+  "old_assets_retained": true
+}
