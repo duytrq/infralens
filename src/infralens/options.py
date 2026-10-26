@@ -31,6 +31,13 @@ class ScanOptions:
 
 
 @dataclass(frozen=True)
+class UploadOptions:
+    api_url: str
+    project: str
+    scope: str
+
+
+@dataclass(frozen=True)
 class DriftOptions:
     path: Path
     var_files: tuple[Path, ...]
@@ -48,3 +55,4 @@ class DriftOptions:
     cancel: Event | None = None
     fail_on_priority: str | None = None
     fail_on_unknown: bool = False
+    upload: UploadOptions | None = None

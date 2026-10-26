@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 
-from infralens.errors import ExitCode, command_errors, report_unexpected
+from infralens.errors import ExitCode, InvalidInput, command_errors, report_unexpected
 from infralens.handlers import handle_drift, handle_scan
 from infralens.logging import configure_logging, logger
 from infralens.options import (
@@ -18,6 +18,7 @@ from infralens.options import (
     DriftOptions,
     ScanFormat,
     ScanOptions,
+    UploadOptions,
 )
 from infralens.validation import (
     drift_output_path,
@@ -42,6 +43,25 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
 )
+cloud_app = typer.Typer(help="Upload saved drift reports.", no_args_is_help=True)
+app.add_typer(cloud_app, name="cloud")
+
+
+@cloud_app.command("upload")
+def upload_saved(
+    report: Annotated[Path, typer.Option(help="Normalized drift JSON file.")],
+    manifest: Annotated[Path, typer.Option(help="Immutable .upload.json sidecar.")],
+    api_url: Annotated[str, typer.Option(help="InfraLens HTTPS API origin.")],
+) -> None:
+    """Retry a saved upload without running Terraform or changing its metadata."""
+    with command_errors():
+        from infralens.cloud import upload_files
+
+        upload_files(
+            readable_file(report, "--report"),
+            readable_file(manifest, "--manifest"),
+            api_url,
+        )
 
 
 def show_version(value: bool) -> None:
@@ -156,6 +176,21 @@ def drift(
         Path | None,
         typer.Option(help="Read plan JSON without Terraform; --trace still calls AWS."),
     ] = None,
+    upload: Annotated[
+        bool, typer.Option(help="Upload JSON to the InfraLens dashboard.")
+    ] = False,
+    project: Annotated[
+        str | None, typer.Option(help="Existing cloud project ID; requires --upload.")
+    ] = None,
+    scope: Annotated[
+        str | None,
+        typer.Option(
+            help="Stable account/workspace/environment ID; requires --upload."
+        ),
+    ] = None,
+    api_url: Annotated[
+        str | None, typer.Option(help="InfraLens HTTPS API origin; requires --upload.")
+    ] = None,
 ) -> None:
     """Detect managed resource drift using a Terraform refresh-only plan."""
     with command_errors():
@@ -170,6 +205,28 @@ def drift(
         )
         protected = inputs + variables + ((imported,) if imported is not None else ())
         destination = drift_output_path(output, directory, protected)
+        cloud_options = None
+        if upload:
+            from infralens.cloud import identifier, manifest_path
+            from infralens.cloud_auth import origin
+
+            if format != DriftFormat.json or destination is None or api_url is None:
+                raise InvalidInput(
+                    "--upload requires --format json, --output and --api-url."
+                )
+            cloud_options = UploadOptions(
+                origin(api_url),
+                identifier(project, "--project"),
+                identifier(scope, "--scope"),
+            )
+            saved = manifest_path(destination)
+            if saved.exists() or saved.is_symlink():
+                raise InvalidInput(
+                    "Manifest exists; retry with cloud upload or use a new output."
+                )
+            drift_output_path(saved, directory, protected + (destination,))
+        elif any(value is not None for value in (project, scope, api_url)):
+            raise InvalidInput("--project, --scope and --api-url require --upload.")
         logger.debug("Drift validation complete")
         handle_drift(
             DriftOptions(
@@ -186,6 +243,7 @@ def drift(
                 imported,
                 fail_on_priority=priority,
                 fail_on_unknown=fail_on_unknown,
+                upload=cloud_options,
             )
         )
 

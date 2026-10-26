@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
@@ -41,7 +42,9 @@ def handle_scan(options: ScanOptions) -> None:
 
 
 def handle_drift(options: DriftOptions) -> None:
+    started = datetime.now(timezone.utc)
     result = collect_drift(options)
+    finished = datetime.now(timezone.utc)
     gate = None
     if (
         options.fail_on_drift
@@ -60,6 +63,10 @@ def handle_drift(options: DriftOptions) -> None:
     data = result.to_dict()
     if gate is not None:
         data["gate"] = gate
+    if options.upload is not None:
+        from infralens.cloud import cloud_report
+
+        data = cloud_report(data, options.path)
     report = (
         json.dumps(data, ensure_ascii=True, indent=2) + "\n"
         if options.format == "json"
@@ -71,6 +78,12 @@ def handle_drift(options: DriftOptions) -> None:
         typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
     else:
         typer.echo(report, nl=False)
+    if options.upload is not None:
+        from infralens import cloud
+
+        saved = cloud.save_manifest(data, report, options, started, finished)
+        typer.echo(f"Upload manifest saved to {str(saved)!r}.", err=True)
+        cloud.upload_files(options.output, saved, options.upload.api_url)
     if result.trace and result.trace["has_errors"]:
         typer.echo(
             "Error: CloudTrail trace incomplete; see trace details in the report.",
