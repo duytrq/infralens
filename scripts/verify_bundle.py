@@ -97,6 +97,7 @@ def verify(wheel: Path, uv: str) -> None:
             timeout=90,
         )
         env["PATH"] = ""
+        env.pop("INFRALENS_ACCESS_TOKEN", None)
         env["TRIVY_CACHE_DIR"] = os.environ.get("TRIVY_CACHE_DIR", str(root / "cache"))
 
         def run(*arguments, code=0):
@@ -108,6 +109,7 @@ def verify(wheel: Path, uv: str) -> None:
                 cwd=root,
                 env=scan_env,
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 encoding="utf-8",
                 timeout=180,
@@ -121,6 +123,54 @@ def verify(wheel: Path, uv: str) -> None:
 
         run("--help")
         run("--version")
+        drift_project = root / "drift project Việt"
+        shutil.copytree(ROOT / "examples" / "drift-review", drift_project)
+        observed = json.loads(
+            run(
+                "drift",
+                str(drift_project),
+                "--plan-json",
+                str(drift_project / "plan.json"),
+                "--format",
+                "json",
+                "--fail-on-priority",
+                "high",
+                "--fail-on-unknown",
+                code=1,
+            ).stdout
+        )
+        assert observed["kind"] == "drift"
+        assert observed["summary"]["resources"] == 4
+        assert observed["gate"]["status"] == "failed"
+        output = root / "reports Việt" / "drift.json"
+        failed_upload = run(
+            "drift",
+            str(drift_project),
+            "--plan-json",
+            str(drift_project / "plan.json"),
+            "--format",
+            "json",
+            "--output",
+            str(output),
+            "--upload",
+            "--project",
+            "demo",
+            "--scope",
+            "dev-default",
+            "--api-url",
+            "https://api.example.com",
+            code=3,
+        )
+        assert "Noninteractive upload requires" in failed_upload.stderr
+        saved = json.loads(
+            Path(str(output) + ".upload.json").read_text(encoding="utf-8")
+        )
+        assert (
+            saved["manifest"]["artifact"]["sha256"]
+            == hashlib.sha256(output.read_bytes()).hexdigest()
+        )
+        assert saved["manifest"]["artifact"]["size_bytes"] == len(output.read_bytes())
+        assert str(drift_project) not in output.read_text(encoding="utf-8")
         project = root / "Terraform project Việt"
         shutil.copytree(ROOT / "tests" / "fixtures" / "unsafe", project)
         source = project / "hạ tầng.tf"

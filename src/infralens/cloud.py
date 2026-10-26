@@ -116,8 +116,9 @@ def build_manifest(report, payload, options, started, finished):
     }
 
 
-def save_manifest(report, text, options, started, finished):
-    payload = text.encode("utf-8")
+def save_manifest(report, options, started, finished):
+    # The writer uses native newlines on Windows; sign the actual file bytes.
+    payload = options.output.read_bytes()
     if len(payload) > MAX_REPORT_BYTES:
         raise ExecutionError(
             "Drift report exceeds the 2 MiB upload limit; local JSON was saved."

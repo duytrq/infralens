@@ -303,3 +303,72 @@ def test_pkce_login_checks_state_and_exchanges_code_without_logging(
     captured = capsys.readouterr()
     assert "PRIVATE_CODE" not in captured.out + captured.err
     assert "PRIVATE_TOKEN" not in captured.out + captured.err
+
+
+def test_manifest_checksum_uses_written_bytes_with_windows_newlines(
+    project, tmp_path, monkeypatch
+):
+    from infralens import cloud, handlers
+    from infralens.reporting import write_report
+
+    monkeypatch.setattr(cloud, "upload_files", lambda *args: None)
+    monkeypatch.setattr(
+        handlers,
+        "write_report",
+        lambda path, text: write_report(path, text.replace("\n", "\r\n")),
+    )
+    output = tmp_path / "report.json"
+    response = runner.invoke(app, args(project, output))
+    assert response.exit_code == 0, response.output
+    artifact = json.loads(Path(str(output) + ".upload.json").read_text())["manifest"][
+        "artifact"
+    ]
+    assert artifact["size_bytes"] == len(output.read_bytes())
+    assert artifact["sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize("fixture", ["drift", "drift-review", "network-rules"])
+def test_real_cli_report_and_manifest_match_exported_api_contract(
+    tmp_path, monkeypatch, fixture
+):
+    from jsonschema import Draft202012Validator
+
+    from infralens import cloud
+
+    root = Path(__file__).resolve().parents[1]
+    project = root / "examples" / fixture
+    output = tmp_path / "report.json"
+    monkeypatch.setattr(cloud, "upload_files", lambda *args: None)
+    result = runner.invoke(
+        app,
+        [
+            "drift",
+            str(project),
+            "--plan-json",
+            str(project / "plan.json"),
+            "--format",
+            "json",
+            "--output",
+            str(output),
+            "--upload",
+            "--project",
+            "demo",
+            "--scope",
+            "dev-default",
+            "--api-url",
+            API,
+            "--fail-on-priority",
+            "high",
+            "--fail-on-unknown",
+        ],
+    )
+    assert result.exit_code in (0, 1), result.output
+    spec = json.loads((root / "contracts/openapi.json").read_text())
+    manifest = json.loads(Path(str(output) + ".upload.json").read_text())["manifest"]
+    for name, document in [
+        ("DriftReport", json.loads(output.read_text())),
+        ("RunInput", manifest),
+    ]:
+        Draft202012Validator(
+            {"$ref": f"#/components/schemas/{name}", "components": spec["components"]}
+        ).validate(document)

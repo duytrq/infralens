@@ -81,7 +81,7 @@ def handle_drift(options: DriftOptions) -> None:
     if options.upload is not None:
         from infralens import cloud
 
-        saved = cloud.save_manifest(data, report, options, started, finished)
+        saved = cloud.save_manifest(data, options, started, finished)
         typer.echo(f"Upload manifest saved to {str(saved)!r}.", err=True)
         cloud.upload_files(options.output, saved, options.upload.api_url)
     if result.trace and result.trace["has_errors"]:
