@@ -2,11 +2,12 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
 
-from infralens.errors import ExecutionError
+from infralens.errors import ExecutionCancelled, ExecutionError
 from infralens.process import run_process
 
 
@@ -59,6 +60,50 @@ def test_timeout_terminates_descendants(tmp_path):
 def test_missing_executable_is_controlled(tmp_path):
     with pytest.raises(ExecutionError, match="could not start"):
         run_process([str(tmp_path / "missing")], cwd=tmp_path, timeout=5)
+
+
+def test_cancellation_terminates_process_tree(tmp_path):
+    marker, ready = tmp_path / "survived-cancel", tmp_path / "ready-cancel"
+    child = (
+        "import time; from pathlib import Path; time.sleep(1); "
+        + f"Path({str(marker)!r}).touch()"
+    )
+    script = (
+        "import subprocess,sys,time; from pathlib import Path; "
+        f"subprocess.Popen([sys.executable,'-c',{child!r}]); "
+        f"Path({str(ready)!r}).touch(); time.sleep(30)"
+    )
+    cancel = threading.Event()
+
+    def controller():
+        deadline = time.monotonic() + 3
+        while not ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        cancel.set()
+
+    thread = threading.Thread(target=controller)
+    thread.start()
+    try:
+        with pytest.raises(ExecutionCancelled):
+            run_process(
+                [sys.executable, "-c", script], cwd=tmp_path, timeout=5, cancel=cancel
+            )
+    finally:
+        thread.join()
+    time.sleep(1.1)
+    assert not marker.exists()
+
+
+def test_pre_cancelled_process_does_not_start(tmp_path, monkeypatch):
+    cancel = threading.Event()
+    cancel.set()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Cancelled work must not start")
+
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    with pytest.raises(ExecutionCancelled):
+        run_process([sys.executable], cwd=tmp_path, timeout=5, cancel=cancel)
 
 
 def test_runner_passes_explicit_environment(tmp_path):

@@ -17,7 +17,7 @@ runner = CliRunner()
 SECRET = "PRIVATE_TERRAFORM_VALUE_123"
 
 
-def test_drift_has_no_external_calls_or_file_changes(project, monkeypatch):
+def test_invalid_trace_has_no_external_calls_or_file_changes(project, monkeypatch):
     command = "drift"
     (project / "main.tf").write_text(SECRET)
     variables = project / "dev.tfvars"
@@ -40,12 +40,15 @@ def test_drift_has_no_external_calls_or_file_changes(project, monkeypatch):
                 "--verbose",
                 command,
                 str(project),
+                "--trace",
+                "--lookback-days",
+                "91",
                 "--output",
                 str(project / "reports" / "report.json"),
                 *(["--var-file", variables.name] if command == "drift" else []),
             ],
         )
-    assert result.exit_code == 4
+    assert result.exit_code == 2
     assert result.stdout == ""
     assert SECRET not in result.output
     assert before == {
@@ -149,7 +152,12 @@ def test_plain_help_and_errors(args, prefix, env):
 
 
 @pytest.mark.parametrize("entry", ["console", "module"])
-def test_installed_entrypoints(entry, project, tmp_path, fake_trivy):
+def test_installed_entrypoints(
+    entry, project, tmp_path, fake_trivy, fake_terraform, monkeypatch
+):
+    monkeypatch.setenv(
+        "PATH", os.environ["PATH"] + os.pathsep + str(fake_trivy.parent / "bin")
+    )
     prefix = (
         [
             str(
@@ -165,7 +173,7 @@ def test_installed_entrypoints(entry, project, tmp_path, fake_trivy):
         ([], 0, "Usage:"),
         (["--version"], 0, "infralens 0.1.0"),
         (["scan", str(project)], 0, "Security scan"),
-        (["drift", str(project), "--trace"], 4, "CloudTrail trace"),
+        (["drift", str(project), "--trace"], 0, "CloudTrail trace: not_needed"),
         (["drift"], 2, "Missing argument"),
     ]
     for args, code, message in cases:

@@ -35,3 +35,11 @@ smoke, private S3/header/cache/deep-link checks, two-release rollback and restor
 demo login and deployment inventory all passed. The prior AWS account block is
 resolved; the failed stack and its verified empty retained bucket were removed.
 See frontend-verification.md and infra/deployments/infralens-dev-frontend-verification.json.
+
+## Drift integration (see drift-integration-plan.md)
+
+- [x] 1. Port drift engine and retain scanner/process regressions.
+- [ ] 2. Backend drift contract, upload lifecycle, history and report API.
+- [ ] 3. CLI PKCE/CI token authentication, sanitized upload and manifest retry.
+- [ ] 4. Backend comparison and React history/report/comparison flows.
+- [ ] 5. Full verification, documentation, compatibility and final review.

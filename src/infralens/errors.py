@@ -31,6 +31,10 @@ class ExecutionError(Exception):
     """A safe, controlled failure while running an engine or exporting a report."""
 
 
+class ExecutionCancelled(ExecutionError):
+    """Cooperative cancellation requested by a backend worker."""
+
+
 def report_unexpected(exc: Exception) -> None:
     typer.echo(
         "Error: Unexpected execution error. Use --verbose for stack frames.", err=True

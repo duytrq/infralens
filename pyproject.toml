@@ -9,6 +9,7 @@ description = "Terraform security scanning with Trivy and a CLI foundation for d
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "python-hcl2>=8.1.4,<9",
     "pywin32>=310,<400 ; sys_platform == 'win32'",
     "typer>=0.24,<1",
 ]
@@ -16,8 +17,12 @@ dependencies = [
 [project.scripts]
 infralens = "infralens.cli:main"
 
+[project.optional-dependencies]
+aws-trace = ["boto3>=1.40,<2"]
+
 [dependency-groups]
 dev = [
+    "boto3>=1.40,<2",
     "distlib>=0.4,<1",
     "jsonschema>=4,<5",
     "pytest>=8,<10",
@@ -38,6 +43,7 @@ markers = [
     "integration: requires a real Trivy 0.76.x binary",
     "network: integration checks that download remote Terraform modules",
     "docker: requires a working Docker daemon and a built InfraLens image",
+    "terraform: requires a real Terraform >=1.1,<2 executable",
 ]
 
 [tool.ruff]

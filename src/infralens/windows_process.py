@@ -15,12 +15,17 @@ import win32pipe
 import win32process
 import winerror
 
-from infralens.errors import ExecutionError
+from infralens.errors import ExecutionCancelled, ExecutionError
 from infralens.process import ProcessResult
 
 
 def run_windows_process(
-    arguments: list[str], *, cwd: Path, timeout: float, env: dict[str, str] | None
+    arguments: list[str],
+    *,
+    cwd: Path,
+    timeout: float,
+    env: dict[str, str] | None,
+    cancel: threading.Event | None = None,
 ) -> ProcessResult:
     handles = []
     readers = []
@@ -113,6 +118,8 @@ def run_windows_process(
         started = True
         deadline = time.monotonic() + timeout
         while win32event.WaitForSingleObject(process, 50) == win32event.WAIT_TIMEOUT:
+            if cancel is not None and cancel.is_set():
+                raise ExecutionCancelled("Execution cancelled.")
             if time.monotonic() >= deadline:
                 raise ExecutionError(
                     f"External tool timed out after {timeout:g} seconds."

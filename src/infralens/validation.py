@@ -140,6 +140,41 @@ def output_path(path: Path | None, inputs: tuple[Path, ...]) -> Path | None:
     return path
 
 
+def drift_output_path(
+    path: Path | None, directory: Path, inputs: tuple[Path, ...]
+) -> Path | None:
+    if path is None:
+        return None
+    protected = list(inputs)
+    configured_data = Path(os.environ.get("TF_DATA_DIR") or ".terraform")
+    active_data = resolve_path(directory / configured_data, "TF_DATA_DIR")
+    for data_directory in {directory / ".terraform", active_data}:
+        for metadata in (
+            data_directory / "terraform.tfstate",
+            data_directory / "modules" / "modules.json",
+        ):
+            if metadata.is_file():
+                protected.append(metadata)
+
+    def walk_error(error: OSError) -> None:
+        raise InvalidInput("PATH: cannot enumerate files to protect drift inputs.")
+
+    for root, names, files in os.walk(directory, onerror=walk_error):
+        names[:] = [name for name in names if name not in (".git", ".terraform")]
+        for name in files:
+            source = Path(root) / name
+            if _scan_input(name) and source.is_file():
+                protected.append(source)
+    destination = scan_output_path(path, tuple(protected))
+    if destination is not None and destination.is_relative_to(active_data):
+        raise InvalidInput("--output: must not be inside the Terraform data directory.")
+    if destination is not None and any(
+        name.lower() in (".terraform", ".git") for name in destination.parts
+    ):
+        raise InvalidInput("--output: must not be inside .terraform or .git.")
+    return destination
+
+
 def severity_filter(value: str) -> tuple[str, ...]:
     selected = tuple(dict.fromkeys(part.strip().upper() for part in value.split(",")))
     if any(part not in SEVERITIES for part in selected):
@@ -160,6 +195,15 @@ def failure_threshold(value: str | None) -> str | None:
     return value
 
 
+def drift_priority_threshold(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip().lower()
+    if value not in ("high", "medium"):
+        raise InvalidInput("--fail-on-priority: use high or medium.")
+    return value
+
+
 def optional_text(value: str | None, parameter: str) -> str | None:
     if value is None:
         return None
@@ -170,8 +214,10 @@ def optional_text(value: str | None, parameter: str) -> str | None:
 
 
 def trace_lookback(trace: bool, days: int | None) -> int | None:
-    if days is not None and (not trace or days <= 0):
-        raise InvalidInput("--lookback-days: requires --trace and a positive integer.")
+    if days is not None and (not trace or not 1 <= days <= 90):
+        raise InvalidInput(
+            "--lookback-days: requires --trace and an integer from 1 to 90."
+        )
     return (7 if days is None else days) if trace else None
 
 

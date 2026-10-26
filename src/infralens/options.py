@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from threading import Event
 
 SEVERITIES = ("UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL")
 
@@ -40,3 +41,10 @@ class DriftOptions:
     trace: bool
     lookback_days: int | None
     fail_on_drift: bool
+    timeout: int = 300
+    plan_json: Path | None = None
+    workspace: str | None = None
+    data_dir: Path | None = None
+    cancel: Event | None = None
+    fail_on_priority: str | None = None
+    fail_on_unknown: bool = False
