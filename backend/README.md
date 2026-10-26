@@ -1,8 +1,9 @@
 # Backend lưu trữ InfraLens
 
 Backend cung cấp API quản lý project, metadata lần scan, findings và báo cáo JSON trên AWS.
-Mỗi tài khoản Cognito có dữ liệu riêng. Dashboard và tích hợp các lệnh `cloud` /
-`scan --upload` trong CLI là bước tiếp theo; CLI hiện tại vẫn chỉ scan và xuất local.
+Mỗi tài khoản Cognito có dữ liệu riêng. Dashboard React đọc cả security và drift;
+CLI hỗ trợ `drift --upload` và `cloud upload` để retry. Security `scan --upload`
+chưa tích hợp. [Luồng drift](../docs/DRIFT_INTEGRATION.md) mô tả contract và vận hành.
 
 ## Kiến trúc
 
@@ -259,4 +260,5 @@ lý riêng; không có lệnh tự động xóa tài nguyên production.
 
 Projects with latest scan, paginated findings, background indexing, retry,
 separate browser login and CORS are documented in [DASHBOARD.md](DASHBOARD.md).
-The CLI cloud integration and dashboard frontend remain separate deliverables.
+Drift uses the same storage and ownership boundary with a separate report schema;
+it bypasses Trivy indexing. See [drift integration](../docs/DRIFT_INTEGRATION.md).

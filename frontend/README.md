@@ -2,7 +2,7 @@
 
 Dev dashboard: **https://ddsw2osqv2rj2.cloudfront.net**. Localhost login remains supported.
 
-Private English-language Terraform security dashboard. React + Vite + TypeScript,
+Private English-language Terraform security and drift dashboard. React + Vite + TypeScript,
 React Router, TanStack Query and oidc-client-ts. It reads the existing backend;
 the browser does not upload or parse full Trivy reports.
 
@@ -74,8 +74,16 @@ at 320/768/1024/1440px. `test-results/` contains local screenshots and traces.
   finish later. It does not delete the project.
 - Findings render plain text only. References permit HTTP(S), and missing source
   locations are shown as unavailable. Truncation is labeled; original JSON is full.
-- CLI cloud upload is not implemented. Ready reports must already have been
-  ingested through the backend API or operator smoke tooling.
+- Drift reports arrive through `infralens drift --upload`; security uploads still
+  use the backend API or operator smoke tooling. Projects have Security/Drift tabs.
+- Drift reports show saved/observed values, source blocks, review priorities,
+  CI gates, network context and candidate CloudTrail events. The browser reads
+  one normalized report (at most 2 MiB); resource filtering/paging runs locally.
+- Drift comparison stays within the same project/scope/input mode, pins the
+  baseline during pagination and preserves unknown/sensitive uncertainty.
+- Pending drift uploads poll with bounded backoff for up to 20 minutes and pause
+  in hidden tabs. Failed/partial collection is never presented as a clean result.
+- See [drift CLI/API and rollout](../docs/DRIFT_INTEGRATION.md).
 
 ## AWS deployment and rollback
 

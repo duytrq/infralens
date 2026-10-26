@@ -3,10 +3,16 @@
 ## Unreleased
 
 ### Added
+- Terraform drift engine, optional CloudTrail candidates, source locations,
+  review priorities and CI gates, integrated from drift_develop.
+- Drift upload with memory-only Cognito PKCE or supplied CI access tokens,
+  project-relative source paths and immutable manifests for upload retries.
+- Private AWS drift storage, validated report summaries, scoped comparisons,
+  and React history/report/comparison views alongside security scans.
 - Independent Cognito-authenticated storage backend, private per-user projects and
   scan history, immutable JSON uploads, validation, downloads and recoverable deletion.
 - SAM infrastructure, exported OpenAPI contract, backend quality workflow and
-  browser-PKCE smoke tool; scanner CLI cloud commands remain a separate integration.
+  browser-PKCE smoke tool; security scan upload remains a separate integration.
 - Deployment tags, a tracked Lambda artifacts stack, live resource inventory and
   a cleanup runbook covering retained buckets, DynamoDB and Cognito resources.
 - Linux/WSL x64 and Windows x64 wheels containing official Trivy 0.76.0.

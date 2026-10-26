@@ -2,9 +2,10 @@
 
 CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tầng.
 
-**Security scan đã hoạt động bằng Trivy.** Drift và CloudTrail trace hiện chỉ
-validate đầu vào rồi trả mã `4`. [Backend lưu trữ cloud](backend/README.md) cung cấp
-API Cognito/S3/DynamoDB và SAM template; các lệnh cloud/upload trong CLI chưa tích hợp.
+Security scan dùng Trivy; drift dùng Terraform refresh-only, có CloudTrail trace,
+review priority và CI gate. [Backend cloud](backend/README.md) dùng
+Cognito/S3/DynamoDB; CLI có thể upload drift và retry bằng manifest.
+Xem [hướng dẫn drift tích hợp](docs/DRIFT_INTEGRATION.md).
 
 [Dashboard frontend](frontend/README.md) cung cấp giao diện React cho project,
 lịch sử scan và findings; triển khai bằng [S3 private + CloudFront/OAC](infra/FRONTEND.md).
@@ -251,14 +252,29 @@ infralens drift ./infra --profile dev --region ap-southeast-1
 infralens drift ./infra --trace --lookback-days 14
 ```
 
-Drift hiện validate đầu vào rồi trả mã `4`: thông báo engine chưa triển khai,
-hoặc CloudTrail trace chưa hỗ trợ khi có `--trace`. Lỗi đầu vào được báo trước.
-Không kiểm tra binary/credentials, gọi Terraform/AWS, đọc nội dung state/tfvars
-hoặc tạo báo cáo cho drift.
+Terraform ổn định >=1.1,<2 phải có trên PATH; dự án đã init, chọn workspace và
+xác thực backend/provider. InfraLens chạy refresh-only plan và đọc `resource_drift`,
+không tự init/apply hoặc ghi lại state. Docker/wheel scanner không bundle Terraform.
+`--plan-json` đọc Terraform show JSON có sẵn; freshness và coverage của file import
+chưa được xác minh. `--trace` vẫn cần AWS khi import.
+
+```bash
+infralens drift ./infra --plan-json ./plan.json --format json
+infralens drift ./infra --fail-on-priority high --fail-on-unknown
+infralens drift ./infra --format json --output ./reports/drift.json \
+  --upload --project my-project --scope dev-default \
+  --api-url https://API_ID.execute-api.ap-southeast-1.amazonaws.com
+```
+
+Tạo project trên dashboard trước khi upload. CLI đăng nhập Cognito qua browser;
+CI truyền access token còn hạn bằng `INFRALENS_ACCESS_TOKEN`. Báo cáo cloud tối đa
+2 MiB; source location thành đường dẫn tương đối. Manifest `<output>.upload.json`
+cho phép retry mà không chạy lại engine. Security `scan --upload` chưa có.
 
 `--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
 Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`
-là số nguyên dương, chỉ dùng cùng trace; mặc định 7 khi trace bật.
+nhận 1–90, chỉ dùng cùng trace; mặc định 7 khi trace bật. Trace cần extra
+`aws-trace` hoặc bổ sung boto3 vào môi trường cài CLI.
 
 ## Logging và exit code
 
@@ -269,10 +285,10 @@ Trivy, exception payload, source, credentials hoặc environment.
 | Mã | Ý nghĩa |
 | --- | --- |
 | `0` | Thành công; findings không vượt ngưỡng hoặc không đặt ngưỡng. |
-| `1` | Findings đạt/vượt fail-on. |
+| `1` | Security findings hoặc drift khớp gate đã chọn. |
 | `2` | Sai cú pháp hoặc đầu vào không hợp lệ. |
-| `3` | Thiếu/sai phiên bản Trivy, lỗi scan/convert/JSON, timeout hoặc I/O. |
-| `4` | Drift engine hoặc trace chưa triển khai. |
+| `3` | Lỗi công cụ/JSON, CloudTrail, upload, timeout hoặc I/O. |
+| `4` | Dành cho feature unavailable; drift hiện đã triển khai. |
 | `130` | Người dùng ngắt bằng Ctrl+C. |
 
 Lỗi thực thi/ghi báo cáo ưu tiên hơn trạng thái findings. Timeout và Ctrl+C

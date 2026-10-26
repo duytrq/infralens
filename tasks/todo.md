@@ -41,5 +41,5 @@ See frontend-verification.md and infra/deployments/infralens-dev-frontend-verifi
 - [x] 1. Port drift engine and retain scanner/process regressions.
 - [x] 2. Backend drift contract, upload lifecycle, history and report API.
 - [x] 3. CLI PKCE/CI token authentication, sanitized upload and manifest retry.
-- [ ] 4. Backend comparison and React history/report/comparison flows.
-- [ ] 5. Full verification, documentation, compatibility and final review.
+- [x] 4. Backend comparison and React history/report/comparison flows.
+- [x] 5. Full verification, documentation, compatibility and final review.
