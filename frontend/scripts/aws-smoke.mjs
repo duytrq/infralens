@@ -231,8 +231,119 @@ try {
     const downloaded = await attachment;
     assert.deepEqual(await readFile(await downloaded.path()), report);
     checks.push(`dashboard_history_detail_download:${origin}`);
+    stage = "drift ingestion and comparison";
+    const driftRuns = [];
+    for (const observed of ["t3.small", "t3.medium"]) {
+      const timestamp = new Date().toISOString();
+      const driftReport = {
+        schema_version: "1.0",
+        kind: "drift",
+        terraform_version: "1.15.7",
+        input_mode: "imported_plan",
+        checked_at: timestamp,
+        has_drift: true,
+        summary: { resources: 1, attributes: 1 },
+        resources: [{
+          address: "aws_instance.smoke",
+          resource_type: "aws_instance",
+          actions: ["update"],
+          identifiers: {},
+          attributes: [{
+            path: ["instance_type"],
+            before: { status: "known", value: "t3.micro" },
+            after: { status: "known", value: observed },
+          }],
+          source: {
+            status: "located",
+            context: "current_configuration",
+            block_address: "aws_instance.smoke",
+            locations: [{ file: "main.tf", start_line: 1, end_line: 4, syntax: "hcl" }],
+          },
+        }],
+        normalizations: [],
+        notes: ["Deployment verification fixture; no infrastructure was changed."],
+      };
+      const bytes = Buffer.from(JSON.stringify(driftReport));
+      const driftMetadata = {
+        schema_version: 1,
+        run_id: randomUUID(),
+        project_id: project,
+        run_type: "drift",
+        scope: "deployment-smoke",
+        started_at: timestamp,
+        finished_at: timestamp,
+        duration_ms: 0,
+        source: { relative_path: "." },
+        tool: { infralens_version: "0.1.0", engine: "terraform", engine_version: "1.15.7" },
+        drift_options: {
+          input_mode: "imported_plan",
+          trace: false,
+          lookback_days: null,
+          gate: { any_drift: false, minimum_priority: null, unknown_priority: false },
+        },
+        result: {
+          collection_status: "completed",
+          has_drift: true,
+          summary: driftReport.summary,
+          priority_counts: { high: 0, medium: 0, unknown: 1 },
+          gate_status: "disabled",
+          trace_status: "disabled",
+        },
+        artifact: {
+          format: "json",
+          content_type: "application/json",
+          size_bytes: bytes.length,
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+          schema_version: "1.0",
+        },
+      };
+      const registered = await api(ownerToken, "POST", "/v1/runs", driftMetadata, [201]);
+      runs.push(driftMetadata.run_id);
+      const put = await fetch(registered.upload.url, {
+        method: "PUT", headers: registered.upload.headers, body: bytes,
+      });
+      assert.equal(put.status, 200, "Signed drift upload failed");
+      const completed = await api(ownerToken, "POST", `/v1/runs/${driftMetadata.run_id}/complete`);
+      assert.equal(completed.upload_status, "ready");
+      assert.equal(completed.analysis, undefined);
+      assert.deepEqual(await api(ownerToken, "GET", `/v1/runs/${driftMetadata.run_id}/drift/report`), driftReport);
+      driftRuns.push({ id: driftMetadata.run_id, bytes });
+    }
+    const currentDrift = driftRuns[1];
+    const comparison = await api(ownerToken, "GET", `/v1/runs/${currentDrift.id}/drift/comparison`);
+    assert.equal(comparison.status, "compared");
+    assert.equal(comparison.baseline_run_id, driftRuns[0].id);
+    assert.equal(comparison.summary.changed, 1);
+    const securityHistory = await api(ownerToken, "GET", `/v1/runs?project_id=${project}`);
+    assert.deepEqual(securityHistory.items.map((run) => run.run_id), [metadata.run_id]);
+    const driftHistory = await api(ownerToken, "GET", `/v1/runs?project_id=${project}&run_type=drift&scope=deployment-smoke`);
+    assert.equal(driftHistory.items.length, 2);
+    checks.push(`drift_signed_upload_report_comparison_isolation:${origin}`);
+    stage = "drift dashboard and download";
+    await owner.page.goto(origin + `/projects/${project}`);
+    await owner.page.getByRole("link", { name: "Drift", exact: true }).click();
+    await owner.page.getByRole("link", { name: `Open drift ${currentDrift.id.slice(0, 8)}` }).click();
+    await owner.page.getByRole("heading", { name: `Drift ${currentDrift.id.slice(0, 8)}`, exact: true }).waitFor();
+    await owner.page.getByRole("region", { name: "Resource changes" }).getByText('"t3.medium"', { exact: true }).waitFor();
+    await owner.page.getByRole("region", { name: "Compared resources" }).getByText("changed", { exact: true }).waitFor();
+    await owner.page.reload();
+    await owner.page.getByRole("region", { name: "Drift summary" }).waitFor();
+    const driftAttachment = owner.page.waitForEvent("download");
+    await owner.page.getByRole("button", { name: "Download JSON" }).click();
+    assert.deepEqual(await readFile(await (await driftAttachment).path()), currentDrift.bytes);
+    await owner.page.screenshot({
+      path: `${input.screenshot_directory}/aws-drift-${new URL(origin).hostname}.png`,
+      fullPage: true,
+    });
+    checks.push(`drift_dashboard_deep_link_download:${origin}`);
     stage = "cross-user ownership";
     const other = await signIn(origin, input.accounts[1]);
+    for (const suffix of ["", "/drift/report", "/drift/comparison", "/artifacts/json"])
+      await api(other.tokens.access_token, "GET", `/v1/runs/${currentDrift.id}${suffix}`, undefined, [404]);
+    for (const run of driftRuns)
+      await api(ownerToken, "DELETE", `/v1/runs/${run.id}`, undefined, [202, 204]);
+    await api(ownerToken, "GET", `/v1/runs/${currentDrift.id}/drift/report`, undefined, [404]);
+    checks.push(`drift_cross_user_isolation_and_deletion:${origin}`);
     const findings = await api(
       ownerToken,
       "GET",
@@ -258,6 +369,7 @@ try {
       .waitFor();
     checks.push(`cross_user_api_and_ui_isolation:${origin}`);
     stage = "retry and delete";
+    await owner.page.goto(origin + `/runs/${metadata.run_id}`);
     await api(
       ownerToken,
       "POST",
