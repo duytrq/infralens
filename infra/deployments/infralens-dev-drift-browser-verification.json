@@ -1,0 +1,44 @@
+{
+  "status": "passed",
+  "checks": [
+    "real_pkce_login:https://ddsw2osqv2rj2.cloudfront.net",
+    "stream_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+    "dashboard_history_detail_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_signed_upload_report_comparison_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_dashboard_deep_link_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_cross_user_isolation_and_deletion:https://ddsw2osqv2rj2.cloudfront.net",
+    "cross_user_api_and_ui_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "retry_and_delete:https://ddsw2osqv2rj2.cloudfront.net",
+    "logout_revocation:https://ddsw2osqv2rj2.cloudfront.net",
+    "real_pkce_login:http://localhost:5173",
+    "stream_indexing:http://localhost:5173",
+    "dashboard_history_detail_download:http://localhost:5173",
+    "drift_signed_upload_report_comparison_isolation:http://localhost:5173",
+    "drift_dashboard_deep_link_download:http://localhost:5173",
+    "drift_cross_user_isolation_and_deletion:http://localhost:5173",
+    "cross_user_api_and_ui_isolation:http://localhost:5173",
+    "retry_and_delete:http://localhost:5173",
+    "logout_revocation:http://localhost:5173"
+  ],
+  "run_ids": [
+    "5ce1901b-2c38-4d1d-9f99-7de855cf0620",
+    "1d0194a6-2f67-4a15-b689-b18c3ab4a356",
+    "81e21ca6-5cb9-411d-b2bb-38221d72ae9a",
+    "e1dab42d-2a1d-4a7e-a47b-1dcbe3fce1de",
+    "5bff31e5-9e77-4d36-bec0-5c428f3fb626",
+    "bb38d8c0-7bb4-48d3-b3c8-2799aae3c69d"
+  ],
+  "checked_at": "2026-10-27T10:04:41.244365+00:00",
+  "account": "695650811791",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "origins": [
+    "https://ddsw2osqv2rj2.cloudfront.net",
+    "http://localhost:5173"
+  ],
+  "temporary_accounts": 2,
+  "cloudfront_included": true,
+  "build_mode": "production",
+  "temporary_users_removed": 2,
+  "project_rows_removed": 2,
+  "run_cleanup": "Protected tombstones/derived data use scheduled backend cleanup"
+}

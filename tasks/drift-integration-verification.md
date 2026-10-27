@@ -52,14 +52,39 @@ timestamp-based Python bytecode cached after the source was restored; its genera
 cache was cleared, then the focused transport test and the full 580-test CLI suite
 passed again against the restored source.
 
+## Dev deployment (2026-10-27)
+
+- Backend `infralens-dev` reached `UPDATE_COMPLETE` in account 695650811791,
+  ap-southeast-1. Three Lambda packages were updated and two JWT-protected Drift
+  routes added; storage tables, reports bucket and Cognito identities were retained.
+- Published frontend release `20261027T100344Z-d9e3b434ac36` from a clean worktree
+  at https://ddsw2osqv2rj2.cloudfront.net. Backend tests: 157 passed; publish checks:
+  generated contract, lint, types, 14 unit tests, 36 browser tests, audit and build passed.
+- Real Cognito PKCE, API Gateway, signed S3 upload/download, security stream indexing,
+  Drift history/report/comparison, browser deep links, owner isolation, deletion and
+  logout passed on CloudFront and localhost: 18 checks. Two temporary users and
+  their project rows were removed; test runs were deleted through protected cleanup.
+- CDN file hashes match the archived release; HTML is no-store, assets immutable,
+  direct S3 access denied, missing assets do not return HTML, CORS limited to registered
+  origins. Both Drift routes require the `infralens/api` JWT scope.
+- Previous frontend archive checksums were verified; the previous backend template
+  was archived in the retained artifacts bucket. No rollback was needed or executed.
+- Post-deploy Lambda metrics showed zero errors/throttles in the observed ten-minute
+  window. Inventory checked tags on 21 resources across all three stacks.
+
+Evidence: [browser smoke](../infra/deployments/infralens-dev-drift-browser-verification.json),
+[release checks and rollback archive](../infra/deployments/infralens-dev-drift-release-verification.json),
+and [inventory](../infra/deployments/infralens-dev.json).
+
 ## Limits of this verification
 
-- No AWS deployment or live Cognito/S3/CloudTrail smoke was performed. The existing
-  dev dashboard/API stay on their deployed release until an operator rolls out
-  backend then frontend and performs the documented authenticated smoke.
+- Live deployment smoke used synthetic security and imported Drift reports. It proves
+  the deployed reporting workflow, not actual AWS infrastructure changes or CloudTrail
+  lookup. Real Terraform tests above used isolated local resources.
 - Backend service tests use Moto and trusted API Gateway claim fixtures. They do
   not prove live JWT authorizer, bucket-policy or presigned signature behavior.
 - Windows newline behavior has a regression test; actual Windows runtime and
   Windows wheel execution require the existing Windows CI matrix. Docker was not
   rebuilt in this session; Terraform remains external to the scanner image.
-- Generated local artifacts are not published. Changes are on feature/drift-integration.
+- CLI wheels and Docker images were not published by this dashboard deployment.
+  Changes are on feature/drift-integration.

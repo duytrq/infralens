@@ -1,6 +1,10 @@
 # Frontend operations
 
 Published dev dashboard: **https://ddsw2osqv2rj2.cloudfront.net**.
+Security and Drift are published together as release
+`20261027T100344Z-d9e3b434ac36` (2026-10-27). Real Cognito/API/S3 browser smoke
+passed on CloudFront and localhost; see the
+[Drift rollout evidence](../tasks/drift-integration-verification.md#dev-deployment-2026-10-27).
 Distribution `E3L2AM9X65Z1OP`; bucket
 `infralens-dev-frontend-frontendbucket-vhzky2sdozev` remains private.
 Real browser smoke, CDN cache/security checks and release rollback have passed;

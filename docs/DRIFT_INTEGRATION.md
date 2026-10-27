@@ -125,6 +125,12 @@ tiếp tục phân trang. Budget lookup hết trả lỗi retryable, không gi�
 
 ## Kiểm chứng và rollout
 
+Dev đã deploy cả backend và frontend ngày 2026-10-27. Mở
+[dashboard](https://ddsw2osqv2rj2.cloudfront.net), đăng nhập, chọn project rồi chọn
+tab **Security** hoặc **Drift**. Tab Drift hiển thị báo cáo đã upload bằng CLI/CI.
+Release hiện tại: `20261027T100344Z-d9e3b434ac36`; kiểm tra trực tiếp Cognito/API/S3
+và cả hai luồng trên CloudFront đã pass.
+
 ```bash
 uv run --locked pytest -q
 uv run --locked pytest -q tests/integration/test_terraform_integration.py \
