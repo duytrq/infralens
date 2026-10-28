@@ -43,3 +43,12 @@ See frontend-verification.md and infra/deployments/infralens-dev-frontend-verifi
 - [x] 3. CLI PKCE/CI token authentication, sanitized upload and manifest retry.
 - [x] 4. Backend comparison and React history/report/comparison flows.
 - [x] 5. Full verification, documentation, compatibility and final review.
+
+## Security scan upload
+
+- [x] 1. Add opt-in JSON scan upload with full findings, thresholds and metadata.
+- [x] 2. Share resumable upload transport with Drift; validate type, bytes and limits.
+- [x] 3. Cover scanner failures, gates, filters, native newline checksums and retries.
+- [x] 4. Verify real Trivy, AWS/browser ingestion and installed wheel; update user guide.
+
+Evidence: [security-upload-verification.md](security-upload-verification.md).

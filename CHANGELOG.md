@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- Security `scan --upload` through Cognito and the existing API, full native JSON
+  independent of terminal severity filters, 50 MiB limit and immutable retry manifests.
+- Shared `cloud upload` retries for Security/Drift without rerunning either engine;
+  live browser smoke can exercise real CLI Security scan/upload, gate failure and retry.
 - Terraform drift engine, optional CloudTrail candidates, source locations,
   review priorities and CI gates, integrated from drift_develop.
 - Drift upload with memory-only Cognito PKCE or supplied CI access tokens,
@@ -12,7 +16,7 @@
 - Independent Cognito-authenticated storage backend, private per-user projects and
   scan history, immutable JSON uploads, validation, downloads and recoverable deletion.
 - SAM infrastructure, exported OpenAPI contract, backend quality workflow and
-  browser-PKCE smoke tool; security scan upload remains a separate integration.
+  browser-PKCE smoke tool.
 - Deployment tags, a tracked Lambda artifacts stack, live resource inventory and
   a cleanup runbook covering retained buckets, DynamoDB and Cognito resources.
 - Linux/WSL x64 and Windows x64 wheels containing official Trivy 0.76.0.

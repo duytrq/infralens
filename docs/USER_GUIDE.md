@@ -22,7 +22,7 @@ Hướng dẫn áp dụng cho bản tích hợp Security/Drift, cập nhật ng�
 | Kiểm tra Drift trên hạ tầng thật | InfraLens CLI, Terraform ổn định `>=1.1,<2`, project đã init và quyền truy cập backend/provider. |
 | Thử Drift bằng plan JSON có sẵn | InfraLens CLI và bộ ví dụ; không cần Terraform hoặc AWS nếu không bật trace. |
 | Tìm sự kiện CloudTrail | Thư viện `boto3`, AWS credentials và quyền tra cứu CloudTrail trong phạm vi cần kiểm tra. |
-| Upload Drift | Có mạng, project đã tạo và tài khoản Cognito tương ứng. |
+| Upload Security/Drift | Có mạng, project đã tạo và tài khoản Cognito tương ứng. |
 
 **AWS CLI không bắt buộc.** Với hạ tầng AWS, Terraform và boto3 có thể sử dụng
 credentials từ biến môi trường, profile có sẵn hoặc IAM role trên runner.
@@ -31,7 +31,7 @@ Tài khoản dashboard không cấp quyền truy cập AWS cho Terraform.
 
 ### Cài từ wheel được cung cấp
 
-Nhận wheel **bản đã tích hợp Drift/upload** từ người phụ trách hệ thống.
+Nhận wheel **bản đã tích hợp Security/Drift upload** từ người phụ trách hệ thống.
 Package chưa được phát hành lên PyPI; không dùng `pip install infralens` để giả
 định nhận đúng bản của hệ thống này. Cần Python **>=3.10** và công cụ `uv`.
 
@@ -55,7 +55,7 @@ Nếu nhận wheel tên khác, thay bằng đúng tên file được cấp. Whee
 không bundle Trivy: muốn quét Security phải có Trivy 0.76.x trên PATH.
 Wheel không bundle Terraform. Nếu nhận mã nguồn thay vì wheel, xem
 [cách cài từ mã nguồn](../README.md#cài-từ-mã-nguồn-và-dùng-cli-ở-nhiều-repo).
-Mã nguồn cũng phải là revision có tính năng Drift/upload; cài từ nhánh mặc định
+Mã nguồn cũng phải là revision có `scan --upload` và Drift/upload; cài từ nhánh mặc định
 không bảo đảm nhận được bản tích hợp này.
 
 Không tìm thấy lệnh sau khi cài? Chạy `uv tool update-shell`, mở terminal mới rồi
@@ -109,13 +109,30 @@ infralens scan ./infra --format json --output ./reports/security.json --fail-on 
 Exit `1` trong trường hợp này nghĩa là findings vượt ngưỡng; báo cáo vẫn được xuất.
 `--severity` chỉ lọc nội dung hiển thị, không làm giảm phạm vi đánh giá `--fail-on`.
 
-**Đưa Security lên dashboard:** bản CLI hiện tại chưa có `scan --upload` và
-dashboard chưa có nút import báo cáo. Các lệnh trên tạo báo cáo local.
-Dashboard Security đọc báo cáo đã được pipeline/client gửi qua API của hệ thống;
-nếu nhóm chưa cấu hình bước này, tab sẽ chưa có dữ liệu. Người phụ trách pipeline
-có thể tham khảo [API upload](../backend/README.md) và
-[dashboard API](../backend/DASHBOARD.md). `cloud upload` hiện chỉ retry Drift,
-không dùng để upload file Security vừa xuất.
+### Đưa Security lên dashboard
+
+Tạo project theo mục 2, sau đó chạy (có thể dùng nguyên một dòng trên Bash/PowerShell):
+
+```bash
+infralens scan ./infra --format json --output ./reports/security-001.json --fail-on HIGH --upload --project my-app --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+```
+
+CLI mở trình duyệt để đăng nhập Cognito. Dùng cùng tài khoản đã tạo project,
+hoàn tất trong khoảng 3 phút rồi quay về terminal. Callback dùng `localhost:8765`.
+Không cần AWS credentials để upload Security. Nếu không bật `--upload`, scan vẫn
+chỉ xuất báo cáo local.
+
+Upload yêu cầu JSON và file output; không nhận SARIF/table và không cần `--scope`.
+JSON được lưu/upload giữ **toàn bộ findings chưa bị suppression**. Khi bật upload,
+`--severity` chỉ lọc bảng terminal; ví dụ `--severity LOW --fail-on HIGH` vẫn upload
+HIGH/CRITICAL và có thể trả `1`. Với lệnh không upload, JSON/SARIF vẫn được lọc như cũ.
+
+CLI tạo `security-001.json` và manifest `security-001.json.upload.json`.
+Gate fail vẫn upload rồi trả `1`; upload lỗi giữ hai file và trả `3`.
+Lượt scan mới dùng output mới, ví dụ `security-002.json`; muốn gửi lại cùng lượt,
+dùng `cloud upload` theo mục 6, thay tên report/manifest bằng các file Security.
+Giới hạn Security JSON là **50 MiB**. Báo cáo có thể chứa source snippets/giá trị
+cấu hình, vì vậy chỉ bật upload khi muốn lưu chúng lên hệ thống.
 
 Khi đã có dữ liệu trên web: mở project → **Security** → mở một scan → lọc findings
 theo severity, rule hoặc file → mở finding để đọc mô tả, hướng xử lý và source.
@@ -248,7 +265,7 @@ lượt khỏi lịch sử; thao tác không sửa/xóa hạ tầng AWS. Dashboa
 Terraform và không tự khắc phục drift. Dùng **Refresh** để đọc lại kết quả đã lưu;
 muốn có quan sát mới cần chạy CLI/CI lần nữa.
 
-## 6. Upload lỗi: retry mà không chạy lại Terraform
+## 6. Upload lỗi: retry mà không chạy lại scanner
 
 Giữ nguyên cả report và manifest, rồi chạy:
 
@@ -261,6 +278,9 @@ infralens cloud upload --report ./reports/drift-001.json \
 Retry dùng lại run ID cũ. Không sửa report, manifest hoặc đổi API URL: checksum
 và thông tin lượt được kiểm tra trước khi gửi. Nếu chưa có manifest, không dùng
 lệnh retry này; khắc phục lỗi ban đầu và tạo một lượt kiểm tra mới với output mới.
+Lệnh hỗ trợ cả Security và Drift: thay `drift-001.json` bằng `security-001.json`
+và manifest tương ứng khi retry Security. Retry không chạy Trivy/Terraform;
+nó không tạo report/metadata mới từ một file JSON bất kỳ.
 
 ## 7. Thử nghiệm và dùng trong CI
 
@@ -285,7 +305,8 @@ Runner cần CLI, Terraform, checkout đã init và credentials/role cho provide
 và thuộc tài khoản sở hữu project. Đây không phải AWS access key hoặc ID token.
 Hệ thống hiện chưa có lệnh CLI tự cấp/gia hạn token cho CI hay machine identity.
 
-Khi runner đã có token, dùng cùng lệnh Drift/upload ở mục 4, thêm gate theo nhu cầu
+Khi runner đã có token, dùng lệnh Security/upload ở mục 3 hoặc Drift/upload ở mục 4,
+thêm gate theo nhu cầu
 và tên output duy nhất cho mỗi lần chạy. Không truyền token trong command line
 hoặc in token vào log. Token hết hạn thì cấp token mới rồi retry manifest.
 
@@ -294,18 +315,18 @@ hoặc in token vào log. Token hết hạn thì cấp token mới rồi retry m
 | Hiện tượng | Kiểm tra / xử lý |
 | --- | --- |
 | `infralens` không được nhận diện | `uv tool update-shell`, mở terminal mới; kiểm tra đúng môi trường cài. |
-| Không có `--upload` trong help | Bạn đang dùng CLI cũ; cài lại wheel/revision tích hợp được cấp. |
+| Không có `--upload` trong `scan --help` hoặc `drift --help` | Bạn đang dùng CLI cũ; cài lại wheel/revision tích hợp được cấp. |
 | Không tìm thấy Terraform/Trivy | Drift thật cần Terraform trên PATH; Security cần wheel bundle hoặc Trivy 0.76.x. |
 | Terraform plan thất bại | Kiểm tra init, workspace, biến đầu vào, credentials và quyền backend/provider; lỗi công cụ không phải kết quả sạch. |
 | CloudTrail không chạy | Kiểm tra boto3, credentials, region và quyền; nếu chỉ cần drift, bỏ `--trace`. |
 | Browser login timeout/callback lỗi | Dùng terminal tương tác; kiểm tra trình duyệt truy cập được `localhost:8765` và cổng chưa bị ứng dụng khác chiếm. |
 | Project không tìm thấy hoặc upload bị từ chối | Tạo project trước; dùng đúng Project ID và cùng tài khoản trên CLI/dashboard. |
-| Dashboard chưa thấy lượt vừa chạy | Chọn tab Drift, bỏ lọc sai scope/thời gian, Refresh; kiểm tra upload đã hoàn tất. |
+| Dashboard chưa thấy lượt vừa chạy | Chọn đúng tab Security/Drift, bỏ lọc sai scope/thời gian, Refresh; kiểm tra upload đã hoàn tất. |
 | `Report upload is not complete` | Retry upload bằng đúng report/manifest; Refresh trên web không thực hiện upload. |
 | `No comparable baseline` | Cần một lượt completed trước cùng project/scope/input mode; không so imported plan với refresh-only. |
 | Output có manifest sẵn | Lượt mới chọn output mới; nếu chỉ muốn gửi lại thì dùng `cloud upload`. |
-| Báo cáo vượt 2 MiB hoặc bị sửa checksum | Giữ báo cáo local; không chỉnh JSON để ép retry. Phối hợp người phụ trách để chọn phạm vi Terraform phù hợp hoặc tạo lượt mới hợp lệ. |
-| Security tab trống | Scan local không tự upload; xác nhận pipeline đã gửi report qua API. |
+| Báo cáo vượt giới hạn hoặc bị sửa checksum | Giới hạn Security 50 MiB, Drift 2 MiB. Giữ báo cáo local; không chỉnh JSON để ép retry. Chọn phạm vi phù hợp hoặc tạo lượt mới hợp lệ. |
+| Security tab trống | Chạy `scan --upload` với đúng project/tài khoản; scan local không tự gửi report. |
 | Bảng đang lọc không có kết quả nhưng còn nút tải thêm | Tải trang kế tiếp; trang hiện tại có thể rỗng sau lọc. |
 
 | Exit code CLI | Ý nghĩa |
