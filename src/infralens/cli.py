@@ -98,34 +98,80 @@ def root(
         typer.echo(ctx.get_help())
 
 
+ProjectPath = Annotated[Path, typer.Argument(help="Terraform project directory.")]
+ReportOutput = Annotated[Path | None, typer.Option(help="Output path relative to CWD.")]
+EngineTimeout = Annotated[int, typer.Option(min=1, help="Engine timeout in seconds.")]
+UploadReport = Annotated[
+    bool, typer.Option(help="Upload JSON to the InfraLens dashboard.")
+]
+CloudProject = Annotated[
+    str | None, typer.Option(help="Existing cloud project ID; requires --upload.")
+]
+CloudApiUrl = Annotated[
+    str | None, typer.Option(help="InfraLens HTTPS API origin; requires --upload.")
+]
+
+
+def _upload_options(
+    upload: bool,
+    report_format: str,
+    output: Path | None,
+    project: str | None,
+    api_url: str | None,
+    *,
+    scope: str | None = None,
+    require_scope: bool = False,
+) -> UploadOptions | None:
+    if not upload:
+        if any(value is not None for value in (project, api_url, scope)):
+            flags = (
+                "--project, --scope and --api-url"
+                if require_scope
+                else "--project and --api-url"
+            )
+            raise InvalidInput(f"{flags} require --upload.")
+        return None
+    if report_format != "json" or output is None or project is None or api_url is None:
+        raise InvalidInput(
+            "--upload requires --format json, --output, --project and --api-url."
+        )
+    from infralens.cloud import identifier, manifest_path
+    from infralens.cloud_auth import origin
+
+    options = UploadOptions(
+        origin(api_url),
+        identifier(project, "--project"),
+        identifier(scope, "--scope") if require_scope else None,
+    )
+    saved = manifest_path(output)
+    if saved.exists() or saved.is_symlink():
+        raise InvalidInput(
+            "Manifest exists; retry with cloud upload or use a new output."
+        )
+    return options
+
+
 @app.command()
 def scan(
-    path: Annotated[Path, typer.Argument(help="Terraform project directory.")],
-    severity: Annotated[
-        str, typer.Option(help="Comma-separated report severities.")
-    ] = ",".join(SEVERITIES),
+    path: ProjectPath,
     format: Annotated[
         ScanFormat, typer.Option("--format", help="Report format.")
     ] = ScanFormat.table,
-    output: Annotated[
-        Path | None, typer.Option(help="Output path relative to CWD.")
-    ] = None,
+    output: ReportOutput = None,
     fail_on: Annotated[
         str | None,
         typer.Option(
             help="Inclusive LOW|MEDIUM|HIGH|CRITICAL threshold; ignores --severity."
         ),
     ] = None,
-    timeout: Annotated[int, typer.Option(min=1, help="Scan timeout in seconds.")] = 300,
-    upload: Annotated[
-        bool, typer.Option(help="Upload full native JSON to the InfraLens dashboard.")
-    ] = False,
-    project: Annotated[
-        str | None, typer.Option(help="Existing cloud project ID; requires --upload.")
-    ] = None,
-    api_url: Annotated[
-        str | None, typer.Option(help="InfraLens HTTPS API origin; requires --upload.")
-    ] = None,
+    timeout: EngineTimeout = 300,
+    upload: UploadReport = False,
+    project: CloudProject = None,
+    api_url: CloudApiUrl = None,
+    severity: Annotated[
+        str,
+        typer.Option(help="Comma-separated report severities; upload JSON keeps all."),
+    ] = ",".join(SEVERITIES),
 ) -> None:
     """Scan Terraform misconfigurations using Trivy 0.76.x."""
     with command_errors():
@@ -133,26 +179,13 @@ def scan(
         threshold = failure_threshold(fail_on)
         directory, inputs = scan_directory(path)
         destination = scan_output_path(output, inputs)
-        cloud_options = None
-        if upload:
-            from infralens.cloud import identifier, manifest_path
-            from infralens.cloud_auth import origin
+        cloud_options = _upload_options(
+            upload, format.value, destination, project, api_url
+        )
+        if cloud_options is not None:
+            from infralens.cloud import manifest_path
 
-            if format != ScanFormat.json or destination is None or api_url is None:
-                raise InvalidInput(
-                    "--upload requires --format json, --output and --api-url."
-                )
-            cloud_options = UploadOptions(
-                origin(api_url), identifier(project, "--project")
-            )
-            saved = manifest_path(destination)
-            if saved.exists() or saved.is_symlink():
-                raise InvalidInput(
-                    "Manifest exists; retry with cloud upload or use a new output."
-                )
-            scan_output_path(saved, inputs + (destination,))
-        elif project is not None or api_url is not None:
-            raise InvalidInput("--project and --api-url require --upload.")
+            scan_output_path(manifest_path(destination), inputs + (destination,))
         logger.debug("Scan validation complete")
         handle_scan(
             ScanOptions(
@@ -169,16 +202,32 @@ def scan(
 
 @app.command()
 def drift(
-    path: Annotated[Path, typer.Argument(help="Terraform project directory.")],
-    var_file: Annotated[
-        list[Path] | None,
-        typer.Option("--var-file", help="Repeatable variable file, relative to PATH."),
-    ] = None,
+    path: ProjectPath,
     format: Annotated[
         DriftFormat, typer.Option("--format", help="Report format.")
     ] = DriftFormat.table,
-    output: Annotated[
-        Path | None, typer.Option(help="Output path relative to CWD.")
+    output: ReportOutput = None,
+    fail_on_priority: Annotated[
+        str | None,
+        typer.Option(
+            "--fail-on",
+            "--fail-on-priority",
+            help="Inclusive MEDIUM|HIGH review-priority threshold.",
+        ),
+    ] = None,
+    timeout: EngineTimeout = 300,
+    upload: UploadReport = False,
+    project: CloudProject = None,
+    api_url: CloudApiUrl = None,
+    scope: Annotated[
+        str | None,
+        typer.Option(
+            help="Stable account/workspace/environment ID; requires --upload."
+        ),
+    ] = None,
+    var_file: Annotated[
+        list[Path] | None,
+        typer.Option("--var-file", help="Repeatable variable file, relative to PATH."),
     ] = None,
     profile: Annotated[str | None, typer.Option(help="AWS profile name.")] = None,
     region: Annotated[str | None, typer.Option(help="AWS region name.")] = None,
@@ -196,37 +245,15 @@ def drift(
     fail_on_drift: Annotated[
         bool, typer.Option("--fail-on-drift", help="Exit 1 when drift is detected.")
     ] = False,
-    fail_on_priority: Annotated[
-        str | None,
-        typer.Option(help="Exit 1 for high, or medium and high, review priority."),
-    ] = None,
     fail_on_unknown: Annotated[
         bool,
         typer.Option(
             "--fail-on-unknown", help="Exit 1 for unknown or unassessed priority."
         ),
     ] = False,
-    timeout: Annotated[
-        int, typer.Option(min=1, help="Refresh-only plan timeout in seconds.")
-    ] = 300,
     plan_json: Annotated[
         Path | None,
         typer.Option(help="Read plan JSON without Terraform; --trace still calls AWS."),
-    ] = None,
-    upload: Annotated[
-        bool, typer.Option(help="Upload JSON to the InfraLens dashboard.")
-    ] = False,
-    project: Annotated[
-        str | None, typer.Option(help="Existing cloud project ID; requires --upload.")
-    ] = None,
-    scope: Annotated[
-        str | None,
-        typer.Option(
-            help="Stable account/workspace/environment ID; requires --upload."
-        ),
-    ] = None,
-    api_url: Annotated[
-        str | None, typer.Option(help="InfraLens HTTPS API origin; requires --upload.")
     ] = None,
 ) -> None:
     """Detect managed resource drift using a Terraform refresh-only plan."""
@@ -242,28 +269,21 @@ def drift(
         )
         protected = inputs + variables + ((imported,) if imported is not None else ())
         destination = drift_output_path(output, directory, protected)
-        cloud_options = None
-        if upload:
-            from infralens.cloud import identifier, manifest_path
-            from infralens.cloud_auth import origin
+        cloud_options = _upload_options(
+            upload,
+            format.value,
+            destination,
+            project,
+            api_url,
+            scope=scope,
+            require_scope=True,
+        )
+        if cloud_options is not None:
+            from infralens.cloud import manifest_path
 
-            if format != DriftFormat.json or destination is None or api_url is None:
-                raise InvalidInput(
-                    "--upload requires --format json, --output and --api-url."
-                )
-            cloud_options = UploadOptions(
-                origin(api_url),
-                identifier(project, "--project"),
-                identifier(scope, "--scope"),
+            drift_output_path(
+                manifest_path(destination), directory, protected + (destination,)
             )
-            saved = manifest_path(destination)
-            if saved.exists() or saved.is_symlink():
-                raise InvalidInput(
-                    "Manifest exists; retry with cloud upload or use a new output."
-                )
-            drift_output_path(saved, directory, protected + (destination,))
-        elif any(value is not None for value in (project, scope, api_url)):
-            raise InvalidInput("--project, --scope and --api-url require --upload.")
         logger.debug("Drift validation complete")
         handle_drift(
             DriftOptions(

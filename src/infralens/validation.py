@@ -200,7 +200,7 @@ def drift_priority_threshold(value: str | None) -> str | None:
         return None
     value = value.strip().lower()
     if value not in ("high", "medium"):
-        raise InvalidInput("--fail-on-priority: use high or medium.")
+        raise InvalidInput("--fail-on/--fail-on-priority: use MEDIUM or HIGH.")
     return value
 
 

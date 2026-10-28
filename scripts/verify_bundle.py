@@ -133,7 +133,7 @@ def verify(wheel: Path, uv: str) -> None:
                 str(drift_project / "plan.json"),
                 "--format",
                 "json",
-                "--fail-on-priority",
+                "--fail-on",
                 "high",
                 "--fail-on-unknown",
                 code=1,

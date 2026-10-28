@@ -357,7 +357,7 @@ def test_real_cli_report_and_manifest_match_exported_api_contract(
             "dev-default",
             "--api-url",
             API,
-            "--fail-on-priority",
+            "--fail-on",
             "high",
             "--fail-on-unknown",
         ],
