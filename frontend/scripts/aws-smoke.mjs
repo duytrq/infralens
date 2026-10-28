@@ -2,6 +2,7 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { readFile, mkdir } from "node:fs/promises";
 
 const input = JSON.parse(
@@ -63,6 +64,54 @@ async function signIn(origin, account) {
   assert.equal(page.url(), origin + "/projects");
   assert.deepEqual(errors, []);
   return { page, tokens, errors };
+}
+
+async function checkSecurityCli(owner, project, origin) {
+  const cli = input.security_cli;
+  const output = `${cli.output_directory}/${randomUUID()}.json`;
+  const env = { ...process.env, INFRALENS_ACCESS_TOKEN: ownerToken };
+  const scanned = spawnSync(cli.executable, [
+    "scan", cli.project, "--format", "json", "--output", output,
+    "--severity", "LOW", "--fail-on", "HIGH", "--upload", "--project", project,
+    "--api-url", endpoint,
+  ], { env, encoding: "utf8", timeout: 240_000, input: "" });
+  const saved = await readFile(output + ".upload.json");
+  const metadata = JSON.parse(saved).manifest;
+  runs.push(metadata.run_id);
+  assert.equal(scanned.status, 1, "CLI must upload before returning its findings exit");
+  const report = await readFile(output);
+  assert.equal(metadata.result.threshold_status, "failed");
+  assert(metadata.result.findings.by_severity.HIGH > 0);
+  const retried = spawnSync(cli.executable, [
+    "cloud", "upload", "--report", output, "--manifest", output + ".upload.json",
+    "--api-url", endpoint,
+  ], { env: { ...env, PATH: "" }, encoding: "utf8", timeout: 60_000, input: "" });
+  assert.equal(retried.status, 0, "Saved Security upload must retry without PATH Trivy");
+  assert.deepEqual(await readFile(output + ".upload.json"), saved);
+  let indexed;
+  for (let attempt = 0; attempt < 40; attempt++) {
+    indexed = await api(ownerToken, "GET", `/v1/runs/${metadata.run_id}`);
+    if (indexed.analysis?.status === "ready") break;
+    assert.notEqual(indexed.analysis?.status, "failed");
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  assert.equal(indexed.analysis?.status, "ready");
+  assert.equal(indexed.analysis.counts_match, true);
+  assert.deepEqual(indexed.result.findings, metadata.result.findings);
+  checks.push(`cli_security_upload_gate_retry_indexing:${origin}`);
+  await owner.page.goto(origin + `/runs/${metadata.run_id}`);
+  const findings = await api(ownerToken, "GET", `/v1/runs/${metadata.run_id}/findings`);
+  await owner.page.getByRole("link", { name: findings.items[0].title, exact: true }).first().click();
+  await owner.page.getByRole("heading", { name: findings.items[0].title, exact: true }).waitFor();
+  await owner.page.getByRole("region", { name: "Source code excerpt" }).waitFor();
+  await owner.page.getByRole("link", { name: "Back to scan", exact: true }).click();
+  const downloaded = owner.page.waitForEvent("download");
+  await owner.page.getByRole("button", { name: "Download JSON" }).click();
+  assert.deepEqual(await readFile(await (await downloaded).path()), report);
+  checks.push(`cli_security_dashboard_source_download:${origin}`);
+  await api(ownerToken, "DELETE", `/v1/runs/${metadata.run_id}`, undefined, [202, 204]);
+  await owner.page.goto(origin + `/runs/${metadata.run_id}`);
+  await owner.page.getByRole("alert").filter({ hasText: "This item is unavailable" }).waitFor();
 }
 
 try {
@@ -231,6 +280,10 @@ try {
     const downloaded = await attachment;
     assert.deepEqual(await readFile(await downloaded.path()), report);
     checks.push(`dashboard_history_detail_download:${origin}`);
+    if (input.security_cli) {
+      stage = "CLI Security scan/upload/retry and dashboard";
+      await checkSecurityCli(owner, project, origin);
+    }
     stage = "drift ingestion and comparison";
     const driftRuns = [];
     for (const observed of ["t3.small", "t3.medium"]) {

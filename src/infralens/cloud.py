@@ -1,4 +1,4 @@
-"""Sanitized drift manifests and resumable uploads over the existing storage API."""
+"""Security/Drift manifests and resumable uploads over the storage API."""
 
 import base64
 import hashlib
@@ -14,9 +14,11 @@ import typer
 
 from infralens.cloud_auth import access_token, http, origin
 from infralens.errors import ExecutionError, InvalidInput
+from infralens.options import SEVERITIES
 from infralens.reporting import write_report
 
 MAX_REPORT_BYTES = 2 * 1024 * 1024
+MAX_SECURITY_REPORT_BYTES = 50 * 1024 * 1024
 
 
 def identifier(value, option):
@@ -124,6 +126,66 @@ def save_manifest(report, options, started, finished):
             "Drift report exceeds the 2 MiB upload limit; local JSON was saved."
         )
     metadata = build_manifest(report, payload, options, started, finished)
+    return _save_manifest(metadata, options)
+
+
+def save_scan_manifest(
+    result, options, started, finished, engine_version, failed, ignore_sha256
+):
+    payload = options.output.read_bytes()
+    if len(payload) > MAX_SECURITY_REPORT_BYTES:
+        raise ExecutionError(
+            "Security report exceeds the 50 MiB upload limit; local JSON was saved."
+        )
+    counts = {severity: 0 for severity in SEVERITIES}
+    for finding in result.findings:
+        counts[finding.severity] += 1
+    warnings = sorted(
+        {
+            "embedded_checks" if "embedded checks" in message else "engine_warning"
+            for message in result.diagnostics
+        }
+    )
+    threshold_status = "not_evaluated"
+    if options.fail_on is not None:
+        threshold_status = "failed" if failed else "passed"
+    metadata = {
+        "schema_version": 1,
+        "run_id": str(uuid4()),
+        "project_id": options.upload.project,
+        "run_type": "security_scan",
+        "started_at": started.isoformat(),
+        "finished_at": finished.isoformat(),
+        "duration_ms": max(0, int((finished - started).total_seconds() * 1000)),
+        "source": {"relative_path": "."},
+        "tool": {
+            "infralens_version": version("infralens"),
+            "engine": "trivy",
+            "engine_version": engine_version,
+        },
+        "scan_options": {
+            "severity": list(options.severity),
+            "fail_on": options.fail_on,
+            "ignore_sha256": ignore_sha256,
+        },
+        "result": {
+            "scan_status": "completed",
+            "threshold_status": threshold_status,
+            "findings": {"total": sum(counts.values()), "by_severity": counts},
+            "warnings": warnings,
+        },
+        "artifact": {
+            "format": "json",
+            "content_type": "application/json",
+            "size_bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "schema_version": 2,
+        },
+    }
+    return _save_manifest(metadata, options)
+
+
+def _save_manifest(metadata, options):
     path = manifest_path(options.output)
     write_report(
         path,
@@ -148,15 +210,34 @@ def _load_json(path, maximum):
 def upload_files(report_path, saved_path, api_url):
     api_url = origin(api_url)
     saved, _ = _load_json(saved_path, 65536)
-    report, payload = _load_json(report_path, MAX_REPORT_BYTES)
     try:
         metadata = saved["manifest"]
         artifact = metadata["artifact"]
+        run_type = metadata["run_type"]
+        if run_type not in ("drift", "security_scan"):
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise InvalidInput(
+            "Manifest must describe a Security or Drift upload."
+        ) from None
+    maximum = MAX_REPORT_BYTES if run_type == "drift" else MAX_SECURITY_REPORT_BYTES
+    report, payload = _load_json(report_path, maximum)
+    try:
+        schema = "1.0" if run_type == "drift" else 2
+        if not isinstance(report, dict):
+            raise ValueError
+        if run_type == "drift":
+            report_matches = (
+                report.get("kind") == "drift" and report.get("schema_version") == schema
+            )
+        else:
+            report_matches = report.get("SchemaVersion") == schema
         if (
             saved["api_url"] != api_url
-            or metadata["run_type"] != "drift"
-            or report["kind"] != "drift"
-            or report["schema_version"] != "1.0"
+            or not report_matches
+            or artifact["format"] != "json"
+            or artifact["content_type"] != "application/json"
+            or artifact["schema_version"] != schema
             or artifact["sha256"] != hashlib.sha256(payload).hexdigest()
             or artifact["size_bytes"] != len(payload)
         ):
@@ -225,4 +306,5 @@ def upload_files(report_path, saved_path, api_url):
             data=b"{}",
             headers=headers,
         )
-    typer.echo(f"Uploaded drift run {metadata['run_id']}.", err=True)
+    kind = "drift run" if run_type == "drift" else "security scan"
+    typer.echo(f"Uploaded {kind} {metadata['run_id']}.", err=True)

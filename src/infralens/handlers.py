@@ -1,5 +1,6 @@
 """Command orchestration and finding policies."""
 
+import hashlib
 import json
 import tempfile
 from datetime import datetime, timezone
@@ -17,13 +18,34 @@ from infralens.trivy import Trivy
 
 
 def handle_scan(options: ScanOptions) -> None:
+    started = datetime.now(timezone.utc)
+    ignore = options.path / ".trivyignore"
+    ignore_sha256 = (
+        hashlib.sha256(ignore.read_bytes()).hexdigest()
+        if options.upload is not None and ignore.is_file()
+        else None
+    )
     engine = Trivy(options.path)
     result = engine.scan(options.timeout)
+    finished = datetime.now(timezone.utc)
+    failed = options.fail_on is not None and any(
+        SEVERITIES.index(f.severity) >= SEVERITIES.index(options.fail_on)
+        for f in result.findings
+    )
     for diagnostic in result.diagnostics:
         typer.echo(f"Warning: {diagnostic}", err=True)
     table = render_table(result, options.severity)
     report = table
-    if options.format != "table":
+    if options.upload is not None:
+        # Cloud counts and gate cover every finding, independent of table filters.
+        if set(options.severity) != set(SEVERITIES):
+            typer.echo(
+                "Warning: Upload JSON includes all severities; "
+                "--severity only filters the terminal table.",
+                err=True,
+            )
+        report = json.dumps(result.raw, ensure_ascii=True, indent=2) + "\n"
+    elif options.format != "table":
         with tempfile.TemporaryDirectory(prefix="infralens-") as directory:
             source = Path(directory) / "scan.json"
             source.write_text(json.dumps(result.raw), encoding="utf-8")
@@ -34,10 +56,15 @@ def handle_scan(options: ScanOptions) -> None:
         typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
     else:
         typer.echo(report, nl=not report.endswith("\n"))
-    if options.fail_on is not None and any(
-        SEVERITIES.index(f.severity) >= SEVERITIES.index(options.fail_on)
-        for f in result.findings
-    ):
+    if options.upload is not None:
+        from infralens import cloud
+
+        saved = cloud.save_scan_manifest(
+            result, options, started, finished, engine.version, failed, ignore_sha256
+        )
+        typer.echo(f"Upload manifest saved to {str(saved)!r}.", err=True)
+        cloud.upload_files(options.output, saved, options.upload.api_url)
+    if failed:
         raise typer.Exit(ExitCode.findings)
 
 

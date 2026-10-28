@@ -43,17 +43,19 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
 )
-cloud_app = typer.Typer(help="Upload saved drift reports.", no_args_is_help=True)
+cloud_app = typer.Typer(
+    help="Upload saved Security or Drift reports.", no_args_is_help=True
+)
 app.add_typer(cloud_app, name="cloud")
 
 
 @cloud_app.command("upload")
 def upload_saved(
-    report: Annotated[Path, typer.Option(help="Normalized drift JSON file.")],
+    report: Annotated[Path, typer.Option(help="Saved Security or Drift JSON file.")],
     manifest: Annotated[Path, typer.Option(help="Immutable .upload.json sidecar.")],
     api_url: Annotated[str, typer.Option(help="InfraLens HTTPS API origin.")],
 ) -> None:
-    """Retry a saved upload without running Terraform or changing its metadata."""
+    """Retry a saved upload without rerunning the engine or changing metadata."""
     with command_errors():
         from infralens.cloud import upload_files
 
@@ -115,6 +117,15 @@ def scan(
         ),
     ] = None,
     timeout: Annotated[int, typer.Option(min=1, help="Scan timeout in seconds.")] = 300,
+    upload: Annotated[
+        bool, typer.Option(help="Upload full native JSON to the InfraLens dashboard.")
+    ] = False,
+    project: Annotated[
+        str | None, typer.Option(help="Existing cloud project ID; requires --upload.")
+    ] = None,
+    api_url: Annotated[
+        str | None, typer.Option(help="InfraLens HTTPS API origin; requires --upload.")
+    ] = None,
 ) -> None:
     """Scan Terraform misconfigurations using Trivy 0.76.x."""
     with command_errors():
@@ -122,10 +133,36 @@ def scan(
         threshold = failure_threshold(fail_on)
         directory, inputs = scan_directory(path)
         destination = scan_output_path(output, inputs)
+        cloud_options = None
+        if upload:
+            from infralens.cloud import identifier, manifest_path
+            from infralens.cloud_auth import origin
+
+            if format != ScanFormat.json or destination is None or api_url is None:
+                raise InvalidInput(
+                    "--upload requires --format json, --output and --api-url."
+                )
+            cloud_options = UploadOptions(
+                origin(api_url), identifier(project, "--project")
+            )
+            saved = manifest_path(destination)
+            if saved.exists() or saved.is_symlink():
+                raise InvalidInput(
+                    "Manifest exists; retry with cloud upload or use a new output."
+                )
+            scan_output_path(saved, inputs + (destination,))
+        elif project is not None or api_url is not None:
+            raise InvalidInput("--project and --api-url require --upload.")
         logger.debug("Scan validation complete")
         handle_scan(
             ScanOptions(
-                directory, selected, format.value, destination, threshold, timeout
+                directory,
+                selected,
+                format.value,
+                destination,
+                threshold,
+                timeout,
+                upload=cloud_options,
             )
         )
 

@@ -208,6 +208,57 @@ def verify(wheel: Path, uv: str) -> None:
                     )
                 )
                 jsonschema.Draft7Validator(schema).validate(report)
+        output = root / "reports Việt" / "security-upload.json"
+        security_upload = run(
+            "scan",
+            str(project),
+            "--format",
+            "json",
+            "--output",
+            str(output),
+            "--severity",
+            "LOW",
+            "--fail-on",
+            "HIGH",
+            "--upload",
+            "--project",
+            "demo",
+            "--api-url",
+            "https://api.example.com",
+            code=3,
+        )
+        assert "Noninteractive upload requires" in security_upload.stderr
+        report = json.loads(output.read_text(encoding="utf-8"))
+        saved_path = Path(str(output) + ".upload.json")
+        original_manifest = saved_path.read_bytes()
+        metadata = json.loads(original_manifest)["manifest"]
+        assert metadata["run_type"] == "security_scan"
+        assert metadata["result"]["threshold_status"] == "failed"
+        assert metadata["result"]["findings"]["by_severity"]["HIGH"] > 0
+        assert any(
+            f["ID"] == "AWS-0107"
+            for result in report["Results"]
+            for f in result.get("Misconfigurations", [])
+        )
+        assert (
+            metadata["artifact"]["sha256"]
+            == hashlib.sha256(output.read_bytes()).hexdigest()
+        )
+        assert (
+            "Noninteractive upload requires"
+            in run(
+                "cloud",
+                "upload",
+                "--report",
+                str(output),
+                "--manifest",
+                str(saved_path),
+                "--api-url",
+                "https://api.example.com",
+                code=3,
+            ).stderr
+        )
+        assert saved_path.read_bytes() == original_manifest
         filtered = json.loads(
             run(
                 "scan",

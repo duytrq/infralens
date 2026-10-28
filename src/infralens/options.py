@@ -20,6 +20,13 @@ class DriftFormat(str, Enum):
 
 
 @dataclass(frozen=True)
+class UploadOptions:
+    api_url: str
+    project: str
+    scope: str | None = None
+
+
+@dataclass(frozen=True)
 class ScanOptions:
     path: Path
     severity: tuple[str, ...]
@@ -28,13 +35,7 @@ class ScanOptions:
     # Inclusive threshold across ALL findings, independent of the report filter.
     fail_on: str | None
     timeout: int = 300
-
-
-@dataclass(frozen=True)
-class UploadOptions:
-    api_url: str
-    project: str
-    scope: str
+    upload: UploadOptions | None = None
 
 
 @dataclass(frozen=True)

@@ -108,6 +108,50 @@ def test_real_filter_does_not_weaken_fail_on(tmp_path):
     } == {"LOW"}
 
 
+def test_real_upload_json_and_manifest_keep_findings_hidden_by_filter(
+    tmp_path, monkeypatch
+):
+    from infralens import cloud
+
+    uploads = []
+    monkeypatch.setattr(cloud, "upload_files", lambda *args: uploads.append(args))
+    output = tmp_path / "security.json"
+    response = runner.invoke(
+        app,
+        [
+            "scan",
+            str(FIXTURES / "unsafe"),
+            "--format",
+            "json",
+            "--output",
+            str(output),
+            "--severity",
+            "LOW",
+            "--fail-on",
+            "HIGH",
+            "--upload",
+            "--project",
+            "demo",
+            "--api-url",
+            "https://api.example.com",
+        ],
+    )
+    assert response.exit_code == 1, response.output
+    report = json.loads(output.read_bytes())
+    metadata = json.loads(Path(str(output) + ".upload.json").read_bytes())["manifest"]
+    counts = {level: 0 for level in ("UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL")}
+    for result in report["Results"]:
+        for finding in result.get("Misconfigurations", []):
+            if finding.get("Status", "FAIL") == "FAIL":
+                counts[finding["Severity"]] += 1
+    assert counts["HIGH"] and counts["LOW"]
+    assert metadata["result"]["findings"]["by_severity"] == counts
+    assert metadata["result"]["threshold_status"] == "failed"
+    assert metadata["tool"]["engine_version"].startswith("0.76.")
+    assert uploads
+    assert "AWS-0107" not in response.stdout
+
+
 def test_real_clean_scan():
     result = runner.invoke(app, ["scan", str(FIXTURES / "clean")])
     assert result.exit_code == 0, result.output

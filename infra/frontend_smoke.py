@@ -11,6 +11,7 @@ import os
 import secrets
 import signal
 import subprocess
+import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -55,8 +56,17 @@ def main():
     parser.add_argument("--region", default="ap-southeast-1")
     parser.add_argument("--stack", default="infralens-dev")
     parser.add_argument("--local-only", action="store_true")
+    parser.add_argument(
+        "--security-cli",
+        type=Path,
+        help="Verify scan --upload/retry with this executable and real Trivy.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.security_cli:
+        args.security_cli = args.security_cli.resolve(strict=True)
+        if not args.security_cli.is_file():
+            raise ValueError("--security-cli must be an executable file.")
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     config = Config(connect_timeout=10, read_timeout=20, retries={"max_attempts": 3})
     if (
@@ -94,6 +104,7 @@ def main():
     cognito = session.client("cognito-idp", config=config)
     table = session.resource("dynamodb").Table(values["StorageTable"])
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    cli_directory = tempfile.TemporaryDirectory(prefix="infralens-security-smoke-")
     try:
         for _ in range(2):
             username = f"infralens-frontend-{uuid4()}@example.invalid"
@@ -150,6 +161,13 @@ def main():
                     "origins": origins,
                     "accounts": users,
                     "screenshot_directory": str(ROOT / "frontend/verification"),
+                    "security_cli": {
+                        "executable": str(args.security_cli),
+                        "project": str(ROOT / "tests/fixtures/unsafe"),
+                        "output_directory": cli_directory.name,
+                    }
+                    if args.security_cli
+                    else None,
                 }
             ),
             text=True,
@@ -179,13 +197,17 @@ def main():
                     pass
                 server.wait(timeout=10)
         finally:
-            removed_projects = cleanup_users(
-                cognito, table, values["UserPoolId"], users
-            )
+            try:
+                removed_projects = cleanup_users(
+                    cognito, table, values["UserPoolId"], users
+                )
+            finally:
+                cli_directory.cleanup()
     evidence.update(
         temporary_users_removed=len(users),
         project_rows_removed=removed_projects,
         run_cleanup="Protected tombstones/derived data use scheduled backend cleanup",
+        real_security_cli=bool(args.security_cli),
     )
     args.output.write_text(json.dumps(evidence, indent=2) + "\n")
     print(
