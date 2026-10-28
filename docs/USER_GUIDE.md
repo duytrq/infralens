@@ -11,6 +11,37 @@ Hướng dẫn áp dụng cho bản tích hợp Security/Drift, cập nhật ng�
 | [Dashboard](https://ddsw2osqv2rj2.cloudfront.net) | Đăng nhập, tạo project, xem báo cáo. |
 | `https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com` | API dùng trong tham số `--api-url` của CLI. |
 
+## Cú pháp chung của Security và Drift
+
+Hai lệnh dùng cùng cách truyền thư mục và bộ flag chung:
+
+```bash
+infralens scan ./infra --format json --output ./reports/security-001.json --fail-on HIGH
+infralens drift ./infra --format json --output ./reports/drift-001.json --fail-on HIGH
+```
+
+| Tham số chung | Cách dùng ở cả hai lệnh |
+| --- | --- |
+| `PATH` | Thư mục Terraform, đặt sau `scan` hoặc `drift`. |
+| `--format` | Mặc định `table`; cả hai nhận `json`. Security có thêm `sarif`. |
+| `--output` | File kết quả, đường dẫn tương đối với thư mục đang gọi lệnh. |
+| `--fail-on` | Ngưỡng trả exit `1`; không phân biệt hoa/thường. Bỏ flag này nếu không muốn bật gate theo ngưỡng. |
+| `--timeout` | Timeout của engine, đơn vị giây, mặc định `300`. |
+| `--upload` | Bật upload; cần `--format json --output`, `--project` và `--api-url`. Mặc định tắt. |
+| `--project`, `--api-url` | Project ID đã tạo và HTTPS API origin; dùng khi bật upload. |
+
+`--fail-on HIGH` áp dụng theo thang đánh giá của từng tính năng: Security dùng
+severity (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`); Drift dùng review priority (`MEDIUM`,
+`HIGH`). Drift vẫn nhận `--fail-on-priority` như alias của `--fail-on` để các lệnh cũ
+tiếp tục chạy. `--fail-on-drift` và `--fail-on-unknown` vẫn là tiêu chí bổ sung riêng.
+
+Khi upload, thêm cùng bộ `--upload --project my-app --api-url ...`. Riêng Drift
+cần thêm `--scope` để phân biệt account/workspace/environment khi so sánh báo cáo.
+Security có `--severity`; Drift có `--var-file`, `--profile`, `--region`, `--trace`
+và `--plan-json` theo công việc của từng engine. Xem tất cả bằng `scan --help`
+hoặc `drift --help`. Flag toàn cục như `--verbose` đặt trước subcommand, ví dụ
+`infralens --verbose scan ./infra` hoặc `infralens --verbose drift ./infra`.
+
 ## 1. Chuẩn bị và cài CLI
 
 ### Bạn cần những gì?
@@ -179,15 +210,15 @@ resource ngoài state không nằm trong phạm vi kiểm tra.
 Ví dụ Bash trên Linux/WSL:
 
 ```bash
-infralens drift ./infra --format json --output ./reports/drift-001.json \
-  --upload --project my-app --scope dev-default \
-  --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens drift ./infra --format json --output ./reports/drift-001.json --fail-on HIGH \
+  --upload --project my-app \
+  --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com --scope dev-default
 ```
 
 PowerShell có thể dùng cùng lệnh trên một dòng:
 
 ```powershell
-infralens drift ./infra --format json --output ./reports/drift-001.json --upload --project my-app --scope dev-default --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens drift ./infra --format json --output ./reports/drift-001.json --fail-on HIGH --upload --project my-app --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com --scope dev-default
 ```
 
 `--scope` là tên ổn định đại diện cho một account/workspace/environment, ví dụ
@@ -217,8 +248,8 @@ Thêm vào lệnh Drift những tham số cần dùng:
 | --- | --- |
 | `--trace --lookback-days 7` | Tìm sự kiện CloudTrail liên quan trong 7 ngày; phạm vi hỗ trợ chủ yếu EC2/Security Group. |
 | `--fail-on-drift` | Trả exit `1` khi phát hiện bất kỳ managed resource drift nào. |
-| `--fail-on-priority high` | Trả exit `1` khi có drift được đánh giá high. |
-| `--fail-on-priority medium` | Chặn cả medium và high. |
+| `--fail-on HIGH` | Trả exit `1` khi có drift được đánh giá high. |
+| `--fail-on MEDIUM` | Chặn cả medium và high. |
 | `--fail-on-unknown` | Chặn resource có priority unknown hoặc chưa đánh giá được. |
 
 Các điều kiện gate kết hợp bằng OR và không lọc bớt resource khỏi báo cáo.

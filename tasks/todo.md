@@ -52,3 +52,11 @@ See frontend-verification.md and infra/deployments/infralens-dev-frontend-verifi
 - [x] 4. Verify real Trivy, AWS/browser ingestion and installed wheel; update user guide.
 
 Evidence: [security-upload-verification.md](security-upload-verification.md).
+
+## Consistent CLI interface
+
+- [x] Share common flag declarations, order, defaults and upload validation.
+- [x] Add Drift `--fail-on` with legacy alias and distinct engine policy validation.
+- [x] Verify contract/regressions, update guide and rebuild the CLI wheel.
+
+Evidence: [cli-consistency-verification.md](cli-consistency-verification.md).

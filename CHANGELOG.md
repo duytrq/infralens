@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- Consistent Security/Drift common flags, help order/defaults and upload validation;
+  Drift accepts `--fail-on MEDIUM|HIGH` and retains `--fail-on-priority` as an alias.
 - Security `scan --upload` through Cognito and the existing API, full native JSON
   independent of terminal severity filters, 50 MiB limit and immutable retry manifests.
 - Shared `cloud upload` retries for Security/Drift without rerunning either engine;

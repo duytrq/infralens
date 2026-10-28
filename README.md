@@ -164,6 +164,12 @@ Nếu Docker Desktop báo WSL integration chưa bật, bật integration cho dis
 
 ## Security scan
 
+Security và Drift dùng chung cú pháp:
+`infralens <scan|drift> PATH --format json --output FILE --fail-on HIGH`.
+Cả hai có `--timeout` (giây, mặc định 300), `--upload`, `--project`, `--api-url`;
+upload đều yêu cầu JSON và file output. Riêng Drift thêm `--scope` khi upload để
+phân biệt môi trường so sánh. Xem [bảng flag chung](docs/USER_GUIDE.md#cú-pháp-chung-của-security-và-drift).
+
 ```bash
 infralens scan ./infra
 infralens --verbose scan "./terraform project" --severity "high, critical"
@@ -298,7 +304,7 @@ chưa được xác minh. `--trace` vẫn cần AWS khi import.
 
 ```bash
 infralens drift ./infra --plan-json ./plan.json --format json
-infralens drift ./infra --fail-on-priority high --fail-on-unknown
+infralens drift ./infra --fail-on HIGH --fail-on-unknown
 infralens drift ./infra --format json --output ./reports/drift.json \
   --upload --project my-project --scope dev-default \
   --api-url https://API_ID.execute-api.ap-southeast-1.amazonaws.com

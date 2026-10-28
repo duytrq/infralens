@@ -15,7 +15,7 @@ uv run infralens drift ./infra --format json --output ./reports/drift.json
 uv run infralens drift ./infra --trace --lookback-days 7
 uv run infralens drift ./examples/drift-review \
   --plan-json ./examples/drift-review/plan.json \
-  --fail-on-priority high --fail-on-unknown --format json
+  --fail-on HIGH --fail-on-unknown --format json
 ```
 
 Chạy từ repo hạ tầng cần quét, dùng CLI đã cài hoặc đường dẫn tuyệt đối phù hợp.
@@ -42,7 +42,7 @@ không tự biến thành thất bại engine.
 ## Gate và exit
 
 - `--fail-on-drift`: chặn mọi managed resource drift.
-- `--fail-on-priority high`: chặn high; `medium`: chặn medium và high.
+- `--fail-on HIGH`: chặn high; `MEDIUM`: chặn medium và high.
 - `--fail-on-unknown`: chặn unknown hoặc assessment chưa nhận diện được.
 - Các tiêu chí kết hợp bằng OR, không lọc bớt resource trong report.
 - Exit 0: gate không khớp hoặc không bật; 1: gate khớp; 2: input sai;
@@ -50,6 +50,8 @@ không tự biến thành thất bại engine.
 
 Priority thuộc policy builtin-review-v2, là heuristic hỗ trợ review. Gate passed
 không chứng nhận hạ tầng sạch hoặc bao phủ đầy đủ.
+`--fail-on` không phân biệt hoa/thường, cùng cách truyền ngưỡng với Security.
+`--fail-on-priority` vẫn được nhận như alias để tương thích lệnh cũ.
 
 ## Upload và retry
 
