@@ -9,6 +9,7 @@ description = "Terraform security scanning with Trivy and a CLI foundation for d
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "boto3>=1.40,<2",
     "python-hcl2>=8.1.4,<9",
     "pywin32>=310,<400 ; sys_platform == 'win32'",
     "typer>=0.24,<1",
@@ -18,11 +19,11 @@ dependencies = [
 infralens = "infralens.cli:main"
 
 [project.optional-dependencies]
-aws-trace = ["boto3>=1.40,<2"]
+# Compatibility for existing install/sync commands; the SDK is now always installed.
+aws-trace = []
 
 [dependency-groups]
 dev = [
-    "boto3>=1.40,<2",
     "distlib>=0.4,<1",
     "jsonschema>=4,<5",
     "pytest>=8,<10",

@@ -279,7 +279,7 @@ def test_resource_cap_is_explicit(aws, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("module", ["botocore.config", "boto3"])
-def test_missing_optional_dependency_is_reported(tmp_path, monkeypatch, module):
+def test_missing_sdk_dependency_requests_reinstall(tmp_path, monkeypatch, module):
     original = builtins.__import__
 
     def missing(name, *args, **kwargs):
@@ -291,6 +291,8 @@ def test_missing_optional_dependency_is_reported(tmp_path, monkeypatch, module):
     traced = cloudtrail.enrich_trace(result(), options(tmp_path))
     assert traced.trace["has_errors"]
     assert traced.resources[0].trace["reason"] == "dependency_missing"
+    assert "Reinstall InfraLens" in traced.trace["message"]
+    assert "aws-trace extra" not in traced.trace["message"]
     assert SECRET not in json.dumps(traced.to_dict())
 
 

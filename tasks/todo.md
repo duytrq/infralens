@@ -60,3 +60,10 @@ Evidence: [security-upload-verification.md](security-upload-verification.md).
 - [x] Verify contract/regressions, update guide and rebuild the CLI wheel.
 
 Evidence: [cli-consistency-verification.md](cli-consistency-verification.md).
+
+## Default AWS SDK
+
+- [x] Move boto3 to runtime dependencies and retain the legacy extra as compatibility.
+- [x] Verify normal installs and offline CloudTrail without SDK extras; update guide/wheel.
+
+Evidence: [default-sdk-verification.md](default-sdk-verification.md).

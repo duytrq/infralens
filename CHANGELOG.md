@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- Install boto3 by default so CloudTrail tracing needs no SDK extra; existing
+  `aws-trace` install commands remain compatible.
 - Consistent Security/Drift common flags, help order/defaults and upload validation;
   Drift accepts `--fail-on MEDIUM|HIGH` and retains `--fail-on-priority` as an alias.
 - Security `scan --upload` through Cognito and the existing API, full native JSON

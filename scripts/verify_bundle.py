@@ -1,6 +1,7 @@
 """Install a wheel in an isolated uv tool environment and scan without PATH Trivy."""
 
 import argparse
+import email
 import hashlib
 import json
 import os
@@ -42,6 +43,18 @@ def verify(wheel: Path, uv: str) -> None:
         ).decode()
         assert "Root-Is-Purelib: false" in metadata
         assert f"Tag: py3-none-{manifest['platform']}" in metadata
+        requirements = email.message_from_bytes(
+            package.read(
+                next(
+                    name
+                    for name in package.namelist()
+                    if name.endswith(".dist-info/METADATA")
+                )
+            )
+        ).get_all("Requires-Dist", [])
+        assert any(
+            value.startswith("boto3") and ";" not in value for value in requirements
+        ), "boto3 must be a default dependency, not an optional extra."
     with tempfile.TemporaryDirectory(prefix="infralens-wheel-") as work:
         root = Path(work)
         env = {
@@ -75,6 +88,28 @@ def verify(wheel: Path, uv: str) -> None:
             / "tools"
             / "infralens"
             / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        )
+        # No SDK extra or --with boto3: the normal wheel install must support trace.
+        traced = subprocess.run(
+            [
+                str(tool_python),
+                str(ROOT / "examples/network-rules/trace_demo.py"),
+                "--format",
+                "json",
+            ],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=True,
+            timeout=60,
+        )
+        trace_report = json.loads(traced.stdout)
+        assert trace_report["trace"]["has_errors"] is False
+        assert (
+            sum(r["trace"]["status"] == "matched" for r in trace_report["resources"])
+            == 2
         )
         # Copies keep deliberate tampering isolated from uv's shared package cache.
         # Run lifecycle and atomic-I/O tests against the installed wheel's code.

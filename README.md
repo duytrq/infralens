@@ -317,8 +317,9 @@ cho phép retry mà không chạy lại engine. `cloud upload` hỗ trợ cả S
 
 `--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
 Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`
-nhận 1–90, chỉ dùng cùng trace; mặc định 7 khi trace bật. Trace cần extra
-`aws-trace` hoặc bổ sung boto3 vào môi trường cài CLI.
+nhận 1–90, chỉ dùng cùng trace; mặc định 7 khi trace bật. `boto3` được cài tự động
+cùng CLI nên không cần extra cho trace. Tên extra `aws-trace` được giữ như alias
+tương thích cho lệnh cài cũ; nó không còn bổ sung dependency riêng.
 
 ## Logging và exit code
 

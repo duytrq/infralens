@@ -351,7 +351,7 @@ def enrich_trace(result: DriftResult, options: DriftOptions) -> DriftResult:
         metadata.update(
             status="error",
             has_errors=True,
-            message="Install InfraLens with the aws-trace extra.",
+            message="AWS SDK missing. Reinstall InfraLens.",
         )
     else:
         end = datetime.fromisoformat(result.checked_at)
@@ -423,7 +423,7 @@ def enrich_trace(result: DriftResult, options: DriftOptions) -> DriftResult:
             metadata.update(
                 status="error",
                 has_errors=True,
-                message="Install InfraLens with the aws-trace extra.",
+                message="AWS SDK missing. Reinstall InfraLens.",
             )
             for index in targets:
                 if resources[index].trace is None:

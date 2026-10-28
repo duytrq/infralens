@@ -10,7 +10,7 @@ không phải dependency của hệ thống này. Không chuyển dữ liệu SQ
 ## Chạy local
 
 ```bash
-uv sync --locked --extra aws-trace
+uv sync --locked
 uv run infralens drift ./infra --format json --output ./reports/drift.json
 uv run infralens drift ./infra --trace --lookback-days 7
 uv run infralens drift ./examples/drift-review \
@@ -21,8 +21,8 @@ uv run infralens drift ./examples/drift-review \
 Chạy từ repo hạ tầng cần quét, dùng CLI đã cài hoặc đường dẫn tuyệt đối phù hợp.
 Terraform ổn định >=1.1,<2, checkout đã init, workspace và credentials của
 backend/provider do người dùng chuẩn bị. Terraform không được bundle cùng Trivy.
-CloudTrail là extra tùy chọn; cài wheel bằng `uv tool install --with boto3 <wheel>`
-nếu muốn trace. CLI không nhận credentials từ dashboard.
+`boto3` được cài tự động cùng CLI; không cần extra hoặc cài SDK riêng để dùng
+CloudTrail. CLI không nhận credentials từ dashboard.
 
 Refresh-only so sánh state đã lưu với hạ tầng provider quan sát được. Chỉ sửa code
 chưa apply không phải drift. Không tự init/apply/destroy hoặc ghi lại state.

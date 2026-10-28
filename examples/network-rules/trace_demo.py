@@ -26,9 +26,7 @@ def main():
         import boto3
         from botocore.stub import ANY, Stubber
     except ImportError:
-        print(
-            "Install the aws-trace extra to run this offline SDK demo.", file=sys.stderr
-        )
+        print("Reinstall InfraLens to restore its AWS SDK dependency.", file=sys.stderr)
         return 2
     root = Path(__file__).resolve().parent
     payload = json.loads((root / "plan.json").read_text(encoding="utf-8"))

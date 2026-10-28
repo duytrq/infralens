@@ -52,7 +52,7 @@ hoặc `drift --help`. Flag toàn cục như `--verbose` đặt trước subcomm
 | Quét Security | InfraLens CLI và Trivy 0.76.x; wheel bundle đã chứa Trivy. |
 | Kiểm tra Drift trên hạ tầng thật | InfraLens CLI, Terraform ổn định `>=1.1,<2`, project đã init và quyền truy cập backend/provider. |
 | Thử Drift bằng plan JSON có sẵn | InfraLens CLI và bộ ví dụ; không cần Terraform hoặc AWS nếu không bật trace. |
-| Tìm sự kiện CloudTrail | Thư viện `boto3`, AWS credentials và quyền tra cứu CloudTrail trong phạm vi cần kiểm tra. |
+| Tìm sự kiện CloudTrail | AWS credentials và quyền tra cứu CloudTrail trong phạm vi cần kiểm tra; `boto3` được cài tự động cùng CLI. |
 | Upload Security/Drift | Có mạng, project đã tạo và tài khoản Cognito tương ứng. |
 
 **AWS CLI không bắt buộc.** Với hạ tầng AWS, Terraform và boto3 có thể sử dụng
@@ -92,11 +92,9 @@ không bảo đảm nhận được bản tích hợp này.
 Không tìm thấy lệnh sau khi cài? Chạy `uv tool update-shell`, mở terminal mới rồi
 thử lại. Nếu nâng cấp bản đã cài, dùng `uv tool install --reinstall <đường-dẫn-wheel-mới>`.
 
-Để bật CloudTrail, bổ sung `boto3` khi cài, ví dụ trên Linux/WSL:
-
-```bash
-uv tool install --reinstall --with boto3 ./infralens-0.1.0-py3-none-linux_x86_64.whl
-```
+`boto3` là dependency mặc định: cài hoặc cập nhật CLI bằng các lệnh trên sẽ tự cài
+SDK cho CloudTrail. Không cần `--with boto3` hoặc extra riêng; muốn tra cứu chỉ cần
+chuẩn bị AWS credentials/quyền phù hợp rồi bật `--trace` khi chạy Drift.
 
 ## 2. Đăng nhập và tạo project
 
@@ -349,7 +347,7 @@ hoặc in token vào log. Token hết hạn thì cấp token mới rồi retry m
 | Không có `--upload` trong `scan --help` hoặc `drift --help` | Bạn đang dùng CLI cũ; cài lại wheel/revision tích hợp được cấp. |
 | Không tìm thấy Terraform/Trivy | Drift thật cần Terraform trên PATH; Security cần wheel bundle hoặc Trivy 0.76.x. |
 | Terraform plan thất bại | Kiểm tra init, workspace, biến đầu vào, credentials và quyền backend/provider; lỗi công cụ không phải kết quả sạch. |
-| CloudTrail không chạy | Kiểm tra boto3, credentials, region và quyền; nếu chỉ cần drift, bỏ `--trace`. |
+| CloudTrail không chạy | Kiểm tra credentials, region và quyền. Nếu báo SDK bị thiếu, cài lại CLI bằng wheel mới; boto3 được cài tự động. |
 | Browser login timeout/callback lỗi | Dùng terminal tương tác; kiểm tra trình duyệt truy cập được `localhost:8765` và cổng chưa bị ứng dụng khác chiếm. |
 | Project không tìm thấy hoặc upload bị từ chối | Tạo project trước; dùng đúng Project ID và cùng tài khoản trên CLI/dashboard. |
 | Dashboard chưa thấy lượt vừa chạy | Chọn đúng tab Security/Drift, bỏ lọc sai scope/thời gian, Refresh; kiểm tra upload đã hoàn tất. |

@@ -34,7 +34,7 @@ Project này chỉ import và tắt CloudTrail; không yêu cầu AWS.
 .\.venv\Scripts\python.exe .\examples\network-rules\trace_demo.py --format json
 ```
 
-Cần extra aws-trace để có boto3/botocore, không cần tài khoản hoặc phiên AWS.
+CLI tự cài boto3/botocore, không cần extra, tài khoản hoặc phiên AWS cho demo này.
 Script dùng plan, identity và event giả, Stubber chặn mọi request. Hai resource
 matched, một partial vì event thiếu rule ID, một legacy skipped. Có ví dụ rule
 đã xóa dùng saved ID và RevokeSecurityGroupEgress. Kết quả vẫn là candidate,
