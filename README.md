@@ -2,6 +2,9 @@
 
 CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tầng.
 
+Người dùng bắt đầu tại [hướng dẫn sử dụng hệ thống](docs/USER_GUIDE.md): đăng nhập
+dashboard, cài CLI, quét Security, kiểm tra/upload Drift và xử lý lỗi thường gặp.
+
 Security scan dùng Trivy; drift dùng Terraform refresh-only, có CloudTrail trace,
 review priority và CI gate. [Backend cloud](backend/README.md) dùng
 Cognito/S3/DynamoDB; CLI có thể upload drift và retry bằng manifest.
