@@ -75,3 +75,15 @@ Evidence: [default-sdk-verification.md](default-sdk-verification.md).
 - [x] Verify unit, native scanner, PTY and installed-wheel behavior; update user guide.
 
 Evidence: [security-terminal-verification.md](security-terminal-verification.md).
+
+
+## CLI cloud defaults, projects and upload errors
+
+- [x] Replace the public upload retry command/sidecars with single-attempt uploads and actionable errors that retain the local report.
+- [x] Use red Critical text without a background, orange High and yellow Medium.
+- [x] Persist public API/project defaults, support environment/flag overrides and prevent cross-API selected-project reuse.
+- [x] Add authenticated project create/list/use with ownership validation and bounded pagination.
+- [x] Document local versus cloud authentication, verify AWS/browser behavior and rebuild/install the Linux wheel.
+
+Evidence: [cli-cloud-ux-verification.md](cli-cloud-ux-verification.md). This supersedes
+older manifest/retry instructions above; those entries describe their original implementation.

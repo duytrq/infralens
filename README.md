@@ -7,7 +7,7 @@ dashboard, cài CLI, quét Security, kiểm tra/upload Drift và xử lý lỗi 
 
 Security scan dùng Trivy; drift dùng Terraform refresh-only, có CloudTrail trace,
 review priority và CI gate. [Backend cloud](backend/README.md) dùng
-Cognito/S3/DynamoDB; CLI có thể upload Security/Drift và retry bằng manifest.
+Cognito/S3/DynamoDB; CLI có thể upload Security/Drift, lưu API URL và quản lý project.
 Xem [hướng dẫn drift tích hợp](docs/DRIFT_INTEGRATION.md).
 
 [Dashboard frontend](frontend/README.md) cung cấp giao diện React cho project,
@@ -170,7 +170,7 @@ Security và Drift dùng chung cú pháp:
 `infralens <scan|drift> PATH --format json --output FILE --fail-on HIGH`.
 Cả hai có `--timeout` (giây, mặc định 300), `--upload`, `--project`, `--api-url`;
 upload đều yêu cầu JSON và file output. Riêng Drift thêm `--scope` khi upload để
-phân biệt môi trường so sánh. Xem [bảng flag chung](docs/USER_GUIDE.md#cú-pháp-chung-của-security-và-drift).
+phân biệt môi trường so sánh. Xem [hướng dẫn sử dụng](docs/USER_GUIDE.md).
 
 ```bash
 infralens scan ./infra
@@ -189,9 +189,9 @@ infralens scan ./infra --timeout 120
 | `--output` | File báo cáo, tương đối với CWD hoặc tuyệt đối. |
 | `--fail-on` | Ngưỡng LOW,MEDIUM,HIGH,CRITICAL gồm chính mức đó và các mức cao hơn. Mặc định không thất bại vì findings. |
 | `--timeout` | Số giây nguyên dương cho scan, mặc định 300. Kiểm tra phiên bản giới hạn 10 giây; convert báo cáo giới hạn 60 giây. |
-| `--upload` | Upload native JSON đầy đủ lên dashboard; yêu cầu `--format json`, `--output`, `--project` và `--api-url`. Mặc định tắt. |
-| `--project` | Project ID đã tạo trên dashboard; chỉ dùng cùng `--upload`. |
-| `--api-url` | HTTPS API origin; chỉ dùng cùng `--upload`. |
+| `--upload` | Upload native JSON đầy đủ lên dashboard; yêu cầu `--format json`, `--output` và API/project từ cấu hình, env hoặc flag. Mặc định tắt. |
+| `--project` | Ghi đè project đã chọn; fallback `INFRALENS_PROJECT`. Chỉ dùng cùng `--upload`. |
+| `--api-url` | Ghi đè API đã lưu; fallback `INFRALENS_API_URL`. Chỉ dùng cùng `--upload`. |
 
 Trivy quét cấu hình Terraform đệ quy; InfraLens không chạy Terraform hay AWS CLI.
 Bước khám phá đầu vào bỏ qua `.git`, `.terraform` và không đi theo symlink thư mục.
@@ -209,7 +209,7 @@ vì vậy khớp JSON đầy đủ. Các lệnh không upload giữ nguyên các
 Terminal hiển thị tổng findings, số đang hiển thị và badge số lượng theo severity.
 Mỗi finding là một khối gồm severity/rule, file:dòng, resource, mô tả và source
 excerpt do Trivy cung cấp. Dòng liên quan được đánh dấu `>` và tô màu theo severity:
-CRITICAL trắng nền đỏ, HIGH đỏ, MEDIUM vàng, LOW cyan, UNKNOWN tím. Nhãn severity
+CRITICAL chữ đỏ không nền, HIGH cam, MEDIUM vàng, LOW cyan, UNKNOWN tím. Nhãn severity
 vẫn hiện khi không có màu. Không còn tiêu đề `Security scan (Trivy ...)`.
 
 Thứ tự: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN. Excerpt tối đa 9 dòng quanh dòng
@@ -230,28 +230,33 @@ mã nguồn do Trivy cung cấp. Báo cáo được xuất trước khi trả ex
 
 ### Upload Security lên dashboard
 
-Tạo project trên dashboard, rồi chạy:
+Lưu API một lần, tạo hoặc chọn project ngay trong CLI:
 
 ```bash
-infralens scan ./infra --format json --output ./reports/security-001.json \
-  --fail-on HIGH --upload --project my-project \
-  --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens cloud project create my-project --name "My project"
+infralens cloud project list
+infralens cloud status
+
+infralens scan ./infra --format json --output ./reports/security.json \
+  --fail-on HIGH --upload
 ```
 
-CLI dùng Cognito qua browser hoặc `INFRALENS_ACCESS_TOKEN` từ secret environment
-của CI. Không cần AWS credentials để quét/upload Security. Sau upload, mở project
-→ **Security**, chờ analysis ready để xem findings và source.
+`create` tự chọn project; dùng `cloud project use ID` để chuyển project đã có.
+Project có cả Security và Drift. API/project ưu tiên flag > biến môi trường >
+cấu hình đã lưu; khi đổi API, project cũ không tự được dùng cho API khác.
 
-Giới hạn Security JSON là **50 MiB**. Manifest `security-001.json.upload.json`
-giữ UUID, timestamps, checksum của đúng byte báo cáo và API origin. Gate fail vẫn
-upload trước khi trả `1`; upload lỗi giữ report/manifest và trả `3`. Lượt scan mới
-chọn tên output mới; retry lượt cũ không chạy Trivy:
+Quét local không cần tài khoản InfraLens. Thao tác project và upload yêu cầu
+Cognito: CLI tương tác mở browser đăng nhập; CI dùng `INFRALENS_ACCESS_TOKEN`
+trong secret environment. Token chỉ ở RAM trong một lệnh; cấu hình chỉ lưu API
+và project. Không cần AWS credentials để quét/upload Security. Sau upload, mở
+project → **Security**, chờ analysis ready để xem findings và source.
 
-```bash
-infralens cloud upload --report ./reports/security-001.json \
-  --manifest ./reports/security-001.json.upload.json \
-  --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
-```
+Giới hạn Security JSON là **50 MiB**. Gate fail vẫn upload trước khi trả `1`.
+Upload lỗi trả `3`, thông báo nguyên nhân (mạng, đăng nhập, quyền, dịch vụ...) và
+đường dẫn report local còn giữ. Không tạo sidecar `.upload.json`, không có lệnh
+`cloud upload` hay vòng lặp retry. Nếu kết quả upload chưa được xác nhận, kiểm
+tra dashboard trước khi chạy scan mới để tránh tạo lượt trùng.
 
 Metadata chứa counts toàn bộ findings, bộ lọc terminal, ngưỡng fail, phiên bản
 Trivy, hash `.trivyignore` nếu có và mã warning an toàn. Native JSON có thể chứa
@@ -315,14 +320,13 @@ chưa được xác minh. `--trace` vẫn cần AWS khi import.
 infralens drift ./infra --plan-json ./plan.json --format json
 infralens drift ./infra --fail-on HIGH --fail-on-unknown
 infralens drift ./infra --format json --output ./reports/drift.json \
-  --upload --project my-project --scope dev-default \
-  --api-url https://API_ID.execute-api.ap-southeast-1.amazonaws.com
+  --upload --scope dev-default
 ```
 
-Tạo project trên dashboard trước khi upload. CLI đăng nhập Cognito qua browser;
-CI truyền access token còn hạn bằng `INFRALENS_ACCESS_TOKEN`. Báo cáo cloud tối đa
-2 MiB; source location thành đường dẫn tương đối. Manifest `<output>.upload.json`
-cho phép retry mà không chạy lại engine. `cloud upload` hỗ trợ cả Security và Drift.
+Dùng API/project đã cấu hình như Security; `--scope` vẫn phải truyền rõ cho Drift.
+CLI đăng nhập Cognito qua browser; CI dùng `INFRALENS_ACCESS_TOKEN`.
+Báo cáo cloud tối đa 2 MiB; source location thành đường dẫn tương đối.
+Upload lỗi thông báo nguyên nhân, giữ report local và trả `3`.
 
 `--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
 Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`

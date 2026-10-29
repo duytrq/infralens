@@ -75,7 +75,9 @@ at 320/768/1024/1440px. `test-results/` contains local screenshots and traces.
 - Findings render plain text only. References permit HTTP(S), and missing source
   locations are shown as unavailable. Truncation is labeled; original JSON is full.
 - Reports arrive through `infralens scan --upload` and `infralens drift --upload`;
-  `cloud upload` retries either type. Projects have Security/Drift tabs.
+  CLI saves the API URL and creates/lists/selects projects with `cloud` commands.
+  Upload failures preserve the local report and explain the error. Projects have
+  Security/Drift tabs. See [the user guide](../docs/USER_GUIDE.md).
 - Drift reports show saved/observed values, source blocks, review priorities,
   CI gates, network context and candidate CloudTrail events. The browser reads
   one normalized report (at most 2 MiB); resource filtering/paging runs locally.

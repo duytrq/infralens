@@ -105,9 +105,10 @@ backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 --local-
   --output infra/deployments/infralens-dev-frontend-local-verification.json
 ```
 
-To include real Security CLI scan/upload and an idempotent retry without Trivy
-on PATH, supply the installed CLI executable. Trivy 0.76.x must be available for
-the initial scan (or bundled in that CLI). This tests the fixture project only:
+To include CLI API configuration, project create/list/use and a real Security
+scan/upload using the saved defaults, supply the installed CLI executable. Trivy
+0.76.x must be available for the scan (or bundled in that CLI). The checks also
+verify the threshold gate, indexing, source display and downloaded bytes:
 
 ```bash
 backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 \
@@ -116,8 +117,9 @@ backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 \
 ```
 
 The browser's temporary account supplies its access token to the CLI through a
-child-process environment only. Reports/manifests use a temporary directory and
-are removed along with the test users/projects after verification.
+child-process environment only. Config and reports use an isolated temporary
+directory; the check verifies no upload sidecar is created. Test users/projects
+and temporary files are removed after verification.
 
 ```bash
 backend/.venv/bin/python infra/inventory.py \

@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- Save API URL once with `cloud configure`; show defaults with `cloud status` and
+  create/list/select authenticated projects from the CLI. Flags override environment
+  variables, which override saved defaults; selected projects are API-specific.
 - Security terminal finding cards with source excerpts, cause-line markers and
   distinct severity colors. Remove the scanner/version banner; respect --no-color,
   NO_COLOR, non-terminal output and unstyled report/machine formats.
@@ -11,13 +14,13 @@
 - Consistent Security/Drift common flags, help order/defaults and upload validation;
   Drift accepts `--fail-on MEDIUM|HIGH` and retains `--fail-on-priority` as an alias.
 - Security `scan --upload` through Cognito and the existing API, full native JSON
-  independent of terminal severity filters, 50 MiB limit and immutable retry manifests.
-- Shared `cloud upload` retries for Security/Drift without rerunning either engine;
-  live browser smoke can exercise real CLI Security scan/upload, gate failure and retry.
+  independent of terminal severity filters and a 50 MiB limit.
+- Live browser smoke exercises CLI configuration, projects, Security upload,
+  threshold failure, dashboard source display and exact-byte download.
 - Terraform drift engine, optional CloudTrail candidates, source locations,
   review priorities and CI gates, integrated from drift_develop.
 - Drift upload with memory-only Cognito PKCE or supplied CI access tokens,
-  project-relative source paths and immutable manifests for upload retries.
+  project-relative source paths and checksums of the written report bytes.
 - Private AWS drift storage, validated report summaries, scoped comparisons,
   and React history/report/comparison views alongside security scans.
 - Independent Cognito-authenticated storage backend, private per-user projects and
@@ -32,6 +35,14 @@
 - Native Windows process-tree cleanup and UTF-8 output, including redirected
   reports and paths containing non-ASCII characters.
 - Linux/Windows Python 3.10/3.14 artifact-build workflow and Docker smoke checks.
+
+### Changed
+- Upload once per command; failures explain network, authentication, permission or
+  service errors and keep the local report. Remove `cloud upload` and persisted
+  `.upload.json` sidecars; check the dashboard before rerunning an uncertain upload.
+- Use red text without a background for CRITICAL, orange for HIGH and yellow for
+  MEDIUM in the CLI. Cloud auth still uses browser Cognito or a CI access token;
+  local scans need no InfraLens login and tokens are never saved.
 
 ### Fixed
 - Sign S3 upload/download URLs for the bucket's regional endpoint so new buckets

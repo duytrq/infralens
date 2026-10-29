@@ -2,7 +2,9 @@
 
 Backend cung cấp API quản lý project, metadata lần scan, findings và báo cáo JSON trên AWS.
 Mỗi tài khoản Cognito có dữ liệu riêng. Dashboard React đọc cả security và drift;
-CLI hỗ trợ `scan --upload`, `drift --upload` và `cloud upload` để retry cả hai loại.
+CLI hỗ trợ `scan --upload`, `drift --upload`, lưu API URL và tạo/liệt kê/chọn project.
+Upload lỗi giữ report local và báo nguyên nhân; không có lệnh retry upload riêng.
+Xem [hướng dẫn CLI](../docs/USER_GUIDE.md) về cấu hình và Cognito login.
 [Luồng drift](../docs/DRIFT_INTEGRATION.md) mô tả contract và vận hành.
 
 ## Kiến trúc

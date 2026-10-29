@@ -53,55 +53,55 @@ không chứng nhận hạ tầng sạch hoặc bao phủ đầy đủ.
 `--fail-on` không phân biệt hoa/thường, cùng cách truyền ngưỡng với Security.
 `--fail-on-priority` vẫn được nhận như alias để tương thích lệnh cũ.
 
-## Upload và retry
+## Upload và đăng nhập
 
-Tạo project trên dashboard trước, đăng nhập cùng tài khoản sẽ xem report.
+Cấu hình API một lần, tạo hoặc chọn project ngay trong CLI:
 
 ```bash
-infralens drift ./infra --format json --output ./reports/drift-001.json \
-  --upload --project my-project --scope dev-default \
-  --api-url https://API_ID.execute-api.ap-southeast-1.amazonaws.com
+infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens cloud project create my-project --name "My project"
+# Hoặc chọn project đã có:
+infralens cloud project list
+infralens cloud project use my-project
 
-infralens cloud upload --report ./reports/drift-001.json \
-  --manifest ./reports/drift-001.json.upload.json \
-  --api-url https://API_ID.execute-api.ap-southeast-1.amazonaws.com
+infralens drift ./infra --format json --output ./reports/drift.json \
+  --upload --scope dev-default
 ```
 
-Upload cần JSON output, project, scope và HTTPS API origin. `scope` là ID ổn định
-do nhóm đặt cho một account/workspace/environment; thay scope khi đổi phạm vi.
-Đây là khai báo của client, không phải xác nhận tài khoản AWS từ server.
+Upload cần JSON output, project, scope và HTTPS API origin. API/project được lấy
+từ flag > `INFRALENS_API_URL`/`INFRALENS_PROJECT` > cấu hình đã lưu. Project đã
+chọn gắn với API đã lưu. `scope` là ID ổn định do nhóm đặt cho một
+account/workspace/environment; thay scope khi đổi phạm vi. Đây là khai báo của
+client, không phải xác nhận tài khoản AWS từ server.
 
 CLI tạo JSON local đã chuyển source location thành đường dẫn tương đối với
 Terraform root. Source nằm ngoài root được đánh dấu unavailable. Không upload
 raw plan/state/tfvars, raw CloudTrail event, profile hay credentials. Giá trị tài
 nguyên không đánh dấu sensitive vẫn có thể chứa thông tin riêng tư.
 
-Manifest `<output>.upload.json` được ghi trước network, giữ UUID/timestamps và
-checksum của đúng byte file đã ghi, kể cả newline Windows. Manifest không chứa
-token, được Git ignore và cần giữ cùng report. Output có manifest sẵn bị từ chối
-để bảo toàn retry; chọn tên output mới cho lần drift mới.
+Metadata UUID/timestamps/checksum chỉ giữ trong RAM; checksum tính trên đúng byte
+file đã ghi, kể cả newline Windows. Không tạo `.upload.json` và không có lệnh
+`cloud upload`. Mỗi HTTP request chỉ thử một lần. Upload lỗi thông báo nguyên
+nhân và đường dẫn report còn giữ, trả `3`. Nếu chưa xác nhận được kết quả, kiểm
+tra dashboard trước khi chạy lại vì lệnh mới tạo run mới. Gate fail vẫn upload
+rồi trả `1`; lỗi trace còn report vẫn upload rồi trả `3`. Report vượt 2 MiB vẫn
+được xuất local, nhưng không upload.
 
-Retry không chạy Terraform hoặc tạo UUID khác. Report bị sửa hoặc API origin
-khác manifest bị từ chối. PUT đã tồn tại (412) tiếp tục complete để xác minh.
-Gate fail vẫn upload rồi trả 1; lỗi trace còn report vẫn upload rồi trả 3.
-Upload thất bại giữ report/manifest và trả 3. Report vượt 2 MiB vẫn được xuất
-local, nhưng không tạo upload thành công hoặc manifest retry.
-
-CLI tương tác mở browser qua Cognito Code + PKCE S256, kiểm tra state và dùng
-callback localhost đã đăng ký. Token chỉ tồn tại trong RAM của một lệnh; lệnh
-upload khác có thể yêu cầu browser lại. Không có kho token hoặc login lâu dài.
+Quét local không cần tài khoản InfraLens. Thao tác project và upload cần Cognito:
+CLI tương tác mở browser qua Code + PKCE S256, kiểm tra state và dùng callback
+localhost đã đăng ký. Token chỉ trong RAM của một lệnh; lệnh cloud khác có thể
+mở browser lại. Cấu hình chỉ lưu API URL và project, không lưu token.
 
 CI/noninteractive cung cấp `INFRALENS_ACCESS_TOKEN` bằng secret environment của
-pipeline. Token phải còn hạn và có scope infralens/api cho cùng User Pool/client;
-hết hạn thì cấp lại rồi retry manifest. Không truyền token bằng command line,
-không commit token và không có luồng machine identity trong v1. Credentials
-Terraform/AWS ở runner độc lập với Cognito access token dùng upload.
+pipeline. Token phải còn hạn và có scope infralens/api cho cùng User Pool/client.
+Không truyền token bằng command line, không commit token; v1 chưa có machine
+identity. Credentials Terraform/AWS ở runner độc lập với Cognito dùng cloud.
 
 ## Contract và vòng đời
 
 - POST `/v1/runs`: nhận security_scan hoặc drift. Drift giữ report schema "1.0"
   và kind drift; envelope metadata schema_version vẫn là số 1.
-- Complete/download/delete dùng endpoint hiện có. Manifest tối đa 64 KiB;
+- Complete/download/delete dùng endpoint hiện có. Metadata tối đa 64 KiB;
   security JSON giữ giới hạn 50 MiB, drift JSON tối đa 2 MiB.
 - Complete kiểm tra schema, đường dẫn, tính nhất quán summary/priority/gate và
   tính lại số liệu từ report trước khi publish. Không chứng thực Terraform/AWS.
