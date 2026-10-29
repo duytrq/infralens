@@ -41,7 +41,6 @@ def test_invalid_trace_has_no_external_calls_or_file_changes(project, monkeypatc
                 command,
                 str(project),
                 "--trace",
-                "--lookback-days",
                 "91",
                 "--output",
                 str(project / "reports" / "report.json"),
@@ -173,7 +172,7 @@ def test_installed_entrypoints(
         ([], 0, "Usage:"),
         (["--version"], 0, "infralens 0.1.0"),
         (["scan", str(project)], 0, "[CRITICAL] TEST-CRITICAL"),
-        (["drift", str(project), "--trace"], 0, "CloudTrail trace: not_needed"),
+        (["drift", str(project), "--trace", "7"], 0, "CloudTrail trace: not_needed"),
         (["drift", "missing-directory"], 2, "directory"),
     ]
     for args, code, message in cases:

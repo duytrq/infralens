@@ -483,11 +483,13 @@ def test_cli_import_trace_uses_new_matcher_without_terraform(
             "--plan-json",
             str(source),
             "--trace",
+            "7",
             "--region",
             REGION,
             "--format",
             "json",
-            "--fail-on-drift",
+            "--fail-on",
+            "ANY",
         ],
     )
     assert response.exit_code == 1, response.output

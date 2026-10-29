@@ -224,7 +224,7 @@ def test_cli_with_real_executable_boundary(
 ):
     monkeypatch.setenv("FAKE_TERRAFORM_MODE", mode)
     result = runner.invoke(
-        app, ["drift", str(project), "--format", "json", "--fail-on-drift"]
+        app, ["drift", str(project), "--format", "json", "--fail-on", "ANY"]
     )
     assert result.exit_code == expected, result.output
     report = json.loads(result.stdout)
@@ -325,7 +325,8 @@ def test_json_file_written_before_findings_exit(
             "json",
             "--output",
             str(output),
-            "--fail-on-drift",
+            "--fail-on",
+            "ANY",
         ],
     )
     assert result.exit_code == 1, result.output

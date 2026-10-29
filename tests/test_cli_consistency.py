@@ -129,29 +129,24 @@ def test_shared_upload_requirements_fail_before_engine(
     assert not output.exists()
 
 
-@pytest.mark.parametrize("value", ["HIGH", " medium "])
-def test_drift_fail_on_and_legacy_alias_produce_the_same_gate(value):
-    root = Path(__file__).resolve().parents[1]
-    fixture = root / "examples/drift-review"
-    criteria = []
-    for flag in ("--fail-on", "--fail-on-priority"):
-        response = runner.invoke(
-            app,
-            [
-                "drift",
-                str(fixture),
-                "--plan-json",
-                str(fixture / "plan.json"),
-                "--format",
-                "json",
-                flag,
-                value,
-            ],
-        )
-        assert response.exit_code == 1, response.output
-        report = json.loads(response.stdout)
-        criteria.append(report["gate"])
-    assert criteria[0] == criteria[1]
+@pytest.mark.parametrize("value,matched", [("HIGH", 2), (" medium ", 3)])
+def test_drift_fail_on_keeps_inclusive_thresholds(value, matched):
+    fixture = Path(__file__).resolve().parents[1] / "examples/drift-review"
+    response = runner.invoke(
+        app,
+        [
+            "drift",
+            str(fixture),
+            "--plan-json",
+            str(fixture / "plan.json"),
+            "--format",
+            "json",
+            "--fail-on",
+            value,
+        ],
+    )
+    assert response.exit_code == 1, response.output
+    assert json.loads(response.stdout)["gate"]["matched_count"] == matched
 
 
 @pytest.mark.parametrize(

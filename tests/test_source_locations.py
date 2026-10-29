@@ -376,7 +376,8 @@ def test_imported_plan_cli_maps_current_source_without_terraform(tmp_path, monke
             str(imported),
             "--format",
             "json",
-            "--fail-on-drift",
+            "--fail-on",
+            "ANY",
         ],
     )
     assert cli.exit_code == 1, cli.output

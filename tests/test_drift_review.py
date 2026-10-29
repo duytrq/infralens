@@ -292,7 +292,7 @@ def test_cli_advice_never_writes_state_or_runs_terraform_for_imported_plan(
             str(imported),
             "--format",
             "json",
-            *(["--fail-on-drift"] if fail_on else []),
+            *(["--fail-on", "ANY"] if fail_on else []),
         ],
     )
     assert cli.exit_code == exit_code, cli.output

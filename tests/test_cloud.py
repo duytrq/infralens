@@ -34,7 +34,8 @@ def arguments(kind, project, output):
                 "dev",
                 "--plan-json",
                 "examples/drift/plan.json",
-                "--fail-on-drift",
+                "--fail-on",
+                "ANY",
             ]
             if kind == "drift"
             else ["--fail-on", "HIGH"]
@@ -191,8 +192,9 @@ def test_oversized_upload_keeps_report_before_network(
 
 
 @pytest.mark.parametrize("fixture", ["drift", "drift-review", "network-rules"])
+@pytest.mark.parametrize("rule", ["ANY", "UNKNOWN", "MEDIUM", "HIGH,UNKNOWN"])
 def test_imported_drift_report_and_posted_metadata_match_api_contract(
-    tmp_path, monkeypatch, fixture
+    tmp_path, monkeypatch, fixture, rule
 ):
     root = Path(__file__).resolve().parents[1]
     project = root / "examples" / fixture
@@ -218,11 +220,14 @@ def test_imported_drift_report_and_posted_metadata_match_api_contract(
             "--api-url",
             API,
             "--fail-on",
-            "high",
-            "--fail-on-unknown",
+            rule,
         ],
     )
     assert response.exit_code in (0, 1), response.output
+    assert (
+        got[0][0]["drift_options"]["gate"]
+        == json.loads(out.read_bytes())["gate"]["criteria"]
+    )
     spec = json.loads((root / "contracts/openapi.json").read_text())
     for name, data in [
         ("DriftReport", json.loads(out.read_bytes())),

@@ -9,8 +9,8 @@ runner = CliRunner()
 @pytest.mark.parametrize(
     "extra",
     [
-        ["--trace"],
-        ["--trace", "--lookback-days", "14"],
+        ["--trace", "7"],
+        ["--trace", "14"],
     ],
 )
 def test_clean_trace_requires_no_aws_calls(project, extra, fake_terraform, monkeypatch):
@@ -26,14 +26,14 @@ def test_clean_trace_requires_no_aws_calls(project, extra, fake_terraform, monke
 @pytest.mark.parametrize(
     "extra, parameter",
     [
-        (["--lookback-days", "7"], "--lookback-days"),
-        (["--trace", "--lookback-days", "0"], "--lookback-days"),
-        (["--trace", "--lookback-days", "-1"], "--lookback-days"),
-        (["--trace", "--lookback-days", "1.5"], "--lookback-days"),
-        (["--trace", "--lookback-days", "91"], "--lookback-days"),
+        (["--trace"], "--trace"),
+        (["--trace", "0"], "--trace"),
+        (["--trace", "-1"], "--trace"),
+        (["--trace", "1.5"], "--trace"),
+        (["--trace", "91"], "--trace"),
         (["--profile", "  "], "--profile"),
         (["--region", ""], "--region"),
-        (["--trace", "--var-file", "missing.tfvars"], "--var-file"),
+        (["--trace", "7", "--var-file", "missing.tfvars"], "--var-file"),
         (["--format", "sarif"], "--format"),
         (["--unknown"], "--unknown"),
     ],
@@ -76,8 +76,9 @@ def test_drift_options_and_relative_paths(project, tmp_path, monkeypatch, trace,
             " dev ",
             "--region",
             " us-east-1 ",
-            "--fail-on-drift",
-            *(["--trace"] if trace else []),
+            "--fail-on",
+            "ANY",
+            *(["--trace", "7"] if trace else []),
         ],
     )
     assert result.exit_code == 0

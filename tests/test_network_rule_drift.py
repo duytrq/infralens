@@ -246,7 +246,8 @@ def test_cli_import_keeps_context_and_never_runs_tools(project, tmp_path, monkey
             str(source),
             "--format",
             "json",
-            "--fail-on-drift",
+            "--fail-on",
+            "ANY",
         ],
     )
     assert response.exit_code == 1, response.output

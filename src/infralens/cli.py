@@ -23,8 +23,8 @@ from infralens.options import (
 )
 from infralens.reporting import color_enabled
 from infralens.validation import (
+    drift_failure_criteria,
     drift_output_path,
-    drift_priority_threshold,
     failure_threshold,
     optional_text,
     readable_file,
@@ -32,7 +32,6 @@ from infralens.validation import (
     scan_output_path,
     severity_filter,
     terraform_directory,
-    trace_lookback,
     variable_files,
 )
 
@@ -380,7 +379,15 @@ def scan(
         )
 
 
-@app.command()
+@app.command(
+    epilog=(
+        "\b\nExamples:\n"
+        "  infralens drift\n"
+        "  infralens drift --fail-on ANY\n"
+        "  infralens drift --fail-on HIGH,UNKNOWN --trace 7\n"
+        "\nWithout --fail-on, drift findings do not fail the command."
+    )
+)
 def drift(
     ctx: typer.Context,
     path: ProjectPath = Path("."),
@@ -388,12 +395,15 @@ def drift(
         DriftFormat, typer.Option("--format", help="Report format.")
     ] = None,
     output: ReportOutput = None,
-    fail_on_priority: Annotated[
+    fail_on: Annotated[
         str | None,
         typer.Option(
             "--fail-on",
-            "--fail-on-priority",
-            help="Inclusive MEDIUM|HIGH review-priority threshold.",
+            metavar="RULES",
+            help=(
+                "Exit 1 for ANY drift, >=MEDIUM, HIGH or UNKNOWN. "
+                "Combine with commas, e.g. HIGH,UNKNOWN; ignores --severity."
+            ),
         ),
     ] = None,
     timeout: EngineTimeout = 300,
@@ -419,25 +429,18 @@ def drift(
     profile: Annotated[str | None, typer.Option(help="AWS profile name.")] = None,
     region: Annotated[str | None, typer.Option(help="AWS region name.")] = None,
     trace: Annotated[
-        bool, typer.Option("--trace", help="Look up related AWS CloudTrail events.")
-    ] = False,
-    lookback_days: Annotated[
         int | None,
         typer.Option(
+            "--trace",
             min=1,
             max=90,
-            help="Lookback in days (1-90); requires --trace (default: 7).",
+            metavar="DAYS",
+            help=(
+                "Find CloudTrail candidates from the last 1-90 days, "
+                "e.g. --trace 7; off when omitted."
+            ),
         ),
     ] = None,
-    fail_on_drift: Annotated[
-        bool, typer.Option("--fail-on-drift", help="Exit 1 when drift is detected.")
-    ] = False,
-    fail_on_unknown: Annotated[
-        bool,
-        typer.Option(
-            "--fail-on-unknown", help="Exit 1 for unknown or unassessed priority."
-        ),
-    ] = False,
     plan_json: Annotated[
         Path | None,
         typer.Option(help="Read plan JSON without Terraform; --trace still calls AWS."),
@@ -451,8 +454,7 @@ def drift(
             raise InvalidInput(
                 "--severity: Drift priorities are HIGH, MEDIUM and UNKNOWN."
             )
-        days = trace_lookback(trace, lookback_days)
-        priority = drift_priority_threshold(fail_on_priority)
+        any_drift, priority, unknown = drift_failure_criteria(fail_on)
         profile = optional_text(profile, "--profile")
         region = optional_text(region, "--region")
         directory, inputs = terraform_directory(path)
@@ -481,13 +483,13 @@ def drift(
                 destination,
                 profile,
                 region,
+                trace is not None,
                 trace,
-                days,
-                fail_on_drift,
+                any_drift,
                 timeout,
                 imported,
                 fail_on_priority=priority,
-                fail_on_unknown=fail_on_unknown,
+                fail_on_unknown=unknown,
                 color=ctx.find_root().obj["color"],
                 severity=selected,
                 upload=cloud_options,

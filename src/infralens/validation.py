@@ -195,13 +195,22 @@ def failure_threshold(value: str | None) -> str | None:
     return value
 
 
-def drift_priority_threshold(value: str | None) -> str | None:
+def drift_failure_criteria(value: str | None) -> tuple[bool, str | None, bool]:
+    """Map the single CLI option onto the existing report/cloud gate contract."""
     if value is None:
-        return None
-    value = value.strip().lower()
-    if value not in ("high", "medium"):
-        raise InvalidInput("--fail-on/--fail-on-priority: use MEDIUM or HIGH.")
-    return value
+        return False, None, False
+    selected = {part.strip().upper() for part in value.split(",")}
+    if not selected <= {"ANY", "MEDIUM", "HIGH", "UNKNOWN"}:
+        raise InvalidInput(
+            "--fail-on: use ANY, MEDIUM, HIGH or UNKNOWN; "
+            "combine with commas, e.g. HIGH,UNKNOWN."
+        )
+    if "ANY" in selected:
+        return True, None, False
+    threshold = (
+        "medium" if "MEDIUM" in selected else "high" if "HIGH" in selected else None
+    )
+    return False, threshold, "UNKNOWN" in selected
 
 
 def optional_text(value: str | None, parameter: str) -> str | None:
@@ -211,14 +220,6 @@ def optional_text(value: str | None, parameter: str) -> str | None:
     if not value:
         raise InvalidInput(f"{parameter}: must not be blank.")
     return value
-
-
-def trace_lookback(trace: bool, days: int | None) -> int | None:
-    if days is not None and (not trace or not 1 <= days <= 90):
-        raise InvalidInput(
-            "--lookback-days: requires --trace and an integer from 1 to 90."
-        )
-    return (7 if days is None else days) if trace else None
 
 
 def variable_files(paths: list[Path], directory: Path) -> tuple[Path, ...]:

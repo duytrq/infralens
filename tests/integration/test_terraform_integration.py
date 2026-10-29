@@ -42,7 +42,7 @@ def setup_terraform(project, monkeypatch):
 
 def report(project, expected=0):
     result = runner.invoke(
-        app, ["drift", str(project), "--format", "json", "--fail-on-drift"]
+        app, ["drift", str(project), "--format", "json", "--fail-on", "ANY"]
     )
     assert result.exit_code == expected, result.output
     return json.loads(result.stdout)

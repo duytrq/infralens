@@ -159,7 +159,7 @@ def test_invalid_programmatic_threshold_is_rejected(value):
 
 @pytest.mark.parametrize(
     "flag",
-    [[], ["--fail-on-drift"], ["--fail-on-priority", "high"], ["--fail-on-unknown"]],
+    [[], ["--fail-on", "ANY"], ["--fail-on", "high"], ["--fail-on", "UNKNOWN"]],
 )
 def test_execution_error_overrides_gate_and_retains_report(project, monkeypatch, flag):
     result = replace(
@@ -185,9 +185,7 @@ def test_partial_trace_without_execution_error_does_not_invent_exit_3():
     assert evaluate_gate(result, fail_on_priority="high")["exit_code"] == 0
 
 
-@pytest.mark.parametrize(
-    "threshold", ["bad", "low", "unknown", "high,medium", "", "   "]
-)
+@pytest.mark.parametrize("threshold", ["bad", "low", "critical", "high,", "", "   "])
 def test_invalid_cli_gate_precedes_collection_and_output_creation(
     project, tmp_path, monkeypatch, threshold
 ):
@@ -201,14 +199,14 @@ def test_invalid_cli_gate_precedes_collection_and_output_creation(
         [
             "drift",
             str(project),
-            "--fail-on-priority",
+            "--fail-on",
             threshold,
             "--output",
             str(output),
         ],
     )
     assert response.exit_code == 2
-    assert "--fail-on-priority" in response.stderr
+    assert "--fail-on" in response.stderr
     assert response.stdout == "" and not output.parent.exists()
 
 
@@ -217,7 +215,7 @@ def test_cli_normalizes_priority_and_passes_flags_to_handler(project, monkeypatc
     monkeypatch.setattr("infralens.cli.handle_drift", received.append)
     response = runner.invoke(
         app,
-        ["drift", str(project), "--fail-on-priority", " HIGH ", "--fail-on-unknown"],
+        ["drift", str(project), "--fail-on", " HIGH , UNKNOWN "],
     )
     assert response.exit_code == 0
     assert received[0].fail_on_priority == "high"
@@ -271,15 +269,15 @@ def fixture_resources():
 @pytest.mark.parametrize(
     "indices,flags,expected,matched",
     [
-        ([], ["--fail-on-priority", "high", "--fail-on-unknown"], 0, 0),
-        ([1], ["--fail-on-priority", "high"], 0, 0),
-        ([1], ["--fail-on-priority", "medium"], 1, 1),
-        ([2], ["--fail-on-priority", "high"], 0, 0),
-        ([2], ["--fail-on-priority", "high", "--fail-on-unknown"], 1, 1),
-        ([0, 1, 2], ["--fail-on-priority", "high"], 1, 1),
-        ([0, 1, 2], ["--fail-on-priority", "high", "--fail-on-unknown"], 1, 2),
-        ([0, 1, 2], ["--fail-on-priority", "medium"], 1, 2),
-        ([1, 2], ["--fail-on-drift", "--fail-on-priority", "high"], 1, 2),
+        ([], ["--fail-on", "high,unknown"], 0, 0),
+        ([1], ["--fail-on", "high"], 0, 0),
+        ([1], ["--fail-on", "medium"], 1, 1),
+        ([2], ["--fail-on", "high"], 0, 0),
+        ([2], ["--fail-on", "high,unknown"], 1, 1),
+        ([0, 1, 2], ["--fail-on", "high"], 1, 1),
+        ([0, 1, 2], ["--fail-on", "high,unknown"], 1, 2),
+        ([0, 1, 2], ["--fail-on", "medium"], 1, 2),
+        ([1, 2], ["--fail-on", "ANY"], 1, 2),
     ],
 )
 def test_cli_import_gates_without_filtering_or_aws(
@@ -332,7 +330,7 @@ def test_output_is_saved_before_policy_failure_and_stdout_remains_table(
             "json",
             "--output",
             str(output),
-            "--fail-on-priority",
+            "--fail-on",
             "high",
         ],
     )
@@ -360,7 +358,7 @@ def test_io_failure_is_exit_3_and_does_not_replace_existing_report(
     output.write_text("old report")
     response = runner.invoke(
         app,
-        ["drift", str(project), "--output", str(output), "--fail-on-priority", "high"],
+        ["drift", str(project), "--output", str(output), "--fail-on", "high"],
     )
     assert response.exit_code == 3
     assert output.read_text() == "old report"
@@ -374,7 +372,7 @@ def test_engine_failure_does_not_publish_gate_success(project, tmp_path, monkeyp
     monkeypatch.setattr("infralens.handlers.collect_drift", failed)
     output = tmp_path / "new" / "gate.json"
     response = runner.invoke(
-        app, ["drift", str(project), "--output", str(output), "--fail-on-unknown"]
+        app, ["drift", str(project), "--output", str(output), "--fail-on", "UNKNOWN"]
     )
     assert response.exit_code == 3
     assert response.stdout == "" and not output.exists()
@@ -402,7 +400,6 @@ def test_table_gate_sanitizes_terminal_sequences_and_uses_no_attribute_values():
 def test_help_explains_new_gate_options():
     response = runner.invoke(app, ["drift", "--help"])
     assert response.exit_code == 0
-    assert (
-        "--fail-on-priority" in response.stdout
-        and "--fail-on-unknown" in response.stdout
-    )
+    assert "--fail-on" in response.stdout
+    assert "HIGH,UNKNOWN" in response.stdout
+    assert "--fail-on-priority" not in response.stdout
