@@ -18,6 +18,7 @@ COMMON_FLAGS = (
     "--upload",
     "--project",
     "--api-url",
+    "--severity",
 )
 
 
@@ -68,7 +69,7 @@ def test_help_lists_common_options_in_the_same_order():
     for command in ("scan", "drift"):
         response = runner.invoke(app, [command, "--help"])
         assert response.exit_code == 0
-        positions = [response.stdout.index(flag) for flag in COMMON_FLAGS]
+        positions = [response.stdout.index("\n  " + flag) for flag in COMMON_FLAGS]
         assert positions == sorted(positions)
         assert "Engine timeout in seconds." in response.stdout
         assert "Upload JSON to the InfraLens dashboard." in response.stdout

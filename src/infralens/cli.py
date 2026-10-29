@@ -13,6 +13,7 @@ from infralens.errors import ExitCode, InvalidInput, command_errors, report_unex
 from infralens.handlers import handle_drift, handle_scan
 from infralens.logging import configure_logging, logger
 from infralens.options import (
+    DRIFT_PRIORITIES,
     SEVERITIES,
     DriftFormat,
     DriftOptions,
@@ -381,6 +382,7 @@ def scan(
 
 @app.command()
 def drift(
+    ctx: typer.Context,
     path: ProjectPath = Path("."),
     format: Annotated[
         DriftFormat, typer.Option("--format", help="Report format.")
@@ -398,6 +400,12 @@ def drift(
     upload: UploadReport = False,
     project: CloudProject = None,
     api_url: CloudApiUrl = None,
+    severity: Annotated[
+        str,
+        typer.Option(
+            help="Displayed priorities HIGH,MEDIUM,UNKNOWN; JSON/gates keep all."
+        ),
+    ] = ",".join(DRIFT_PRIORITIES),
     scope: Annotated[
         str | None,
         typer.Option(
@@ -438,6 +446,11 @@ def drift(
     """Detect managed resource drift using a Terraform refresh-only plan."""
     with command_errors():
         format, output = upload_defaults(upload, format, output, "drift", DriftFormat)
+        selected = severity_filter(severity)
+        if any(level not in DRIFT_PRIORITIES for level in selected):
+            raise InvalidInput(
+                "--severity: Drift priorities are HIGH, MEDIUM and UNKNOWN."
+            )
         days = trace_lookback(trace, lookback_days)
         priority = drift_priority_threshold(fail_on_priority)
         profile = optional_text(profile, "--profile")
@@ -475,6 +488,8 @@ def drift(
                 imported,
                 fail_on_priority=priority,
                 fail_on_unknown=fail_on_unknown,
+                color=ctx.find_root().obj["color"],
+                severity=selected,
                 upload=cloud_options,
             )
         )

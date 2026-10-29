@@ -330,7 +330,7 @@ def test_json_file_written_before_findings_exit(
     )
     assert result.exit_code == 1, result.output
     assert json.loads(output.read_text())["has_drift"] is True
-    assert "Infrastructure drift" in result.stdout
+    assert "Resources with drift:" in result.stdout
     assert "SECRET" not in result.output + output.read_text()
 
 
@@ -544,8 +544,8 @@ def test_table_explains_normalized_fields_even_without_drift():
     result = parse([aws_resource({"tags": None}, {"tags": {}})])
     table = render_drift(result)
     assert "Resources with drift: 0" in table
-    assert 'Normalized module.app.aws_instance.web[0] ["tags"]:' in table
-    assert "null versus {}" in table
+    assert "Normalized 1 provider representation difference" in table
+    assert "null versus {}" in json.dumps(result.to_dict())
 
 
 @pytest.mark.parametrize(

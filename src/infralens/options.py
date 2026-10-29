@@ -5,6 +5,8 @@ from enum import Enum
 from pathlib import Path
 from threading import Event
 
+DRIFT_PRIORITIES = ("UNKNOWN", "MEDIUM", "HIGH")
+
 SEVERITIES = ("UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL")
 
 
@@ -58,3 +60,5 @@ class DriftOptions:
     fail_on_priority: str | None = None
     fail_on_unknown: bool = False
     upload: UploadOptions | None = None
+    color: bool = False
+    severity: tuple[str, ...] = DRIFT_PRIORITIES

@@ -121,9 +121,27 @@ def handle_drift(options: DriftOptions) -> None:
             fail_on_priority=options.fail_on_priority,
             fail_on_unknown=options.fail_on_unknown,
         )
-    table = render_drift(result)
+    excerpts = None
+    if options.format == "table" or options.output is not None:
+        import os
+
+        from infralens.drift_code import source_excerpts
+
+        excerpts = source_excerpts(
+            result,
+            options.path,
+            severity=options.severity,
+            data_dir=str(options.data_dir)
+            if options.data_dir is not None
+            else os.environ.get("TF_DATA_DIR"),
+        )
+    table = render_drift(result, severity=options.severity, excerpts=excerpts)
+    display = render_drift(
+        result, color=options.color, severity=options.severity, excerpts=excerpts
+    )
     if gate is not None:
         table += render_gate(gate)
+        display += render_gate(gate, color=options.color)
     data = result.to_dict()
     if gate is not None:
         data["gate"] = gate
@@ -138,10 +156,14 @@ def handle_drift(options: DriftOptions) -> None:
     )
     if options.output is not None:
         write_report(options.output, report)
-        typer.echo(table, nl=False)
+        typer.echo(display, nl=False, color=options.color)
         typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
     else:
-        typer.echo(report, nl=False)
+        typer.echo(
+            display if options.format == "table" else report,
+            nl=False,
+            color=options.color if options.format == "table" else False,
+        )
     if options.upload is not None:
         from infralens import cloud
 

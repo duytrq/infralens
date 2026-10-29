@@ -238,8 +238,9 @@ def test_enrichment_is_pure_and_preserves_trace_source_and_drift_counts():
         "unknown": 1,
     }
     table = render_drift(reviewed)
-    assert "Review priorities: high=1, medium=1, unknown=1" in table
-    assert "review a normal Terraform plan" in table
+    assert "[HIGH: 1] [MEDIUM: 1] [UNKNOWN: 1]" in table
+    assert "review a normal Terraform plan" not in table
+    assert "Review a normal Terraform plan" in json.dumps(report)
 
 
 def test_clean_result_has_no_synthetic_assessment():

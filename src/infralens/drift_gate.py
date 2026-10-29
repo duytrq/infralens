@@ -1,7 +1,6 @@
 """CI exit policy over all drift findings, independent of report presentation."""
 
 from infralens.drift import REVIEW_POLICY, DriftResult
-from infralens.reporting import plain
 
 
 def evaluate_gate(
@@ -63,21 +62,22 @@ def evaluate_gate(
     }
 
 
-def render_gate(gate: dict) -> str:
+def render_gate(gate: dict, *, color=False) -> str:
+    import typer
+
     criteria = gate["criteria"]
-    lines = [
-        f"CI gate: {gate['status']} (exit {gate['exit_code']}); "
-        f"matched resources: {gate['matched_count']}",
-        f"  Any drift: {str(criteria['any_drift']).lower()}; "
-        f"minimum priority: {criteria['minimum_priority'] or 'disabled'}; "
-        f"unknown priority: {'fail' if criteria['unknown_priority'] else 'allow'}",
-    ]
-    for match in gate["matched_resources"]:
-        lines.append(
-            f"  {plain(match['address'])}: {match['priority']} "
-            f"({', '.join(match['reasons'])})"
-        )
-    lines.append(
-        "  Gate passed does not mean no drift or complete infrastructure coverage."
+    active = []
+    if criteria["any_drift"]:
+        active.append("any drift")
+    if criteria["minimum_priority"]:
+        active.append(">=" + criteria["minimum_priority"].upper())
+    if criteria["unknown_priority"]:
+        active.append("UNKNOWN")
+    text = (
+        f"CI gate: {gate['status']} (exit {gate['exit_code']}) | "
+        f"matched resources: {gate['matched_count']} | "
+        f"criteria: {', '.join(active) or 'disabled'}"
     )
-    return "\n".join(lines) + "\n"
+    if color:
+        text = typer.style(text, fg="green" if gate["status"] == "passed" else "red")
+    return text + "\n"
