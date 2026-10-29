@@ -121,7 +121,9 @@ uv tool uninstall infralens
 
 Không có subcommand sẽ hiện help và thoát `0`. Global options `--verbose`,
 `--no-color`, `--version` đặt **trước** subcommand. Help và thông báo CLI dùng
-tiếng Anh; terminal sử dụng văn bản thuần, không ANSI.
+tiếng Anh. Security dùng màu khi stdout là terminal; `--no-color`, `NO_COLOR=1`
+hoặc `TERM=dumb` tắt màu. Redirect/pipe, file report, JSON/SARIF luôn không nhận
+ANSI do phần hiển thị thêm vào.
 
 ## Chạy bằng Docker
 
@@ -204,16 +206,23 @@ Riêng khi bật `--upload`, JSON local/upload luôn giữ toàn bộ findings c
 suppression; `--severity` chỉ lọc bảng terminal. Counts và threshold trên dashboard
 vì vậy khớp JSON đầy đủ. Các lệnh không upload giữ nguyên cách lọc JSON/SARIF.
 
-Bảng terminal gồm tổng số findings, số đang hiển thị, số lượng theo severity,
-rule ID, cảnh báo, resource và vị trí nguồn khi xác định được. Thứ tự hiển thị:
-CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN. Thiếu dòng thì chỉ hiện file; thiếu cả
-vị trí thì hiện `unknown location`.
+Terminal hiển thị tổng findings, số đang hiển thị và badge số lượng theo severity.
+Mỗi finding là một khối gồm severity/rule, file:dòng, resource, mô tả và source
+excerpt do Trivy cung cấp. Dòng liên quan được đánh dấu `>` và tô màu theo severity:
+CRITICAL trắng nền đỏ, HIGH đỏ, MEDIUM vàng, LOW cyan, UNKNOWN tím. Nhãn severity
+vẫn hiện khi không có màu. Không còn tiêu đề `Security scan (Trivy ...)`.
+
+Thứ tự: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN. Excerpt tối đa 9 dòng quanh dòng
+liên quan đầu tiên, giữ indentation; phần bị rút gọn có dấu `...`. Nếu report
+không có code thì hiện `Source excerpt unavailable`; CLI không tự đọc file khác
+theo đường dẫn trong report. Thiếu dòng thì chỉ hiện file; thiếu cả vị trí thì
+hiện `unknown location`.
 
 | Lựa chọn | stdout | File |
 | --- | --- | --- |
-| Mặc định | Bảng kết quả | Không tạo. |
+| Mặc định | Findings kèm source excerpt | Không tạo. |
 | JSON/SARIF, không output | Chỉ dữ liệu JSON/SARIF | Không tạo. |
-| Có output | Bảng kết quả | Định dạng đã chọn. |
+| Có output | Findings kèm source excerpt | Định dạng đã chọn; `table` lưu văn bản thuần. |
 
 JSON giữ schema gốc của Trivy; SARIF dùng phiên bản 2.1.0. Mỗi lệnh chỉ quét
 một lần, sau đó chuyển đổi báo cáo từ JSON. Báo cáo có thể chứa trích đoạn

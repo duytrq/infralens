@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- Security terminal finding cards with source excerpts, cause-line markers and
+  distinct severity colors. Remove the scanner/version banner; respect --no-color,
+  NO_COLOR, non-terminal output and unstyled report/machine formats.
 - Install boto3 by default so CloudTrail tracing needs no SDK extra; existing
   `aws-trace` install commands remain compatible.
 - Consistent Security/Drift common flags, help order/defaults and upload validation;

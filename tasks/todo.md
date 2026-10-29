@@ -67,3 +67,11 @@ Evidence: [cli-consistency-verification.md](cli-consistency-verification.md).
 - [x] Verify normal installs and offline CloudTrail without SDK extras; update guide/wheel.
 
 Evidence: [default-sdk-verification.md](default-sdk-verification.md).
+
+## Security terminal presentation
+
+- [x] Replace the scanner/version banner with readable finding cards and source excerpts.
+- [x] Add severity/cause colors with no-color controls and clean report/machine outputs.
+- [x] Verify unit, native scanner, PTY and installed-wheel behavior; update user guide.
+
+Evidence: [security-terminal-verification.md](security-terminal-verification.md).

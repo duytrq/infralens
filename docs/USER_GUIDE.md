@@ -4,7 +4,7 @@ InfraLens hỗ trợ hai công việc: **Security** tìm cấu hình Terraform k
 **Drift** phát hiện hạ tầng thực tế đã thay đổi so với Terraform state đã lưu.
 Bạn chạy kiểm tra bằng CLI trên máy hoặc CI, sau đó xem báo cáo trên dashboard.
 
-Hướng dẫn áp dụng cho bản tích hợp Security/Drift, cập nhật ngày **2026-10-28**.
+Hướng dẫn áp dụng cho bản tích hợp Security/Drift, cập nhật ngày **2026-10-29**.
 
 | Địa chỉ | Mục đích |
 | --- | --- |
@@ -124,10 +124,30 @@ infralens scan ./infra --format json --output ./reports/security.json
 infralens scan ./infra --format sarif --output ./reports/security.sarif
 ```
 
-CLI quét các file Terraform trong cây thư mục, in findings theo mức
-`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`; có rule ID, resource và vị trí nguồn
-khi xác định được. Không cần `terraform init` hoặc AWS credentials cho Security.
+CLI quét các file Terraform trong cây thư mục, in từng finding theo mức
+`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`; có rule ID, resource, vị trí nguồn
+và đoạn code từ report khi xác định được. Dấu `>` đánh dấu dòng liên quan.
+Không cần `terraform init` hoặc AWS credentials cho Security.
 Scanner có thể cần mạng để tải checks hoặc remote modules.
+
+Khi chạy trên terminal, severity có màu riêng: CRITICAL nền đỏ, HIGH đỏ, MEDIUM
+vàng, LOW cyan, UNKNOWN tím; dòng code liên quan cũng được tô màu. Khi redirect
+ra file/pipe, màu tự tắt. Để chủ động tắt màu, dùng
+`infralens --no-color scan ./infra` hoặc đặt `NO_COLOR=1`.
+JSON/SARIF và file report không bị thêm mã màu của giao diện terminal.
+
+Ví dụ dạng hiển thị (ở đây là văn bản không màu):
+
+```text
+[HIGH] AWS-0107
+  main.tf:27 | aws_security_group.public_admin
+  Security group rule allows unrestricted ingress from any IP address.
+
+  > 27 |     cidr_blocks = ["0.0.0.0/0"]
+```
+
+Mỗi excerpt hiển thị tối đa 9 dòng; `...` là phần bị rút gọn. Nếu scanner không
+cung cấp source, finding vẫn được giữ và có thông báo `Source excerpt unavailable`.
 
 Để CI trả thất bại khi có finding từ HIGH trở lên:
 
