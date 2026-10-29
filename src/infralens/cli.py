@@ -124,6 +124,15 @@ def configure_cloud(
         typer.echo(f"API URL saved: {api}")
 
 
+@cloud_app.command("setup")
+def cloud_setup(api_url: CloudApiUrl = None, local: bool = False):
+    """Configure login/project; --local saves API/project in this repo."""
+    with command_errors():
+        from infralens.cloud_workflow import setup
+
+        setup(api_url, local)
+
+
 @cloud_app.command("login")
 def cloud_login(api_url: CloudApiUrl = None):
     """Sign in once through the browser and save your Cognito session."""
@@ -154,13 +163,29 @@ def cloud_status():
         from infralens.reporting import plain
 
         saved = cloud_config.load()
+        repo_file, repo = cloud_config.repo_config(Path.cwd())
         api, project = (
             cloud_config.resolve()
-            if saved.get("api_url") or os.environ.get("INFRALENS_API_URL")
+            if repo.get("api_url")
+            or saved.get("api_url")
+            or os.environ.get("INFRALENS_API_URL")
             else (None, None)
         )
         typer.echo(f"API URL: {api or 'not configured'}")
         typer.echo(f"Project: {project or 'not selected'}")
+        typer.echo(f"Repo config: {plain(str(repo_file)) if repo_file else 'none'}")
+        typer.echo("Priority: flags > environment > repo config > user config")
+        api_source = (
+            "environment"
+            if os.environ.get("INFRALENS_API_URL") is not None
+            else ("repo" if repo.get("api_url") else "user config")
+        )
+        project_source = (
+            "environment"
+            if os.environ.get("INFRALENS_PROJECT") is not None
+            else ("repo" if project and repo.get("api_url") == api else "user config")
+        )
+        typer.echo(f"Sources: API={api_source}; project={project_source}")
         typer.echo(f"Config: {plain(str(cloud_config.config_path()))}")
         import time
 
@@ -208,12 +233,31 @@ def list_projects(api_url: CloudApiUrl = None):
 
 
 @project_app.command("use")
-def use_project(project_id: str, api_url: CloudApiUrl = None):
+def use_project(
+    project_id: Annotated[str | None, typer.Argument()] = None,
+    api_url: CloudApiUrl = None,
+    local: bool = False,
+):
     """Select an existing project for subsequent uploads."""
     with command_errors():
+        from infralens.cloud_config import resolve
         from infralens.cloud_projects import use
+        from infralens.cloud_workflow import choose_project
 
-        use(project_id, api_url)
+        api, _ = resolve(api_url)
+        use(project_id if project_id is not None else choose_project(api), api, local)
+
+
+def upload_defaults(upload, format, output, kind, enum):
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    if format is None:
+        format = enum.json if upload else enum.table
+    if upload and output is None:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        output = Path(".infralens/reports") / f"{kind}-{stamp}-{uuid4().hex[:8]}.json"
+    return format, output
 
 
 def _upload_options(
@@ -225,6 +269,7 @@ def _upload_options(
     *,
     scope: str | None = None,
     require_scope: bool = False,
+    root: Path | None = None,
 ) -> UploadOptions | None:
     if not upload:
         if any(value is not None for value in (project, api_url, scope)):
@@ -240,7 +285,7 @@ def _upload_options(
     from infralens.cloud import identifier
     from infralens.cloud_config import resolve
 
-    api_url, project = resolve(api_url, project)
+    api_url, project = resolve(api_url, project, root=root)
     if project is None:
         raise InvalidInput(
             "No project selected. Run 'infralens cloud project use ID' "
@@ -257,10 +302,10 @@ def _upload_options(
 @app.command()
 def scan(
     ctx: typer.Context,
-    path: ProjectPath,
+    path: ProjectPath = Path("."),
     format: Annotated[
         ScanFormat, typer.Option("--format", help="Report format.")
-    ] = ScanFormat.table,
+    ] = None,
     output: ReportOutput = None,
     fail_on: Annotated[
         str | None,
@@ -279,12 +324,13 @@ def scan(
 ) -> None:
     """Scan Terraform misconfigurations using Trivy 0.76.x."""
     with command_errors():
+        format, output = upload_defaults(upload, format, output, "security", ScanFormat)
         selected = severity_filter(severity)
         threshold = failure_threshold(fail_on)
         directory, inputs = scan_directory(path)
         destination = scan_output_path(output, inputs)
         cloud_options = _upload_options(
-            upload, format.value, destination, project, api_url
+            upload, format.value, destination, project, api_url, root=directory
         )
         logger.debug("Scan validation complete")
         handle_scan(
@@ -303,10 +349,10 @@ def scan(
 
 @app.command()
 def drift(
-    path: ProjectPath,
+    path: ProjectPath = Path("."),
     format: Annotated[
         DriftFormat, typer.Option("--format", help="Report format.")
-    ] = DriftFormat.table,
+    ] = None,
     output: ReportOutput = None,
     fail_on_priority: Annotated[
         str | None,
@@ -359,6 +405,7 @@ def drift(
 ) -> None:
     """Detect managed resource drift using a Terraform refresh-only plan."""
     with command_errors():
+        format, output = upload_defaults(upload, format, output, "drift", DriftFormat)
         days = trace_lookback(trace, lookback_days)
         priority = drift_priority_threshold(fail_on_priority)
         profile = optional_text(profile, "--profile")
@@ -378,6 +425,7 @@ def drift(
             api_url,
             scope=scope,
             require_scope=True,
+            root=directory,
         )
         logger.debug("Drift validation complete")
         handle_drift(

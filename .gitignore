@@ -21,3 +21,5 @@ coverage/
 *.tsbuildinfo
 frontend/verification/
 !.env.example
+
+.infralens/reports/

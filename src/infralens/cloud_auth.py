@@ -253,6 +253,6 @@ def access_token(api_url):
     if not sys.stdin.isatty():
         raise ExecutionError(
             "Noninteractive cloud operations require INFRALENS_ACCESS_TOKEN "
-            "or a saved session. Run 'infralens cloud login' on an interactive terminal."
+            "or a saved session. Run 'infralens cloud login' interactively."
         )
     return cloud_session.sign_in(api_url)

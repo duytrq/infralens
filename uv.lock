@@ -90,6 +90,7 @@ dependencies = [
     { name = "boto3" },
     { name = "python-hcl2" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "typer" },
 ]
 
@@ -106,6 +107,7 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.40,<2" },
     { name = "python-hcl2", specifier = ">=8.1.4,<9" },
     { name = "pywin32", marker = "sys_platform == 'win32'", specifier = ">=310,<400" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2,<3" },
     { name = "typer", specifier = ">=0.24,<1" },
 ]
 provides-extras = ["aws-trace"]

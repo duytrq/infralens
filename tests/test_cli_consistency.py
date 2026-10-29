@@ -86,7 +86,7 @@ def test_common_defaults_and_no_upload_are_identical(project, monkeypatch, comma
 
 
 @pytest.mark.parametrize("command", ["scan", "drift"])
-@pytest.mark.parametrize("missing", ["--format", "--output", "--project", "--api-url"])
+@pytest.mark.parametrize("missing", ["--project", "--api-url"])
 def test_shared_upload_requirements_fail_before_engine(
     project, tmp_path, monkeypatch, command, missing
 ):

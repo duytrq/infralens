@@ -116,3 +116,67 @@ def test_invalid_grant_removes_expired_session(monkeypatch):
     )
     assert session.token(API) is None
     assert session.read(API) is None
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits")
+def test_world_readable_session_is_rejected(monkeypatch):
+    session = seed(monkeypatch)
+    session.path(API).chmod(0o644)
+    with pytest.raises(ExecutionError, match="permissions"):
+        session.token(API)
+
+
+def test_refresh_rotation_replaces_refresh_token(monkeypatch):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+    record = session.read(API)
+    record["expires_at"] = 0
+    session.write(API, record)
+    monkeypatch.setattr(
+        cloud_auth,
+        "http",
+        lambda *a, **kw: (
+            200,
+            b'{"access_token":"NEXT","refresh_token":"ROTATED","expires_in":900}',
+        ),
+    )
+    assert session.token(API) == "NEXT"
+    assert session.read(API)["refresh_token"] == "ROTATED"
+
+
+def test_parallel_processes_refresh_only_once(monkeypatch, tmp_path):
+    import subprocess
+    import sys
+
+    session = seed(monkeypatch)
+    record = session.read(API)
+    record["expires_at"] = 0
+    session.write(API, record)
+    calls = tmp_path / "calls"
+    script = f"""
+import json, time
+from pathlib import Path
+from infralens import cloud_auth, cloud_session
+cloud_session.configuration = lambda api: {{'auth': {AUTH!r}}}
+def http(*args, **kwargs):
+    with Path({str(calls)!r}).open('a') as stream:
+        stream.write('refresh\\n')
+    time.sleep(0.2)
+    return 200, b'{{"access_token":"NEXT","expires_in":900}}'
+cloud_auth.http = http
+assert cloud_session.token({API!r}) == 'NEXT'
+"""
+    processes = [
+        subprocess.Popen(
+            [sys.executable, "-c", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        for _ in range(2)
+    ]
+    for process in processes:
+        stdout, stderr = process.communicate(timeout=20)
+        assert process.returncode == 0, stderr.decode()
+        assert not stdout
+    assert calls.read_text().splitlines() == ["refresh"]

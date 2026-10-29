@@ -281,3 +281,7 @@ def upload_report(metadata, payload, api_url):
             ) from None
     kind = "drift run" if run_type == "drift" else "security scan"
     typer.echo(f"Uploaded {kind} {metadata['run_id']}.", err=True)
+    if run_type == "security_scan":
+        typer.echo(
+            "Upload: ready; dashboard analysis may still be processing.", err=True
+        )

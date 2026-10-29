@@ -18,6 +18,13 @@ from infralens.trivy import Trivy
 
 
 def handle_scan(options: ScanOptions) -> None:
+    if options.upload is not None:
+        destination = options.upload
+        typer.echo(
+            f"Upload destination: {destination.api_url} | project={destination.project}"
+            + (f" | scope={destination.scope}" if destination.scope else ""),
+            err=True,
+        )
     started = datetime.now(timezone.utc)
     ignore = options.path / ".trivyignore"
     ignore_sha256 = (
@@ -67,6 +74,10 @@ def handle_scan(options: ScanOptions) -> None:
     if options.upload is not None:
         from infralens import cloud
 
+        gate_status = (
+            "failed" if failed else "passed" if options.fail_on else "disabled"
+        )
+        typer.echo(f"Scan: completed | Gate: {gate_status}", err=True)
         try:
             cloud.upload_scan(
                 result,
@@ -88,6 +99,13 @@ def handle_scan(options: ScanOptions) -> None:
 
 
 def handle_drift(options: DriftOptions) -> None:
+    if options.upload is not None:
+        destination = options.upload
+        typer.echo(
+            f"Upload destination: {destination.api_url} | project={destination.project}"
+            + (f" | scope={destination.scope}" if destination.scope else ""),
+            err=True,
+        )
     started = datetime.now(timezone.utc)
     result = collect_drift(options)
     finished = datetime.now(timezone.utc)
@@ -127,6 +145,13 @@ def handle_drift(options: DriftOptions) -> None:
     if options.upload is not None:
         from infralens import cloud
 
+        collection = (
+            "partial" if result.trace and result.trace["has_errors"] else "completed"
+        )
+        typer.echo(
+            f"Scan: {collection} | Gate: {gate['status'] if gate else 'disabled'}",
+            err=True,
+        )
         try:
             cloud.upload_drift(data, options, started, finished)
         except ExecutionError as exc:

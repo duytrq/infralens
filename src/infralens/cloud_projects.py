@@ -1,6 +1,7 @@
 """Authenticated project operations using the existing private projects API."""
 
 import json
+from pathlib import Path
 from urllib.parse import urlencode
 
 import typer
@@ -44,7 +45,7 @@ def _request(api, token, method, path, body=None):
         raise ExecutionError("The service returned invalid project data.") from None
 
 
-def create(project_id, name, api_url=None, select=True):
+def create(project_id, name, api_url=None, select=True, local=False):
     project_id = identifier(project_id, "project_id")
     name = name.strip()
     if not name or len(name) > 120 or any(not c.isprintable() for c in name):
@@ -58,28 +59,30 @@ def create(project_id, name, api_url=None, select=True):
     )
     typer.echo(f"Project ready: {project_id} | {plain(data['name'])}")
     if select:
-        cloud_config.save(api, project_id)
+        select_project(api, project_id, local)
         typer.echo(f"Selected project: {project_id}")
 
 
-def use(project_id, api_url=None):
+def use(project_id, api_url=None, local=False):
     project_id = identifier(project_id, "project_id")
     api, _ = cloud_config.resolve(api_url)
     _project(
         _request(api, access_token(api), "GET", f"/v1/projects/{project_id}"),
         project_id,
     )
-    cloud_config.save(api, project_id)
+    select_project(api, project_id, local)
     typer.echo(f"Selected project: {project_id}")
 
 
-def list_projects(api_url=None):
+def list_projects(api_url=None, *, collect=False):
     api, selected = cloud_config.resolve(api_url)
     token = access_token(api)
     cursor = None
     seen = set()
     count = 0
-    typer.echo("PROJECT ID | NAME | SELECTED")
+    projects = []
+    if not collect:
+        typer.echo("PROJECT ID | NAME | SELECTED")
     for _ in range(100):
         query = {"limit": 100}
         if cursor is not None:
@@ -95,16 +98,20 @@ def list_projects(api_url=None):
         for item in data["items"]:
             project = _project(item)
             marker = "*" if project["project_id"] == selected else ""
-            typer.echo(f"{project['project_id']} | {plain(project['name'])} | {marker}")
+            projects.append(project)
+            if not collect:
+                typer.echo(
+                    f"{project['project_id']} | {plain(project['name'])} | {marker}"
+                )
             count += 1
         cursor = data.get("next_cursor")
         if cursor is None:
-            if count == 0:
+            if count == 0 and not collect:
                 typer.echo(
                     "No projects yet. Create one with "
                     "'infralens cloud project create ID'."
                 )
-            return
+            return projects
         if (
             not isinstance(cursor, str)
             or not cursor
@@ -117,3 +124,15 @@ def list_projects(api_url=None):
         "Project listing exceeded its page limit. "
         "Use the dashboard to view more projects."
     )
+
+
+def select_project(api, project_id, local=False):
+    if local:
+        file = Path.cwd() / ".infralens.toml"
+        if file.is_symlink():
+            raise InvalidInput("Repo config must not be a symbolic link.")
+        if file.exists():
+            cloud_config.repo_config(Path.cwd())
+        cloud_config.save_repo(Path.cwd(), api, project_id)
+    else:
+        cloud_config.save(api, project_id)

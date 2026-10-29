@@ -84,11 +84,24 @@ def locked(api):
                     stream.write(b"0")
                     stream.flush()
                 stream.seek(0)
-                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
             else:
                 import fcntl
 
-                fcntl.flock(fd, fcntl.LOCK_EX)
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    if os.name == "nt":
+                        stream.seek(0)
+                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                    else:
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise ExecutionError(
+                            "Another cloud command is updating the session; try later."
+                        ) from None
+                    time.sleep(0.05)
             try:
                 yield
             finally:

@@ -12,6 +12,7 @@ dependencies = [
     "boto3>=1.40,<2",
     "python-hcl2>=8.1.4,<9",
     "pywin32>=310,<400 ; sys_platform == 'win32'",
+    "tomli>=2,<3 ; python_full_version < '3.11'",
     "typer>=0.24,<1",
 ]
 

@@ -127,7 +127,7 @@ def test_logging_is_not_duplicated_and_level_resets(project, fake_trivy):
         ["--version"],
         ["scan", "--help"],
         ["drift", "--help"],
-        ["scan"],
+        ["scan", "missing-directory"],
         ["--invalid"],
     ],
 )
@@ -174,7 +174,7 @@ def test_installed_entrypoints(
         (["--version"], 0, "infralens 0.1.0"),
         (["scan", str(project)], 0, "[CRITICAL] TEST-CRITICAL"),
         (["drift", str(project), "--trace"], 0, "CloudTrail trace: not_needed"),
-        (["drift"], 2, "Missing argument"),
+        (["drift", "missing-directory"], 2, "directory"),
     ]
     for args, code, message in cases:
         result = subprocess.run(
