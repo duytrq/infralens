@@ -129,6 +129,15 @@ def test_each_severity_has_a_distinct_color_and_a_readable_label():
     assert len(set(styles)) == len(SEVERITIES)
 
 
+def test_critical_is_red_text_and_high_is_orange_without_background():
+    from infralens.reporting import _severity
+
+    critical = _severity("[CRITICAL]", "CRITICAL", True)
+    high = _severity("[HIGH]", "HIGH", True)
+    assert "\x1b[31m" in critical and "\x1b[41m" not in critical
+    assert "\x1b[38;5;208m" in high
+
+
 def test_source_line_fallback_preserves_indent_and_bounds_long_lines():
     payload = source_report(
         [

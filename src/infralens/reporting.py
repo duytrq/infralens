@@ -27,8 +27,8 @@ def _severity(text: str, level: str, color: bool, *, dim: bool = False) -> str:
     if not color:
         return text
     colors = {
-        "CRITICAL": {"fg": "white", "bg": "red"},
-        "HIGH": {"fg": "red"},
+        "CRITICAL": {"fg": "red"},
+        "HIGH": {"fg": 208},
         "MEDIUM": {"fg": "yellow"},
         "LOW": {"fg": "cyan"},
         "UNKNOWN": {"fg": "magenta"},
