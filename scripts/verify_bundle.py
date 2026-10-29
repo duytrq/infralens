@@ -63,7 +63,11 @@ def verify(wheel: Path, uv: str) -> None:
             "UV_TOOL_DIR": str(root / "tools"),
             "UV_TOOL_BIN_DIR": str(root / "bin"),
             "PYTHONUTF8": "1",
+            "XDG_CONFIG_HOME": str(root / "config"),
+            "APPDATA": str(root / "appdata"),
         }
+        env.pop("INFRALENS_API_URL", None)
+        env.pop("INFRALENS_PROJECT", None)
         subprocess.run(
             [
                 uv,
@@ -197,15 +201,9 @@ def verify(wheel: Path, uv: str) -> None:
             "https://api.example.com",
             code=3,
         )
-        assert "Noninteractive upload requires" in failed_upload.stderr
-        saved = json.loads(
-            Path(str(output) + ".upload.json").read_text(encoding="utf-8")
-        )
-        assert (
-            saved["manifest"]["artifact"]["sha256"]
-            == hashlib.sha256(output.read_bytes()).hexdigest()
-        )
-        assert saved["manifest"]["artifact"]["size_bytes"] == len(output.read_bytes())
+        assert "Noninteractive cloud operations require" in failed_upload.stderr
+        assert output.is_file()
+        assert not Path(str(output) + ".upload.json").exists()
         assert str(drift_project) not in output.read_text(encoding="utf-8")
         project = root / "Terraform project Việt"
         shutil.copytree(ROOT / "tests" / "fixtures" / "unsafe", project)
@@ -267,38 +265,18 @@ def verify(wheel: Path, uv: str) -> None:
             "https://api.example.com",
             code=3,
         )
-        assert "Noninteractive upload requires" in security_upload.stderr
+        assert "Noninteractive cloud operations require" in security_upload.stderr
         report = json.loads(output.read_text(encoding="utf-8"))
-        saved_path = Path(str(output) + ".upload.json")
-        original_manifest = saved_path.read_bytes()
-        metadata = json.loads(original_manifest)["manifest"]
-        assert metadata["run_type"] == "security_scan"
-        assert metadata["result"]["threshold_status"] == "failed"
-        assert metadata["result"]["findings"]["by_severity"]["HIGH"] > 0
+        assert not Path(str(output) + ".upload.json").exists()
         assert any(
             f["ID"] == "AWS-0107"
             for result in report["Results"]
             for f in result.get("Misconfigurations", [])
         )
-        assert (
-            metadata["artifact"]["sha256"]
-            == hashlib.sha256(output.read_bytes()).hexdigest()
-        )
-        assert (
-            "Noninteractive upload requires"
-            in run(
-                "cloud",
-                "upload",
-                "--report",
-                str(output),
-                "--manifest",
-                str(saved_path),
-                "--api-url",
-                "https://api.example.com",
-                code=3,
-            ).stderr
-        )
-        assert saved_path.read_bytes() == original_manifest
+        run("cloud", "configure", "--api-url", "https://api.example.com")
+        assert "https://api.example.com" in run("cloud", "status").stdout
+        missing_login = run("cloud", "project", "list", code=3)
+        assert "Noninteractive cloud operations require" in missing_login.stderr
         filtered = json.loads(
             run(
                 "scan",

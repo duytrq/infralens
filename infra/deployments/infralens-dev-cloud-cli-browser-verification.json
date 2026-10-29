@@ -1,0 +1,51 @@
+{
+  "status": "passed",
+  "checks": [
+    "real_pkce_login:https://ddsw2osqv2rj2.cloudfront.net",
+    "stream_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+    "dashboard_history_detail_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "cli_config_projects_upload_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+    "cli_security_dashboard_source_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_signed_upload_report_comparison_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_dashboard_deep_link_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_cross_user_isolation_and_deletion:https://ddsw2osqv2rj2.cloudfront.net",
+    "cross_user_api_and_ui_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "retry_and_delete:https://ddsw2osqv2rj2.cloudfront.net",
+    "logout_revocation:https://ddsw2osqv2rj2.cloudfront.net",
+    "real_pkce_login:http://localhost:5173",
+    "stream_indexing:http://localhost:5173",
+    "dashboard_history_detail_download:http://localhost:5173",
+    "cli_config_projects_upload_indexing:http://localhost:5173",
+    "cli_security_dashboard_source_download:http://localhost:5173",
+    "drift_signed_upload_report_comparison_isolation:http://localhost:5173",
+    "drift_dashboard_deep_link_download:http://localhost:5173",
+    "drift_cross_user_isolation_and_deletion:http://localhost:5173",
+    "cross_user_api_and_ui_isolation:http://localhost:5173",
+    "retry_and_delete:http://localhost:5173",
+    "logout_revocation:http://localhost:5173"
+  ],
+  "run_ids": [
+    "eac15ec3-1d76-4c30-93fb-a16683165531",
+    "f9772f1f-2e08-41e7-884d-8ff7ac1118e8",
+    "0acd66b2-f3d7-4d15-a746-1279be19d229",
+    "32ad57b2-22f4-4f85-9ed4-dfb8602880f2",
+    "359e1c72-cf5f-4723-97ca-05c9c9ee403b",
+    "643b5788-8dc8-4314-9327-0039c8589bf4",
+    "7a973b9d-2cc0-4b67-a410-42534fe1cfac",
+    "f1e451cd-98e5-467c-9bd9-b500b5734796"
+  ],
+  "checked_at": "2026-10-29T03:29:26.616983+00:00",
+  "account": "695650811791",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "origins": [
+    "https://ddsw2osqv2rj2.cloudfront.net",
+    "http://localhost:5173"
+  ],
+  "temporary_accounts": 2,
+  "cloudfront_included": true,
+  "build_mode": "production",
+  "temporary_users_removed": 2,
+  "project_rows_removed": 4,
+  "run_cleanup": "Protected tombstones/derived data use scheduled backend cleanup",
+  "real_security_cli": true
+}

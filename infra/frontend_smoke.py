@@ -59,7 +59,7 @@ def main():
     parser.add_argument(
         "--security-cli",
         type=Path,
-        help="Verify scan --upload/retry with this executable and real Trivy.",
+        help="Verify cloud project operations and scan --upload with real Trivy.",
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
