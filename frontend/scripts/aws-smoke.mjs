@@ -72,7 +72,7 @@ async function cliLogin(cli, env) {
   const child = spawn(cli.python, ["-c",
     "import pty,sys; sys.exit(pty.spawn(sys.argv[1:]))",
     cli.executable, "cloud", "login"], {
-    env: { ...env, BROWSER: cli.browser_bridge + " %s" }, stdio: ["pipe", "pipe", "pipe"],
+    cwd: cli.project, env: { ...env, BROWSER: cli.browser_bridge + " %s" }, stdio: ["pipe", "pipe", "pipe"],
   });
   child.stdout.on("data", () => {});
   child.stderr.on("data", () => {});
@@ -108,7 +108,7 @@ async function checkSecurityCli(owner, project, origin) {
   delete env.INFRALENS_API_URL;
   delete env.INFRALENS_PROJECT;
   function run(args, expected = 0) {
-    const result = spawnSync(cli.executable, args, { env, encoding: "utf8", timeout: 240_000, input: "" });
+    const result = spawnSync(cli.executable, args, { cwd: cli.project, env, encoding: "utf8", timeout: 240_000, input: "" });
     assert.equal(result.status, expected, "CLI cloud operation returned an unexpected exit code");
     return result;
   }

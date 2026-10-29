@@ -189,7 +189,7 @@ infralens scan ./infra --timeout 120
 | `--output` | File báo cáo, tương đối với CWD hoặc tuyệt đối. |
 | `--fail-on` | Ngưỡng LOW,MEDIUM,HIGH,CRITICAL gồm chính mức đó và các mức cao hơn. Mặc định không thất bại vì findings. |
 | `--timeout` | Số giây nguyên dương cho scan, mặc định 300. Kiểm tra phiên bản giới hạn 10 giây; convert báo cáo giới hạn 60 giây. |
-| `--upload` | Upload native JSON đầy đủ lên dashboard; tự chọn JSON/output khi bỏ qua, cần API/project từ cấu hình repo/máy, env hoặc flag; JSON/output tự chọn khi bỏ qua. Mặc định tắt. |
+| `--upload` | Upload native JSON đầy đủ lên dashboard; tự chọn JSON/output khi bỏ qua, cần project từ repo hoặc truyền tường minh; JSON/output tự chọn khi bỏ qua. Mặc định tắt. |
 | `--project` | Ghi đè project đã chọn; fallback `INFRALENS_PROJECT`. Chỉ dùng cùng `--upload`. |
 | `--api-url` | Ghi đè API đã lưu; fallback `INFRALENS_API_URL`. Chỉ dùng cùng `--upload`. |
 
@@ -243,13 +243,13 @@ infralens scan ./infra --format json --output ./reports/security.json \
 ```
 
 `create` tự chọn project; dùng `cloud project use ID` để chuyển project đã có.
-Project có cả Security và Drift. API/project ưu tiên flag > biến môi trường >
-cấu hình đã lưu; khi đổi API, project cũ không tự được dùng cho API khác.
+Project có cả Security và Drift. Project được gắn với repo, không có mặc định chung
+trên máy; flag/env có thể chỉ định tường minh cho một lệnh; khi đổi API, project cũ không tự được dùng cho API khác.
 
 Quét local không cần tài khoản InfraLens. Thao tác project và upload yêu cầu
 Cognito: CLI tương tác mở browser đăng nhập; CI dùng `INFRALENS_ACCESS_TOKEN`
 trong secret environment. CLI lưu phiên Cognito riêng trên máy và tự gia hạn; cấu hình repo chỉ lưu API
-và project. Dùng `cloud setup --local` để thiết lập có hướng dẫn, `cloud logout` để xóa phiên. Không cần AWS credentials để quét/upload Security. Sau upload, mở
+và project. Dùng `cloud setup` để thiết lập có hướng dẫn, `cloud logout` để xóa phiên. Không cần AWS credentials để quét/upload Security. Sau upload, mở
 project → **Security**, chờ analysis ready để xem findings và source.
 
 Có thể chạy ngắn `infralens scan --upload` tại thư mục Terraform. Report JSON tự

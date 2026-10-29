@@ -34,13 +34,13 @@ Xem [README](../README.md) nếu dùng mã nguồn thay vì wheel.
 Tại repo hạ tầng, chạy:
 
 ```bash
-infralens cloud setup --local
+infralens cloud setup
 ```
 
 CLI hỏi API URL (nếu chưa lưu), mở browser đăng nhập Cognito khi cần, rồi cho
-chọn hoặc tạo project. `--local` lưu API/project vào `.infralens.toml` tại thư mục
-hiện tại; có thể commit file này cho cả nhóm dùng. Không có token trong repo.
-Không truyền `--local` thì lưu project mặc định trên máy.
+chọn hoặc tạo project. API/project luôn được gắn với repo qua `.infralens.toml`;
+có thể commit file này cho cả nhóm dùng. Không có token trong repo và không có
+project mặc định chung trên máy. Project chung của bản CLI cũ được bỏ qua.
 API dev: `https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com`.
 
 Có thể dùng từng lệnh riêng hoặc trong script:
@@ -50,11 +50,11 @@ infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-
 infralens cloud login
 infralens cloud project create my-app --name "My infrastructure"
 infralens cloud project list
-infralens cloud project use my-app --local
+infralens cloud project use my-app
 infralens cloud status
 ```
 
-`create` tự chọn project trên máy; `--no-select` chỉ tạo. `project use` không có ID
+`create` tự gắn project với repo hiện tại; `--no-select` chỉ tạo. `project use` không có ID
 sẽ mở danh sách chọn trên terminal tương tác. ID dài 1–64 ký tự chữ thường/số/`-`/`_`,
 bắt đầu bằng chữ hoặc số. Một project chứa cả Security và Drift.
 
@@ -84,15 +84,18 @@ project = "my-app"
 ```
 
 `.infralens.toml` chỉ nhận hai trường trên; scope Drift vẫn phải truyền rõ theo
-môi trường. `project use ID --local` cập nhật file ở thư mục hiện tại sau khi kiểm
-tra quyền truy cập project. Setup chạy lại không bắt tạo project hoặc login lại.
+môi trường. `project use ID` cập nhật file repo gần nhất đã tìm được, hoặc tạo
+file ở thư mục hiện tại khi chưa có, sau khi kiểm tra quyền truy cập project. Setup chạy lại không bắt tạo project hoặc login lại.
 
-Khi upload, ưu tiên **flag → biến môi trường → repo → cấu hình máy**. CLI tìm file
+Khi upload, Project ID lấy từ **flag → biến môi trường → repo**; không có fallback
+về project trên máy. API URL vẫn có thể lấy từ cấu hình máy để thuận tiện setup.
+Thiếu project thì lệnh dừng trước khi quét và hướng dẫn `cloud setup`. CI có thể
+chỉ định project tường minh bằng `INFRALENS_PROJECT` hoặc `--project`. CLI tìm file
 repo từ thư mục **được quét**, đi lên đến gốc Git (kể cả Git worktree), không lấy
 repo của terminal khi quét một đường dẫn khác. Khi đổi API, project đã lưu của API
 cũ không được tự dùng cho API mới. Scan local không đọc cloud config.
 
-- Cấu hình máy: `$XDG_CONFIG_HOME/infralens/config.json`, mặc định `~/.config/infralens/config.json`;
+- Cấu hình máy chỉ lưu API URL: `$XDG_CONFIG_HOME/infralens/config.json`, mặc định `~/.config/infralens/config.json`;
   Windows dùng `%APPDATA%\infralens\config.json`.
 - Phiên theo API: `sessions/<hash-api>.json` cạnh file cấu hình. Có access/refresh token,
   không có mật khẩu. Linux/WSL dùng thư mục `0700`, file `0600`; Windows giới hạn ACL
@@ -172,6 +175,17 @@ infralens drift ./infra --fail-on HIGH --upload --scope dev-default
 ```
 
 Dùng cùng scope cho các lần kiểm tra cùng phạm vi, đổi scope khi đổi môi trường.
+Scope là nhãn cloud, không truyền biến hoặc chọn workspace/backend cho Terraform.
+`--var-file` mới cung cấp giá trị biến. Ví dụ hai môi trường có state riêng:
+
+```bash
+infralens drift --var-file dev.tfvars --upload --scope dev
+infralens drift --var-file prod.tfvars --upload --scope prod
+```
+
+Chọn đúng backend/workspace/credentials trước mỗi lệnh. Đổi tfvars hoặc scope không
+tự tạo state riêng; CLI không suy ra scope từ tên hoặc nội dung file biến.
+
 Scope theo quy tắc ký tự của Project ID và do client khai báo; server không tự
 chứng thực account/workspace. Mở project → **Drift** để xem kết quả.
 Giới hạn Drift JSON trên cloud là **2 MiB**.

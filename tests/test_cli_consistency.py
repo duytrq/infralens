@@ -121,7 +121,7 @@ def test_shared_upload_requirements_fail_before_engine(
     expected = {
         "--format": "--upload requires --format json and --output.",
         "--output": "--upload requires --format json and --output.",
-        "--project": "No project selected",
+        "--project": "No project bound",
         "--api-url": "No API URL configured",
     }
     assert expected[missing] in response.stderr

@@ -39,7 +39,7 @@ def choose_project(api):
     return project_id
 
 
-def setup(api_url=None, local=False):
+def setup(api_url=None):
     from infralens import cloud_auth
 
     interactive()
@@ -56,5 +56,5 @@ def setup(api_url=None, local=False):
     api = cloud_auth.origin(api_url)
     cloud_auth.access_token(api)
     project = choose_project(api)
-    cloud_projects.use(project, api, local=local)
+    cloud_projects.use(project, api)
     typer.echo("Setup complete. Run 'infralens scan --upload'.")

@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import secrets
+import shutil
 import signal
 import subprocess
 import sys
@@ -113,6 +114,8 @@ def main():
         f"Path({login_url_file!r}).write_text(sys.argv[1])\n"
     )
     bridge.chmod(0o700)
+    scan_project = Path(cli_directory.name) / "terraform"
+    shutil.copytree(ROOT / "tests/fixtures/unsafe", scan_project)
     try:
         for _ in range(2):
             username = f"infralens-frontend-{uuid4()}@example.invalid"
@@ -173,7 +176,7 @@ def main():
                         "executable": str(args.security_cli),
                         "python": sys.executable,
                         "browser_bridge": str(bridge),
-                        "project": str(ROOT / "tests/fixtures/unsafe"),
+                        "project": str(scan_project),
                         "output_directory": cli_directory.name,
                     }
                     if args.security_cli

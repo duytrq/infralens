@@ -98,3 +98,12 @@ older manifest/retry instructions above; those entries describe their original i
 - [x] Update guide/sample and install the final Linux CLI locally.
 
 Evidence: [cli-workflow-verification.md](cli-workflow-verification.md).
+
+
+## Repo-only project binding
+
+- [x] Remove --local and machine-wide selected-project fallback.
+- [x] Always bind setup/project selection to the repo; ignore legacy global projects.
+- [x] Verify CLI/AWS upload with isolated fixture binding; rebuild/install CLI and clarify scope versus Terraform variables.
+
+Evidence: [repo-project-only-verification.md](repo-project-only-verification.md).

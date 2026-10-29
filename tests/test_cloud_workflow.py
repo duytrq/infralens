@@ -40,9 +40,7 @@ def test_setup_and_project_picker_keep_secrets_out_of_repo(project, monkeypatch)
         ).encode()
 
     monkeypatch.setattr(cloud_projects, "http", http)
-    result = runner.invoke(
-        app, ["cloud", "setup", "--api-url", API, "--local"], input="1\n"
-    )
+    result = runner.invoke(app, ["cloud", "setup", "--api-url", API], input="1\n")
     assert result.exit_code == 0, result.output
     file = project / ".infralens.toml"
     assert "demo" in file.read_text() and "SECRET" not in file.read_text()
@@ -51,9 +49,7 @@ def test_setup_and_project_picker_keep_secrets_out_of_repo(project, monkeypatch)
         status.exit_code == 0 and "demo" in status.output and str(file) in status.output
     )
     # Rerunning setup must not require deleting valid repo settings.
-    result = runner.invoke(
-        app, ["cloud", "setup", "--api-url", API, "--local"], input="1\n"
-    )
+    result = runner.invoke(app, ["cloud", "setup", "--api-url", API], input="1\n")
     assert result.exit_code == 0, result.output
 
 
@@ -73,13 +69,13 @@ def test_explicit_non_json_upload_fails_before_engine(project, monkeypatch):
 
 def test_cancelled_setup_preserves_settings(project, monkeypatch):
     monkeypatch.chdir(project)
-    cloud_config.save(API, "old")
+    cloud_config.save(API)
     monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
     monkeypatch.setattr(cloud_workflow.cloud_auth, "access_token", lambda api: "TOKEN")
     monkeypatch.setattr(cloud_projects, "list_projects", lambda *a, **k: [])
     response = runner.invoke(app, ["cloud", "setup"], input="")
     assert response.exit_code == 130
-    assert cloud_config.load()["project_id"] == "old"
+    assert "project_id" not in cloud_config.load()
     assert not (project / ".infralens.toml").exists()
 
 
@@ -104,4 +100,5 @@ def test_setup_creates_project_when_list_is_empty(project, monkeypatch):
     )
     assert response.exit_code == 0, response.output
     assert writes == [{"name": "New project"}]
-    assert cloud_config.load()["project_id"] == "new-project"
+    assert cloud_config.resolve(root=project) == (API, "new-project")
+    assert not cloud_config.config_path().exists()

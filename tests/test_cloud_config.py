@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -9,6 +10,11 @@ runner = CliRunner()
 API = "https://api.example.com"
 
 
+@pytest.fixture(autouse=True)
+def isolated_repo_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+
 def test_configure_persists_only_public_settings_and_status_reports_them(monkeypatch):
     from infralens import cloud_config
 
@@ -17,9 +23,8 @@ def test_configure_persists_only_public_settings_and_status_reports_them(monkeyp
     assert response.exit_code == 0, response.output
     saved = cloud_config.config_path().read_text()
     assert json.loads(saved) == {
-        "schema_version": 1,
+        "schema_version": 2,
         "api_url": API,
-        "project_id": None,
     }
     assert "PRIVATE_TOKEN" not in saved
     status = runner.invoke(app, ["cloud", "status"])
@@ -32,7 +37,7 @@ def test_flags_override_env_and_saved_defaults_without_cross_origin_project_leak
 ):
     from infralens import cloud_config
 
-    cloud_config.save(API, "saved-project")
+    cloud_config.save_repo(Path.cwd(), API, "saved-project")
     assert cloud_config.resolve() == (API, "saved-project")
     monkeypatch.setenv("INFRALENS_API_URL", "https://env.example.com")
     assert cloud_config.resolve() == ("https://env.example.com", None)
@@ -43,7 +48,7 @@ def test_flags_override_env_and_saved_defaults_without_cross_origin_project_leak
         "flag-project",
     )
     cloud_config.save("https://new.example.com")
-    assert cloud_config.load()["project_id"] is None
+    assert "project_id" not in cloud_config.load()
 
 
 @pytest.mark.parametrize(
@@ -80,7 +85,7 @@ def test_local_scan_does_not_read_broken_cloud_config(project, monkeypatch):
 def test_config_defaults_apply_to_both_upload_commands(project, tmp_path, monkeypatch):
     from infralens import cloud_config
 
-    cloud_config.save(API, "demo")
+    cloud_config.save_repo(project, API, "demo")
     for command in ("scan", "drift"):
         received = []
         monkeypatch.setattr(f"infralens.cli.handle_{command}", received.append)
@@ -137,7 +142,7 @@ def test_failed_project_selection_keeps_current_selection(monkeypatch):
     from infralens import cloud_config, cloud_projects
     from infralens.errors import ExecutionError
 
-    cloud_config.save(API, "old-project")
+    cloud_config.save_repo(Path.cwd(), API, "old-project")
     monkeypatch.setattr(cloud_projects, "access_token", lambda url: "PRIVATE_TOKEN")
 
     def missing(*args, **kwargs):
@@ -176,7 +181,7 @@ def test_unknown_or_malformed_config_is_not_echoed(record):
 def test_project_list_follows_empty_pages_with_one_authentication(monkeypatch):
     from infralens import cloud_config, cloud_projects
 
-    cloud_config.save(API, "demo")
+    cloud_config.save_repo(Path.cwd(), API, "demo")
     auth = []
     monkeypatch.setattr(
         cloud_projects, "access_token", lambda url: auth.append(url) or "TOKEN"
@@ -204,7 +209,7 @@ def test_project_list_follows_empty_pages_with_one_authentication(monkeypatch):
 def test_project_response_cannot_select_a_different_id(monkeypatch):
     from infralens import cloud_config, cloud_projects
 
-    cloud_config.save(API, "old")
+    cloud_config.save_repo(Path.cwd(), API, "old")
     monkeypatch.setattr(cloud_projects, "access_token", lambda url: "TOKEN")
     monkeypatch.setattr(
         cloud_projects,

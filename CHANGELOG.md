@@ -5,7 +5,8 @@
 ### Added
 - Persistent per-API Cognito sessions, automatic refresh and cloud login/logout/status.
   Credentials use private user storage and serialized refresh/logout.
-- Guided cloud setup and project picker; --local writes public repo API/project settings.
+- Guided cloud setup and project picker always bind public API/project settings to the repo.
+  Remove --local and machine-wide project defaults; legacy selected projects are ignored.
   Resolve scan-input config up to the Git boundary, after flag/environment overrides.
 - Default scan/drift input to the current directory. Upload defaults to native JSON
   and a unique report in .infralens/reports; show destination, gate and upload states.

@@ -16,7 +16,7 @@ def test_input_directory_controls_repo_config_not_cwd(tmp_path, monkeypatch):
         f'api_url = "{API}"\nproject = "repo-project"\n'
     )
     monkeypatch.chdir(tmp_path)
-    cloud_config.save(API, "global")
+    cloud_config.save(API)
     assert cloud_config.resolve(root=nested) == (API, "repo-project")
     monkeypatch.setenv("INFRALENS_PROJECT", "env")
     assert cloud_config.resolve(root=nested) == (API, "env")
@@ -35,8 +35,8 @@ def test_repo_search_stops_at_git_root(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / ".git").write_text("gitdir: elsewhere")
-    cloud_config.save(API, "global")
-    assert cloud_config.resolve(root=repo) == (API, "global")
+    cloud_config.save(API)
+    assert cloud_config.resolve(root=repo) == (API, None)
 
 
 @pytest.mark.parametrize(

@@ -96,7 +96,7 @@ UploadReport = Annotated[
 CloudProject = Annotated[
     str | None,
     typer.Option(
-        help="Project override; otherwise INFRALENS_PROJECT or selected project."
+        help="Explicit project; otherwise INFRALENS_PROJECT or this repo binding."
     ),
 ]
 CloudApiUrl = Annotated[
@@ -117,20 +117,17 @@ def configure_cloud(
         from infralens.cloud_auth import origin
 
         api = origin(api_url)
-        saved = cloud_config.load()
-        cloud_config.save(
-            api, saved.get("project_id") if saved.get("api_url") == api else None
-        )
+        cloud_config.save(api)
         typer.echo(f"API URL saved: {api}")
 
 
 @cloud_app.command("setup")
-def cloud_setup(api_url: CloudApiUrl = None, local: bool = False):
-    """Configure login/project; --local saves API/project in this repo."""
+def cloud_setup(api_url: CloudApiUrl = None):
+    """Sign in and bind this repo to a cloud project."""
     with command_errors():
         from infralens.cloud_workflow import setup
 
-        setup(api_url, local)
+        setup(api_url)
 
 
 @cloud_app.command("login")
@@ -174,7 +171,8 @@ def cloud_status():
         typer.echo(f"API URL: {api or 'not configured'}")
         typer.echo(f"Project: {project or 'not selected'}")
         typer.echo(f"Repo config: {plain(str(repo_file)) if repo_file else 'none'}")
-        typer.echo("Priority: flags > environment > repo config > user config")
+        typer.echo("Project priority: flags > environment > repo binding")
+        typer.echo("API priority: flags > environment > repo > saved API URL")
         api_source = (
             "environment"
             if os.environ.get("INFRALENS_API_URL") is not None
@@ -183,7 +181,7 @@ def cloud_status():
         project_source = (
             "environment"
             if os.environ.get("INFRALENS_PROJECT") is not None
-            else ("repo" if project and repo.get("api_url") == api else "user config")
+            else ("repo" if project and repo.get("api_url") == api else "not bound")
         )
         typer.echo(f"Sources: API={api_source}; project={project_source}")
         typer.echo(f"Config: {plain(str(cloud_config.config_path()))}")
@@ -213,10 +211,10 @@ def create_project(
     ] = None,
     api_url: CloudApiUrl = None,
     select: Annotated[
-        bool, typer.Option(help="Select this project after creation.")
+        bool, typer.Option(help="Bind this repo to the project after creation.")
     ] = True,
 ):
-    """Create a project and select it for subsequent uploads."""
+    """Create a project and bind this repo for subsequent uploads."""
     with command_errors():
         from infralens.cloud_projects import create
 
@@ -236,16 +234,15 @@ def list_projects(api_url: CloudApiUrl = None):
 def use_project(
     project_id: Annotated[str | None, typer.Argument()] = None,
     api_url: CloudApiUrl = None,
-    local: bool = False,
 ):
-    """Select an existing project for subsequent uploads."""
+    """Bind this repo to an existing project for subsequent uploads."""
     with command_errors():
         from infralens.cloud_config import resolve
         from infralens.cloud_projects import use
         from infralens.cloud_workflow import choose_project
 
         api, _ = resolve(api_url)
-        use(project_id if project_id is not None else choose_project(api), api, local)
+        use(project_id if project_id is not None else choose_project(api), api)
 
 
 def upload_defaults(upload, format, output, kind, enum):
@@ -288,8 +285,8 @@ def _upload_options(
     api_url, project = resolve(api_url, project, root=root)
     if project is None:
         raise InvalidInput(
-            "No project selected. Run 'infralens cloud project use ID' "
-            "or pass --project."
+            "No project bound to this repo. Run 'infralens cloud setup' or "
+            "pass --project explicitly for this run."
         )
     if require_scope and scope is None:
         raise InvalidInput(

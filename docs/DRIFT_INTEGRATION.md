@@ -69,8 +69,9 @@ infralens drift ./infra --format json --output ./reports/drift.json \
 ```
 
 Upload cần JSON output, project, scope và HTTPS API origin. API/project được lấy
-từ flag > `INFRALENS_API_URL`/`INFRALENS_PROJECT` > cấu hình đã lưu. Project đã
-chọn gắn với API đã lưu. `scope` là ID ổn định do nhóm đặt cho một
+từ flag > `INFRALENS_API_URL`/`INFRALENS_PROJECT` > cấu hình repo. Project không
+có mặc định chung trên máy; API URL có thể dùng cấu hình máy lúc setup. Project
+repo luôn gắn với API trong cùng file. `scope` là ID ổn định do nhóm đặt cho một
 account/workspace/environment; thay scope khi đổi phạm vi. Đây là khai báo của
 client, không phải xác nhận tài khoản AWS từ server.
 
@@ -90,7 +91,7 @@ rồi trả `1`; lỗi trace còn report vẫn upload rồi trả `3`. Report v�
 Quét local không cần tài khoản InfraLens. Thao tác project và upload cần Cognito:
 CLI tương tác đăng nhập qua Code + PKCE S256 rồi lưu phiên riêng trên máy, tự gia
 hạn ở các lệnh sau. Dùng `cloud login/logout/status` để quản lý phiên.
-`cloud setup --local` thiết lập API/project trong repo; credentials không nằm trong
+`cloud setup` thiết lập API/project trong repo; credentials không nằm trong
 repo. Xem [guide](USER_GUIDE.md) về quyền file và cấu hình.
 
 CI/noninteractive cung cấp `INFRALENS_ACCESS_TOKEN` bằng secret environment của

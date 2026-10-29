@@ -45,7 +45,7 @@ def _request(api, token, method, path, body=None):
         raise ExecutionError("The service returned invalid project data.") from None
 
 
-def create(project_id, name, api_url=None, select=True, local=False):
+def create(project_id, name, api_url=None, select=True):
     project_id = identifier(project_id, "project_id")
     name = name.strip()
     if not name or len(name) > 120 or any(not c.isprintable() for c in name):
@@ -59,18 +59,18 @@ def create(project_id, name, api_url=None, select=True, local=False):
     )
     typer.echo(f"Project ready: {project_id} | {plain(data['name'])}")
     if select:
-        select_project(api, project_id, local)
+        select_project(api, project_id)
         typer.echo(f"Selected project: {project_id}")
 
 
-def use(project_id, api_url=None, local=False):
+def use(project_id, api_url=None):
     project_id = identifier(project_id, "project_id")
     api, _ = cloud_config.resolve(api_url)
     _project(
         _request(api, access_token(api), "GET", f"/v1/projects/{project_id}"),
         project_id,
     )
-    select_project(api, project_id, local)
+    select_project(api, project_id)
     typer.echo(f"Selected project: {project_id}")
 
 
@@ -126,13 +126,10 @@ def list_projects(api_url=None, *, collect=False):
     )
 
 
-def select_project(api, project_id, local=False):
-    if local:
-        file = Path.cwd() / ".infralens.toml"
-        if file.is_symlink():
-            raise InvalidInput("Repo config must not be a symbolic link.")
-        if file.exists():
-            cloud_config.repo_config(Path.cwd())
-        cloud_config.save_repo(Path.cwd(), api, project_id)
-    else:
-        cloud_config.save(api, project_id)
+def select_project(api, project_id):
+    existing, _ = cloud_config.repo_config(Path.cwd())
+    root = existing.parent if existing else Path.cwd()
+    file = root / ".infralens.toml"
+    if file.is_symlink():
+        raise InvalidInput("Repo config must not be a symbolic link.")
+    cloud_config.save_repo(root, api, project_id)

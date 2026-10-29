@@ -1,4 +1,4 @@
-"""User-level public cloud defaults; credentials are never persisted here."""
+"""Repo project binding and user-level API settings; no credentials."""
 
 import json
 import os
@@ -29,16 +29,21 @@ def load():
         if len(raw) > 65536:
             raise ValueError
         data = json.loads(raw.decode("utf-8"))
-        if (
-            not isinstance(data, dict)
-            or set(data) != {"schema_version", "api_url", "project_id"}
-            or type(data["schema_version"]) is not int
-            or data["schema_version"] != 1
-        ):
+        if not isinstance(data, dict) or type(data.get("schema_version")) is not int:
             raise ValueError
-        data["api_url"] = origin(data["api_url"])
-        if data["project_id"] is not None:
-            identifier(data["project_id"], "project_id")
+        legacy = data["schema_version"] == 1 and set(data) == {
+            "schema_version",
+            "api_url",
+            "project_id",
+        }
+        current = data["schema_version"] == 2 and set(data) == {
+            "schema_version",
+            "api_url",
+        }
+        if not (legacy or current):
+            raise ValueError
+        # Read old API settings, but never reuse a machine-wide project.
+        data = {"schema_version": 2, "api_url": origin(data["api_url"])}
     except (ValueError, TypeError, InvalidInput, UnicodeError, RecursionError):
         raise InvalidInput(
             "Cloud config is invalid. Fix or remove the config file, "
@@ -47,14 +52,8 @@ def load():
     return data
 
 
-def save(api_url, project_id=None):
-    data = {
-        "schema_version": 1,
-        "api_url": origin(api_url),
-        "project_id": identifier(project_id, "--project")
-        if project_id is not None
-        else None,
-    }
+def save(api_url):
+    data = {"schema_version": 2, "api_url": origin(api_url)}
     write_report(config_path(), json.dumps(data, indent=2) + "\n")
 
 
@@ -118,6 +117,4 @@ def resolve(api_url=None, project_id=None, *, root=None):
     api = origin(api)
     if project is None and repo.get("api_url") == api:
         project = repo.get("project_id")
-    if project is None and saved.get("api_url") == api:
-        project = saved.get("project_id")
     return api, identifier(project, "--project") if project is not None else None
