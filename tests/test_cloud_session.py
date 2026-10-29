@@ -1,0 +1,118 @@
+import json
+import os
+import time
+
+import pytest
+
+from infralens.errors import ExecutionError
+
+API = "https://api.example.com"
+AUTH = {
+    "issuer": "https://issuer.example.com/pool",
+    "client_id": "client",
+    "token_endpoint": "https://auth.example.com/oauth2/token",
+    "revocation_endpoint": "https://auth.example.com/oauth2/revoke",
+}
+
+
+def seed(monkeypatch):
+    from infralens import cloud_auth, cloud_session
+
+    monkeypatch.setattr(
+        cloud_auth,
+        "login",
+        lambda *a, **k: {
+            "access_token": "ACCESS",
+            "refresh_token": "REFRESH",
+            "expires_in": 900,
+        },
+    )
+    monkeypatch.setattr(cloud_session, "configuration", lambda api: {"auth": AUTH})
+    cloud_session.sign_in(API)
+    return cloud_session
+
+
+def test_login_survives_new_call_without_browser(monkeypatch):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+    monkeypatch.setattr(
+        cloud_auth, "login", lambda *a, **k: pytest.fail("Browser reopened")
+    )
+    assert session.token(API) == "ACCESS"
+    assert session.token("https://other.example.com") is None
+    if os.name != "nt":
+        assert session.path(API).stat().st_mode & 0o777 == 0o600
+
+
+def test_refresh_keeps_original_refresh_token_and_never_logs(monkeypatch, capsys):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+    record = session.read(API)
+    record["expires_at"] = time.time() - 1
+    session.write(API, record)
+
+    def http(method, url, **kw):
+        assert url == AUTH["token_endpoint"]
+        assert b"grant_type=refresh_token" in kw["data"]
+        return 200, b'{"access_token":"NEW_ACCESS","expires_in":900}'
+
+    monkeypatch.setattr(cloud_auth, "http", http)
+    assert session.token(API) == "NEW_ACCESS"
+    assert session.read(API)["refresh_token"] == "REFRESH"
+    assert "REFRESH" not in capsys.readouterr().out
+
+
+def test_refresh_network_error_preserves_session(monkeypatch):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+    record = session.read(API)
+    record["expires_at"] = 0
+    session.write(API, record)
+
+    def fail(*a, **kw):
+        raise ExecutionError("Cannot connect")
+
+    monkeypatch.setattr(cloud_auth, "http", fail)
+    with pytest.raises(ExecutionError, match="Cannot connect"):
+        session.token(API)
+    assert session.read(API)["refresh_token"] == "REFRESH"
+
+
+def test_logout_clears_local_even_if_revoke_fails(monkeypatch):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+
+    def fail(*a, **kw):
+        raise ExecutionError("Cannot connect")
+
+    monkeypatch.setattr(cloud_auth, "http", fail)
+    session.logout(API)
+    assert session.read(API) is None
+
+
+def test_insecure_or_corrupt_session_is_not_read(monkeypatch):
+    session = seed(monkeypatch)
+    session.path(API).write_text("PRIVATE_BAD_JSON")
+    with pytest.raises(ExecutionError) as error:
+        session.token(API)
+    assert "PRIVATE" not in str(error.value)
+
+
+def test_invalid_grant_removes_expired_session(monkeypatch):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+    record = session.read(API)
+    record["expires_at"] = 0
+    session.write(API, record)
+    monkeypatch.setattr(
+        cloud_auth,
+        "http",
+        lambda *a, **kw: (400, json.dumps({"error": "invalid_grant"}).encode()),
+    )
+    assert session.token(API) is None
+    assert session.read(API) is None

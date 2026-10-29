@@ -106,7 +106,7 @@ def http(method, url, *, data=None, headers=None, statuses=(200,)):
     raise ExecutionError(f"Cloud request failed: HTTP {status}{detail}. {hint}")
 
 
-def login(config, timeout=180):
+def login(config, timeout=180, *, session=False):
     try:
         auth = config["auth"]
         callback = urllib.parse.urlsplit(auth["callback_url"])
@@ -198,7 +198,7 @@ def login(config, timeout=180):
                 }
             )
         )
-        typer.echo("Sign in using the browser. Tokens are not saved.", err=True)
+        typer.echo("Sign in using the browser.", err=True)
         if not webbrowser.open(url):
             typer.echo(f"Open this sign-in URL on this machine: {url}", err=True)
         deadline = time.monotonic() + timeout
@@ -234,7 +234,7 @@ def login(config, timeout=180):
             raise ValueError
     except (KeyError, ValueError, TypeError):
         raise ExecutionError("Cognito did not return a valid access token.") from None
-    return token
+    return json.loads(payload) if session else token
 
 
 def access_token(api_url):
@@ -245,15 +245,14 @@ def access_token(api_url):
                 "INFRALENS_ACCESS_TOKEN must contain a valid access token."
             )
         return token
+    from infralens import cloud_session
+
+    token = cloud_session.token(api_url)
+    if token is not None:
+        return token
     if not sys.stdin.isatty():
         raise ExecutionError(
-            "Noninteractive cloud operations require INFRALENS_ACCESS_TOKEN."
+            "Noninteractive cloud operations require INFRALENS_ACCESS_TOKEN "
+            "or a saved session. Run 'infralens cloud login' on an interactive terminal."
         )
-    _, response = http("GET", api_url + "/v1/config")
-    try:
-        config = json.loads(response)
-    except (ValueError, UnicodeError):
-        raise ExecutionError(
-            "The service returned invalid login configuration."
-        ) from None
-    return login(config)
+    return cloud_session.sign_in(api_url)

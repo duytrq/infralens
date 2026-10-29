@@ -124,6 +124,28 @@ def configure_cloud(
         typer.echo(f"API URL saved: {api}")
 
 
+@cloud_app.command("login")
+def cloud_login(api_url: CloudApiUrl = None):
+    """Sign in once through the browser and save your Cognito session."""
+    with command_errors():
+        from infralens import cloud_config, cloud_session
+
+        if not sys.stdin.isatty():
+            raise InvalidInput("Login requires an interactive terminal.")
+        api, _ = cloud_config.resolve(api_url)
+        cloud_session.sign_in(api)
+
+
+@cloud_app.command("logout")
+def cloud_logout(api_url: CloudApiUrl = None):
+    """Remove this API's saved session and request token revocation."""
+    with command_errors():
+        from infralens import cloud_config, cloud_session
+
+        api, _ = cloud_config.resolve(api_url)
+        cloud_session.logout(api)
+
+
 @cloud_app.command("status")
 def cloud_status():
     """Show public settings without signing in."""
@@ -140,10 +162,22 @@ def cloud_status():
         typer.echo(f"API URL: {api or 'not configured'}")
         typer.echo(f"Project: {project or 'not selected'}")
         typer.echo(f"Config: {plain(str(cloud_config.config_path()))}")
-        typer.echo(
-            "Cloud operations sign in through the browser or "
-            "INFRALENS_ACCESS_TOKEN; tokens are not saved."
-        )
+        import time
+
+        from infralens import cloud_session
+
+        if os.environ.get("INFRALENS_ACCESS_TOKEN") is not None:
+            state = "environment access token (not saved or refreshed)"
+        else:
+            session = cloud_session.read(api) if api else None
+            state = (
+                "not signed in; run 'infralens cloud login'"
+                if session is None
+                else "saved session; token valid locally (revocation not checked)"
+                if session["expires_at"] > time.time() + 60
+                else "saved session; refresh needed on next cloud command"
+            )
+        typer.echo(f"Auth: {state}")
 
 
 @project_app.command("create")
