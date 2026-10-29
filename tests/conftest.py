@@ -8,6 +8,14 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def isolated_cloud_config(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    monkeypatch.delenv("INFRALENS_API_URL", raising=False)
+    monkeypatch.delenv("INFRALENS_PROJECT", raising=False)
+
+
 @pytest.fixture
 def project(tmp_path):
     path = tmp_path / "terraform project"

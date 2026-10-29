@@ -118,10 +118,13 @@ def test_shared_upload_requirements_fail_before_engine(
         ],
     )
     assert response.exit_code == 2
-    assert (
-        "--upload requires --format json, --output, --project and --api-url."
-        in response.stderr
-    )
+    expected = {
+        "--format": "--upload requires --format json and --output.",
+        "--output": "--upload requires --format json and --output.",
+        "--project": "No project selected",
+        "--api-url": "No API URL configured",
+    }
+    assert expected[missing] in response.stderr
     assert not output.exists()
 
 

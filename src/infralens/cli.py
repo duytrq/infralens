@@ -45,26 +45,13 @@ app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 cloud_app = typer.Typer(
-    help="Upload saved Security or Drift reports.", no_args_is_help=True
+    help="Configure cloud connection and manage projects.", no_args_is_help=True
+)
+project_app = typer.Typer(
+    help="Create, list and select your projects.", no_args_is_help=True
 )
 app.add_typer(cloud_app, name="cloud")
-
-
-@cloud_app.command("upload")
-def upload_saved(
-    report: Annotated[Path, typer.Option(help="Saved Security or Drift JSON file.")],
-    manifest: Annotated[Path, typer.Option(help="Immutable .upload.json sidecar.")],
-    api_url: Annotated[str, typer.Option(help="InfraLens HTTPS API origin.")],
-) -> None:
-    """Retry a saved upload without rerunning the engine or changing metadata."""
-    with command_errors():
-        from infralens.cloud import upload_files
-
-        upload_files(
-            readable_file(report, "--report"),
-            readable_file(manifest, "--manifest"),
-            api_url,
-        )
+cloud_app.add_typer(project_app, name="project")
 
 
 def show_version(value: bool) -> None:
@@ -107,11 +94,92 @@ UploadReport = Annotated[
     bool, typer.Option(help="Upload JSON to the InfraLens dashboard.")
 ]
 CloudProject = Annotated[
-    str | None, typer.Option(help="Existing cloud project ID; requires --upload.")
+    str | None,
+    typer.Option(
+        help="Project override; otherwise INFRALENS_PROJECT or selected project."
+    ),
 ]
 CloudApiUrl = Annotated[
-    str | None, typer.Option(help="InfraLens HTTPS API origin; requires --upload.")
+    str | None,
+    typer.Option(
+        help="API override; otherwise INFRALENS_API_URL or saved configuration."
+    ),
 ]
+
+
+@cloud_app.command("configure")
+def configure_cloud(
+    api_url: Annotated[str, typer.Option(help="HTTPS API origin to save.")],
+):
+    """Save the API URL once. No credentials are stored."""
+    with command_errors():
+        from infralens import cloud_config
+        from infralens.cloud_auth import origin
+
+        api = origin(api_url)
+        saved = cloud_config.load()
+        cloud_config.save(
+            api, saved.get("project_id") if saved.get("api_url") == api else None
+        )
+        typer.echo(f"API URL saved: {api}")
+
+
+@cloud_app.command("status")
+def cloud_status():
+    """Show public settings without signing in."""
+    with command_errors():
+        from infralens import cloud_config
+        from infralens.reporting import plain
+
+        saved = cloud_config.load()
+        api, project = (
+            cloud_config.resolve()
+            if saved.get("api_url") or os.environ.get("INFRALENS_API_URL")
+            else (None, None)
+        )
+        typer.echo(f"API URL: {api or 'not configured'}")
+        typer.echo(f"Project: {project or 'not selected'}")
+        typer.echo(f"Config: {plain(str(cloud_config.config_path()))}")
+        typer.echo(
+            "Cloud operations sign in through the browser or "
+            "INFRALENS_ACCESS_TOKEN; tokens are not saved."
+        )
+
+
+@project_app.command("create")
+def create_project(
+    project_id: str,
+    name: Annotated[
+        str | None, typer.Option(help="Display name; defaults to the project ID.")
+    ] = None,
+    api_url: CloudApiUrl = None,
+    select: Annotated[
+        bool, typer.Option(help="Select this project after creation.")
+    ] = True,
+):
+    """Create a project and select it for subsequent uploads."""
+    with command_errors():
+        from infralens.cloud_projects import create
+
+        create(project_id, name if name is not None else project_id, api_url, select)
+
+
+@project_app.command("list")
+def list_projects(api_url: CloudApiUrl = None):
+    """List projects visible to your signed-in account."""
+    with command_errors():
+        from infralens.cloud_projects import list_projects as list_cloud_projects
+
+        list_cloud_projects(api_url)
+
+
+@project_app.command("use")
+def use_project(project_id: str, api_url: CloudApiUrl = None):
+    """Select an existing project for subsequent uploads."""
+    with command_errors():
+        from infralens.cloud_projects import use
+
+        use(project_id, api_url)
 
 
 def _upload_options(
@@ -133,23 +201,22 @@ def _upload_options(
             )
             raise InvalidInput(f"{flags} require --upload.")
         return None
-    if report_format != "json" or output is None or project is None or api_url is None:
-        raise InvalidInput(
-            "--upload requires --format json, --output, --project and --api-url."
-        )
-    from infralens.cloud import identifier, manifest_path
-    from infralens.cloud_auth import origin
+    if report_format != "json" or output is None:
+        raise InvalidInput("--upload requires --format json and --output.")
+    from infralens.cloud import identifier
+    from infralens.cloud_config import resolve
 
+    api_url, project = resolve(api_url, project)
+    if project is None:
+        raise InvalidInput(
+            "No project selected. Run 'infralens cloud project use ID' "
+            "or pass --project."
+        )
     options = UploadOptions(
-        origin(api_url),
-        identifier(project, "--project"),
+        api_url,
+        project,
         identifier(scope, "--scope") if require_scope else None,
     )
-    saved = manifest_path(output)
-    if saved.exists() or saved.is_symlink():
-        raise InvalidInput(
-            "Manifest exists; retry with cloud upload or use a new output."
-        )
     return options
 
 
@@ -185,10 +252,6 @@ def scan(
         cloud_options = _upload_options(
             upload, format.value, destination, project, api_url
         )
-        if cloud_options is not None:
-            from infralens.cloud import manifest_path
-
-            scan_output_path(manifest_path(destination), inputs + (destination,))
         logger.debug("Scan validation complete")
         handle_scan(
             ScanOptions(
@@ -282,12 +345,6 @@ def drift(
             scope=scope,
             require_scope=True,
         )
-        if cloud_options is not None:
-            from infralens.cloud import manifest_path
-
-            drift_output_path(
-                manifest_path(destination), directory, protected + (destination,)
-            )
         logger.debug("Drift validation complete")
         handle_drift(
             DriftOptions(

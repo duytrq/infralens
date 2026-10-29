@@ -1,4 +1,4 @@
-"""Security/Drift manifests and resumable uploads over the storage API."""
+"""Single-attempt Security/Drift uploads with metadata kept only in memory."""
 
 import base64
 import hashlib
@@ -15,7 +15,6 @@ import typer
 from infralens.cloud_auth import access_token, http, origin
 from infralens.errors import ExecutionError, InvalidInput
 from infralens.options import SEVERITIES
-from infralens.reporting import write_report
 
 MAX_REPORT_BYTES = 2 * 1024 * 1024
 MAX_SECURITY_REPORT_BYTES = 50 * 1024 * 1024
@@ -27,10 +26,6 @@ def identifier(value, option):
     ):
         raise InvalidInput(f"{option}: use 1-64 lowercase letters, digits, '_' or '-'.")
     return value
-
-
-def manifest_path(output):
-    return Path(str(output) + ".upload.json")
 
 
 def cloud_report(data, root):
@@ -118,7 +113,7 @@ def build_manifest(report, payload, options, started, finished):
     }
 
 
-def save_manifest(report, options, started, finished):
+def upload_drift(report, options, started, finished):
     # The writer uses native newlines on Windows; sign the actual file bytes.
     payload = options.output.read_bytes()
     if len(payload) > MAX_REPORT_BYTES:
@@ -126,10 +121,10 @@ def save_manifest(report, options, started, finished):
             "Drift report exceeds the 2 MiB upload limit; local JSON was saved."
         )
     metadata = build_manifest(report, payload, options, started, finished)
-    return _save_manifest(metadata, options)
+    return upload_report(metadata, payload, options.upload.api_url)
 
 
-def save_scan_manifest(
+def upload_scan(
     result, options, started, finished, engine_version, failed, ignore_sha256
 ):
     payload = options.output.read_bytes()
@@ -182,59 +177,28 @@ def save_scan_manifest(
             "schema_version": 2,
         },
     }
-    return _save_manifest(metadata, options)
+    return upload_report(metadata, payload, options.upload.api_url)
 
 
-def _save_manifest(metadata, options):
-    path = manifest_path(options.output)
-    write_report(
-        path,
-        json.dumps({"api_url": options.upload.api_url, "manifest": metadata}, indent=2)
-        + "\n",
-    )
-    return path
-
-
-def _load_json(path, maximum):
-    with path.open("rb") as stream:
-        raw = stream.read(maximum + 1)
-    if len(raw) > maximum:
-        raise InvalidInput("Upload file exceeds its supported size.")
-    try:
-        data = json.loads(raw)
-    except (ValueError, UnicodeError, RecursionError):
-        raise InvalidInput("Upload file must contain valid UTF-8 JSON.") from None
-    return data, raw
-
-
-def upload_files(report_path, saved_path, api_url):
+def upload_report(metadata, payload, api_url):
     api_url = origin(api_url)
-    saved, _ = _load_json(saved_path, 65536)
     try:
-        metadata = saved["manifest"]
-        artifact = metadata["artifact"]
         run_type = metadata["run_type"]
         if run_type not in ("drift", "security_scan"):
             raise ValueError
-    except (KeyError, TypeError, ValueError):
-        raise InvalidInput(
-            "Manifest must describe a Security or Drift upload."
-        ) from None
-    maximum = MAX_REPORT_BYTES if run_type == "drift" else MAX_SECURITY_REPORT_BYTES
-    report, payload = _load_json(report_path, maximum)
-    try:
-        schema = "1.0" if run_type == "drift" else 2
-        if not isinstance(report, dict):
+        maximum = MAX_REPORT_BYTES if run_type == "drift" else MAX_SECURITY_REPORT_BYTES
+        if len(payload) > maximum:
             raise ValueError
-        if run_type == "drift":
-            report_matches = (
-                report.get("kind") == "drift" and report.get("schema_version") == schema
-            )
-        else:
-            report_matches = report.get("SchemaVersion") == schema
+        report = json.loads(payload)
+        schema = "1.0" if run_type == "drift" else 2
+        artifact = metadata["artifact"]
+        matches = isinstance(report, dict) and (
+            report.get("kind") == "drift" and report.get("schema_version") == schema
+            if run_type == "drift"
+            else report.get("SchemaVersion") == schema
+        )
         if (
-            saved["api_url"] != api_url
-            or not report_matches
+            not matches
             or artifact["format"] != "json"
             or artifact["content_type"] != "application/json"
             or artifact["schema_version"] != schema
@@ -242,10 +206,8 @@ def upload_files(report_path, saved_path, api_url):
             or artifact["size_bytes"] != len(payload)
         ):
             raise ValueError
-    except (KeyError, TypeError, ValueError):
-        raise InvalidInput(
-            "Report, manifest and API origin must match the saved upload."
-        ) from None
+    except (KeyError, TypeError, ValueError, UnicodeError, RecursionError):
+        raise InvalidInput("Report bytes do not match the upload metadata.") from None
     token = access_token(api_url)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     _, response = http(
@@ -300,11 +262,22 @@ def upload_files(report_path, saved_path, api_url):
             headers=upload["headers"],
             statuses=(200, 204, 412),
         )
-        http(
+        _, completed = http(
             "POST",
             api_url + f"/v1/runs/{metadata['run_id']}/complete",
             data=b"{}",
             headers=headers,
         )
+        try:
+            completed = json.loads(completed)
+            if (
+                completed["run_id"] != metadata["run_id"]
+                or completed["upload_status"] != "ready"
+            ):
+                raise ValueError
+        except (KeyError, TypeError, ValueError, UnicodeError):
+            raise ExecutionError(
+                "The service did not confirm the uploaded report."
+            ) from None
     kind = "drift run" if run_type == "drift" else "security scan"
     typer.echo(f"Uploaded {kind} {metadata['run_id']}.", err=True)

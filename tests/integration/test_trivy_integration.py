@@ -116,7 +116,7 @@ def test_real_upload_json_and_manifest_keep_findings_hidden_by_filter(
     from infralens import cloud
 
     uploads = []
-    monkeypatch.setattr(cloud, "upload_files", lambda *args: uploads.append(args))
+    monkeypatch.setattr(cloud, "upload_report", lambda *args: uploads.append(args))
     output = tmp_path / "security.json"
     response = runner.invoke(
         app,
@@ -140,7 +140,8 @@ def test_real_upload_json_and_manifest_keep_findings_hidden_by_filter(
     )
     assert response.exit_code == 1, response.output
     report = json.loads(output.read_bytes())
-    metadata = json.loads(Path(str(output) + ".upload.json").read_bytes())["manifest"]
+    metadata = uploads[0][0]
+    assert not Path(str(output) + ".upload.json").exists()
     counts = {level: 0 for level in ("UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL")}
     for result in report["Results"]:
         for finding in result.get("Misconfigurations", []):

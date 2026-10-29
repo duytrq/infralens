@@ -1,22 +1,24 @@
+import base64
 import hashlib
 import json
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 from typer.testing import CliRunner
 
+from infralens import cloud
 from infralens.cli import app
+from infralens.errors import ExecutionError, InvalidInput
 
 runner = CliRunner()
 API = "https://api.example.com"
 
 
-def args(project, output):
+def arguments(kind, project, output):
     return [
-        "drift",
+        kind,
         str(project),
-        "--plan-json",
-        "examples/drift/plan.json",
         "--format",
         "json",
         "--output",
@@ -24,143 +26,75 @@ def args(project, output):
         "--upload",
         "--project",
         "demo",
-        "--scope",
-        "dev-default",
         "--api-url",
         API,
+        *(
+            [
+                "--scope",
+                "dev",
+                "--plan-json",
+                "examples/drift/plan.json",
+                "--fail-on-drift",
+            ]
+            if kind == "drift"
+            else ["--fail-on", "HIGH"]
+        ),
     ]
 
 
-def test_upload_preserves_gate_and_writes_sanitized_retry_files(
-    project, tmp_path, monkeypatch
-):
-    from infralens import cloud
-
+@pytest.fixture(params=["scan", "drift"])
+def generated(request, project, tmp_path, monkeypatch, fake_trivy):
     received = []
-    (project / "main.tf").write_text('resource "aws_instance" "demo" {}\n')
-    monkeypatch.setattr(cloud, "upload_files", lambda *values: received.append(values))
-    output = tmp_path / "report.json"
-    result = runner.invoke(app, [*args(project, output), "--fail-on-drift"])
-    assert result.exit_code == 1, result.output
-    report = json.loads(output.read_text())
-    assert report["resources"][0]["source"]["locations"][0]["file"] == "main.tf"
-    assert str(project) not in output.read_text()
-    saved = json.loads(Path(str(output) + ".upload.json").read_text())
-    metadata = saved["manifest"]
-    assert (
-        metadata["artifact"]["sha256"]
-        == hashlib.sha256(output.read_bytes()).hexdigest()
-    )
-    assert metadata["result"]["gate_status"] == "failed"
-    assert metadata["scope"] == "dev-default"
-    assert saved["api_url"] == API
-    assert received
-
-
-def test_upload_failure_keeps_report_and_manifest_for_retry(
-    project, tmp_path, monkeypatch
-):
-    from infralens import cloud
-    from infralens.errors import ExecutionError
-
-    def fail(*args):
-        raise ExecutionError("Upload failed; retry the saved manifest.")
-
-    monkeypatch.setattr(cloud, "upload_files", fail)
-    output = tmp_path / "report.json"
-    response = runner.invoke(app, [*args(project, output), "--fail-on-drift"])
-    assert response.exit_code == 3
-    assert output.exists()
-    manifest = Path(str(output) + ".upload.json")
-    original = manifest.read_bytes()
-    received = []
-    monkeypatch.setattr(cloud, "upload_files", lambda *values: received.append(values))
-
-    def forbidden(*args, **kwargs):
-        pytest.fail("Retry must not run Terraform")
-
-    monkeypatch.setattr("infralens.handlers.collect_drift", forbidden)
-    response = runner.invoke(
-        app,
-        [
-            "cloud",
-            "upload",
-            "--manifest",
-            str(manifest),
-            "--report",
-            str(output),
-            "--api-url",
-            API,
-        ],
-    )
-    assert response.exit_code == 0, response.output
-    assert received
-    assert manifest.read_bytes() == original
-
-
-@pytest.mark.parametrize(
-    "extra",
-    [
-        [],
-        ["--project", "demo"],
-        ["--project", "demo", "--scope", "dev", "--api-url", "http://localhost:1234"],
-        ["--project", "../bad", "--scope", "dev", "--api-url", API],
-    ],
-)
-def test_invalid_upload_options_fail_before_engine(project, tmp_path, extra):
-    response = runner.invoke(app, ["drift", str(project), "--upload", *extra])
-    assert response.exit_code == 2
-    assert not (tmp_path / "report.json").exists()
-
-
-def test_existing_retry_manifest_is_not_overwritten(project, tmp_path, monkeypatch):
-    output = tmp_path / "report.json"
-    sidecar = Path(str(output) + ".upload.json")
-    sidecar.write_text("previous immutable upload")
-    response = runner.invoke(app, args(project, output))
-    assert response.exit_code == 2
-    assert sidecar.read_text() == "previous immutable upload"
-    assert not output.exists()
-
-
-@pytest.fixture
-def upload_pair(project, tmp_path, monkeypatch):
-    from infralens import cloud
-
-    output = tmp_path / "report.json"
     with monkeypatch.context() as patch:
-        patch.setattr(cloud, "upload_files", lambda *args: None)
-        result = runner.invoke(app, args(project, output))
-        assert result.exit_code == 0, result.output
-    return output, Path(str(output) + ".upload.json")
+        patch.setattr(cloud, "upload_report", lambda *args: received.append(args))
+        output = tmp_path / "report.json"
+        result = runner.invoke(app, arguments(request.param, project, output))
+        assert result.exit_code == 1, result.output
+    metadata, payload, api = received[0]
+    assert not Path(str(output) + ".upload.json").exists()
+    return request.param, output, metadata, payload
 
 
-def test_upload_transport_sends_token_only_to_api_and_completes_existing_put(
-    upload_pair, monkeypatch
+def test_upload_keeps_native_report_and_schema_valid_metadata_in_memory(generated):
+    kind, path, metadata, payload = generated
+    assert payload == path.read_bytes()
+    assert metadata["artifact"]["sha256"] == hashlib.sha256(payload).hexdigest()
+    assert metadata["artifact"]["size_bytes"] == len(payload)
+    assert metadata["source"] == {"relative_path": "."}
+    assert metadata["run_type"] == ("security_scan" if kind == "scan" else "drift")
+    assert (
+        metadata["result"]["threshold_status" if kind == "scan" else "gate_status"]
+        == "failed"
+    )
+    spec = json.loads(Path("contracts/openapi.json").read_text())
+    Draft202012Validator(
+        {"$ref": "#/components/schemas/RunInput", "components": spec["components"]}
+    ).validate(metadata)
+
+
+@pytest.mark.parametrize("put_status", [200, 412])
+def test_upload_sends_token_only_to_api_and_confirms_ready(
+    generated, monkeypatch, put_status
 ):
-    import base64
-
-    from infralens import cloud
-
-    report, saved = upload_pair
-    metadata = json.loads(saved.read_text())["manifest"]
+    _, path, metadata, payload = generated
     calls = []
 
-    def request(method, url, **kwargs):
+    def http(method, url, **kwargs):
         calls.append((method, url, kwargs))
+        ready = {"run_id": metadata["run_id"], "upload_status": "ready"}
         if url.endswith("/v1/runs"):
-            assert json.loads(kwargs["data"])["run_id"] == metadata["run_id"]
+            assert json.loads(kwargs["data"]) == metadata
             return 201, json.dumps(
                 {
                     "run": {"run_id": metadata["run_id"], "upload_status": "pending"},
                     "upload": {
-                        "url": "https://reports.s3.ap-southeast-1.amazonaws.com/report?signature=example",
                         "method": "PUT",
+                        "url": "https://reports.s3.ap-southeast-1.amazonaws.com/report?signature=example",
                         "headers": {
                             "content-type": "application/json",
-                            "content-length": str(report.stat().st_size),
+                            "content-length": str(len(payload)),
                             "x-amz-checksum-sha256": base64.b64encode(
-                                hashlib.sha256(report.read_bytes()).digest()
+                                hashlib.sha256(payload).digest()
                             ).decode(),
                             "x-amz-sdk-checksum-algorithm": "SHA256",
                             "x-amz-tagging": "state=pending",
@@ -169,28 +103,192 @@ def test_upload_transport_sends_token_only_to_api_and_completes_existing_put(
                     },
                 }
             ).encode()
-        return (412 if method == "PUT" else 200), b"{}"
+        return (
+            (put_status, b"") if method == "PUT" else (200, json.dumps(ready).encode())
+        )
 
-    monkeypatch.setattr(cloud, "http", request)
-    monkeypatch.setattr(cloud, "access_token", lambda api: "PRIVATE_TOKEN")
-    cloud.upload_files(report, saved, API)
+    monkeypatch.setattr(cloud, "http", http)
+    monkeypatch.setattr(cloud, "access_token", lambda *args: "PRIVATE_TOKEN")
+    cloud.upload_report(metadata, payload, API)
     assert [call[0] for call in calls] == ["POST", "PUT", "POST"]
+    assert calls[1][2]["data"] == path.read_bytes()
     assert "Authorization" not in calls[1][2]["headers"]
     assert calls[0][2]["headers"]["Authorization"] == "Bearer PRIVATE_TOKEN"
-    assert "PRIVATE_TOKEN" not in saved.read_text()
 
 
-def test_retry_rejects_changed_report_before_auth_or_network(upload_pair, monkeypatch):
-    from infralens import cloud
-    from infralens.errors import InvalidInput
-
-    report, saved = upload_pair
-    report.write_text(report.read_text() + " ")
+@pytest.mark.parametrize("change", ["sha", "size", "schema", "type"])
+def test_invalid_payload_metadata_never_starts_auth(generated, monkeypatch, change):
+    _, _, metadata, payload = generated
+    if change == "sha":
+        metadata["artifact"]["sha256"] = "0" * 64
+    elif change == "size":
+        metadata["artifact"]["size_bytes"] += 1
+    elif change == "schema":
+        metadata["artifact"]["schema_version"] = "unsupported"
+    else:
+        metadata["run_type"] = "unsupported"
     monkeypatch.setattr(
-        cloud, "access_token", lambda *args: pytest.fail("No login for changed report")
+        cloud, "access_token", lambda *args: pytest.fail("Invalid payload started auth")
     )
-    with pytest.raises(InvalidInput, match="must match"):
-        cloud.upload_files(report, saved, API)
+    with pytest.raises(InvalidInput):
+        cloud.upload_report(metadata, payload, API)
+
+
+@pytest.mark.parametrize("kind", ["scan", "drift"])
+def test_network_failure_keeps_report_without_sidecars(
+    project, tmp_path, monkeypatch, fake_trivy, kind
+):
+    def fail(*args):
+        raise ExecutionError("Cannot connect to the cloud service.")
+
+    monkeypatch.setattr(cloud, "upload_report", fail)
+    output = tmp_path / "report.json"
+    result = runner.invoke(app, arguments(kind, project, output))
+    assert result.exit_code == 3
+    assert output.is_file() and not Path(str(output) + ".upload.json").exists()
+    assert "Local report kept" in result.stderr and "Cannot connect" in result.stderr
+    assert (
+        "retry" not in result.output.lower() and "manifest" not in result.output.lower()
+    )
+
+
+@pytest.mark.parametrize("kind", ["scan", "drift"])
+def test_native_windows_newlines_are_bound_to_uploaded_bytes(
+    project, tmp_path, monkeypatch, fake_trivy, kind
+):
+    from infralens import handlers
+    from infralens.reporting import write_report
+
+    monkeypatch.setattr(
+        handlers, "write_report", lambda p, t: write_report(p, t.replace("\n", "\r\n"))
+    )
+    got = []
+    monkeypatch.setattr(cloud, "upload_report", lambda *args: got.append(args))
+    out = tmp_path / "report.json"
+    result = runner.invoke(app, arguments(kind, project, out))
+    assert result.exit_code == 1, result.output
+    metadata, payload, _ = got[0]
+    assert payload == out.read_bytes()
+    assert metadata["artifact"]["sha256"] == hashlib.sha256(payload).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "kind,limit", [("scan", "MAX_SECURITY_REPORT_BYTES"), ("drift", "MAX_REPORT_BYTES")]
+)
+def test_oversized_upload_keeps_report_before_network(
+    project, tmp_path, monkeypatch, fake_trivy, kind, limit
+):
+    monkeypatch.setattr(cloud, limit, 10)
+    monkeypatch.setattr(
+        cloud,
+        "upload_report",
+        lambda *args: pytest.fail("Oversized upload reached transport"),
+    )
+    out = tmp_path / "report.json"
+    result = runner.invoke(app, arguments(kind, project, out))
+    assert result.exit_code == 3 and out.is_file()
+    assert not Path(str(out) + ".upload.json").exists()
+
+
+@pytest.mark.parametrize("fixture", ["drift", "drift-review", "network-rules"])
+def test_imported_drift_report_and_posted_metadata_match_api_contract(
+    tmp_path, monkeypatch, fixture
+):
+    root = Path(__file__).resolve().parents[1]
+    project = root / "examples" / fixture
+    got = []
+    monkeypatch.setattr(cloud, "upload_report", lambda *args: got.append(args))
+    out = tmp_path / "report.json"
+    response = runner.invoke(
+        app,
+        [
+            "drift",
+            str(project),
+            "--plan-json",
+            str(project / "plan.json"),
+            "--format",
+            "json",
+            "--output",
+            str(out),
+            "--upload",
+            "--project",
+            "demo",
+            "--scope",
+            "dev",
+            "--api-url",
+            API,
+            "--fail-on",
+            "high",
+            "--fail-on-unknown",
+        ],
+    )
+    assert response.exit_code in (0, 1), response.output
+    spec = json.loads((root / "contracts/openapi.json").read_text())
+    for name, data in [
+        ("DriftReport", json.loads(out.read_bytes())),
+        ("RunInput", got[0][0]),
+    ]:
+        Draft202012Validator(
+            {"$ref": f"#/components/schemas/{name}", "components": spec["components"]}
+        ).validate(data)
+
+
+@pytest.mark.parametrize(
+    "status,hint",
+    [
+        (401, "Sign-in"),
+        (403, "Permission"),
+        (404, "project"),
+        (429, "busy"),
+        (503, "unavailable"),
+    ],
+)
+def test_http_errors_are_actionable_and_not_retried(monkeypatch, status, hint):
+    import io
+    import urllib.error
+
+    from infralens import cloud_auth
+
+    calls = []
+
+    class Opener:
+        def open(self, *args, **kwargs):
+            calls.append(1)
+            raise urllib.error.HTTPError(
+                API,
+                status,
+                "PRIVATE_SERVER_ERROR",
+                {},
+                io.BytesIO(b'{"error":{"code":"safe_code","message":"PRIVATE_BODY"}}'),
+            )
+
+    monkeypatch.setattr(
+        cloud_auth.urllib.request, "build_opener", lambda *args: Opener()
+    )
+    with pytest.raises(ExecutionError) as error:
+        cloud_auth.http("GET", API + "/v1/projects")
+    assert hint in str(error.value) and "PRIVATE" not in str(error.value)
+    assert calls == [1]
+
+
+def test_network_error_is_reported_once_without_secret_payload(monkeypatch):
+    import urllib.error
+
+    from infralens import cloud_auth
+
+    calls = []
+
+    class Opener:
+        def open(self, *args, **kwargs):
+            calls.append(1)
+            raise urllib.error.URLError("PRIVATE_NETWORK_REASON")
+
+    monkeypatch.setattr(
+        cloud_auth.urllib.request, "build_opener", lambda *args: Opener()
+    )
+    with pytest.raises(ExecutionError, match="Cannot connect") as error:
+        cloud_auth.http("GET", API)
+    assert calls == [1] and "PRIVATE" not in str(error.value)
 
 
 def test_cloud_report_marks_external_locations_unavailable_without_touching_local(
@@ -303,72 +401,3 @@ def test_pkce_login_checks_state_and_exchanges_code_without_logging(
     captured = capsys.readouterr()
     assert "PRIVATE_CODE" not in captured.out + captured.err
     assert "PRIVATE_TOKEN" not in captured.out + captured.err
-
-
-def test_manifest_checksum_uses_written_bytes_with_windows_newlines(
-    project, tmp_path, monkeypatch
-):
-    from infralens import cloud, handlers
-    from infralens.reporting import write_report
-
-    monkeypatch.setattr(cloud, "upload_files", lambda *args: None)
-    monkeypatch.setattr(
-        handlers,
-        "write_report",
-        lambda path, text: write_report(path, text.replace("\n", "\r\n")),
-    )
-    output = tmp_path / "report.json"
-    response = runner.invoke(app, args(project, output))
-    assert response.exit_code == 0, response.output
-    artifact = json.loads(Path(str(output) + ".upload.json").read_text())["manifest"][
-        "artifact"
-    ]
-    assert artifact["size_bytes"] == len(output.read_bytes())
-    assert artifact["sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
-
-
-@pytest.mark.parametrize("fixture", ["drift", "drift-review", "network-rules"])
-def test_real_cli_report_and_manifest_match_exported_api_contract(
-    tmp_path, monkeypatch, fixture
-):
-    from jsonschema import Draft202012Validator
-
-    from infralens import cloud
-
-    root = Path(__file__).resolve().parents[1]
-    project = root / "examples" / fixture
-    output = tmp_path / "report.json"
-    monkeypatch.setattr(cloud, "upload_files", lambda *args: None)
-    result = runner.invoke(
-        app,
-        [
-            "drift",
-            str(project),
-            "--plan-json",
-            str(project / "plan.json"),
-            "--format",
-            "json",
-            "--output",
-            str(output),
-            "--upload",
-            "--project",
-            "demo",
-            "--scope",
-            "dev-default",
-            "--api-url",
-            API,
-            "--fail-on",
-            "high",
-            "--fail-on-unknown",
-        ],
-    )
-    assert result.exit_code in (0, 1), result.output
-    spec = json.loads((root / "contracts/openapi.json").read_text())
-    manifest = json.loads(Path(str(output) + ".upload.json").read_text())["manifest"]
-    for name, document in [
-        ("DriftReport", json.loads(output.read_text())),
-        ("RunInput", manifest),
-    ]:
-        Draft202012Validator(
-            {"$ref": f"#/components/schemas/{name}", "components": spec["components"]}
-        ).validate(document)

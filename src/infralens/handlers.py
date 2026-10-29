@@ -11,7 +11,7 @@ import typer
 from infralens.drift_gate import evaluate_gate, render_gate
 from infralens.drift_reporting import render_drift
 from infralens.drift_service import collect_drift
-from infralens.errors import ExitCode
+from infralens.errors import ExecutionError, ExitCode
 from infralens.options import SEVERITIES, DriftOptions, ScanOptions
 from infralens.reporting import render_table, write_report
 from infralens.trivy import Trivy
@@ -67,11 +67,22 @@ def handle_scan(options: ScanOptions) -> None:
     if options.upload is not None:
         from infralens import cloud
 
-        saved = cloud.save_scan_manifest(
-            result, options, started, finished, engine.version, failed, ignore_sha256
-        )
-        typer.echo(f"Upload manifest saved to {str(saved)!r}.", err=True)
-        cloud.upload_files(options.output, saved, options.upload.api_url)
+        try:
+            cloud.upload_scan(
+                result,
+                options,
+                started,
+                finished,
+                engine.version,
+                failed,
+                ignore_sha256,
+            )
+        except ExecutionError as exc:
+            raise ExecutionError(
+                f"Upload failed or was not confirmed: {exc} "
+                f"Local report kept at {str(options.output)!r}. "
+                "Check the dashboard before running again."
+            ) from None
     if failed:
         raise typer.Exit(ExitCode.findings)
 
@@ -116,9 +127,14 @@ def handle_drift(options: DriftOptions) -> None:
     if options.upload is not None:
         from infralens import cloud
 
-        saved = cloud.save_manifest(data, options, started, finished)
-        typer.echo(f"Upload manifest saved to {str(saved)!r}.", err=True)
-        cloud.upload_files(options.output, saved, options.upload.api_url)
+        try:
+            cloud.upload_drift(data, options, started, finished)
+        except ExecutionError as exc:
+            raise ExecutionError(
+                f"Upload failed or was not confirmed: {exc} "
+                f"Local report kept at {str(options.output)!r}. "
+                "Check the dashboard before running again."
+            ) from None
     if result.trace and result.trace["has_errors"]:
         typer.echo(
             "Error: CloudTrail trace incomplete; see trace details in the report.",

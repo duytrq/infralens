@@ -61,44 +61,49 @@ def http(method, url, *, data=None, headers=None, statuses=(200,)):
     except (TypeError, ValueError):
         raise ExecutionError("The service returned an invalid HTTPS address.") from None
     opener = urllib.request.build_opener(NoRedirect)
-    for attempt in range(3):
+    try:
         try:
-            try:
-                response = opener.open(request, timeout=30)
-            except urllib.error.HTTPError as exc:
-                response = exc
-            with response:
-                status = response.status
-                body = response.read(512 * 1024 + 1)
-            if len(body) > 512 * 1024:
-                raise ExecutionError("Cloud response exceeded the expected size.")
-            if status in statuses:
-                return status, body
-            if status in (409, 429, 500, 502, 503, 504) and attempt < 2:
-                time.sleep(0.25 * 2**attempt)
-                continue
-            detail = ""
-            try:
-                code = json.loads(body).get("error", {}).get("code", "")
-                if isinstance(code, str) and re.fullmatch(
-                    r"[a-z][a-z0-9_]{0,63}", code
-                ):
-                    detail = f" ({code})"
-            except (ValueError, AttributeError, TypeError, UnicodeError):
-                pass
-            hint = (
-                " Supply a fresh access token or sign in again."
-                if status == 401
-                else ""
-            )
-            raise ExecutionError(f"Cloud request failed: HTTP {status}{detail}.{hint}")
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
-            if attempt == 2:
-                raise ExecutionError(
-                    "Cloud connection failed; retry the saved manifest."
-                ) from None
-            time.sleep(0.25 * 2**attempt)
-    raise AssertionError("Unreachable retry state")
+            response = opener.open(request, timeout=30)
+        except urllib.error.HTTPError as exc:
+            response = exc
+        with response:
+            status = response.status
+            body = response.read(512 * 1024 + 1)
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        raise ExecutionError(
+            "Cannot connect to the cloud service. Check your network, "
+            "DNS/proxy/TLS settings and API URL."
+        ) from None
+    if len(body) > 512 * 1024:
+        raise ExecutionError("Cloud response exceeded the expected size.")
+    if status in statuses:
+        return status, body
+    detail = ""
+    try:
+        code = json.loads(body).get("error", {}).get("code", "")
+        if isinstance(code, str) and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", code):
+            detail = f" ({code})"
+    except (ValueError, AttributeError, TypeError, UnicodeError):
+        pass
+    hints = {
+        401: (
+            "Sign-in failed or expired. Sign in again or supply "
+            "a fresh INFRALENS_ACCESS_TOKEN."
+        ),
+        403: "Permission denied. Check your account and access rights.",
+        404: "Resource not found. Check the project ID and API URL.",
+        409: "Request conflict. Check the project or run state.",
+        413: "The report exceeds the service size limit.",
+        422: "The request was rejected. Check project and scan options.",
+        429: "The service is busy. Try again later.",
+    }
+    hint = hints.get(
+        status,
+        "The cloud service is unavailable."
+        if status >= 500
+        else "Check your request and API URL.",
+    )
+    raise ExecutionError(f"Cloud request failed: HTTP {status}{detail}. {hint}")
 
 
 def login(config, timeout=180):
@@ -241,7 +246,9 @@ def access_token(api_url):
             )
         return token
     if not sys.stdin.isatty():
-        raise ExecutionError("Noninteractive upload requires INFRALENS_ACCESS_TOKEN.")
+        raise ExecutionError(
+            "Noninteractive cloud operations require INFRALENS_ACCESS_TOKEN."
+        )
     _, response = http("GET", api_url + "/v1/config")
     try:
         config = json.loads(response)
