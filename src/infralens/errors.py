@@ -59,7 +59,7 @@ def command_errors() -> Iterator[None]:
     except ExecutionError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(ExitCode.execution_error) from None
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, typer.Abort):
         typer.echo("Error: Interrupted.", err=True)
         raise typer.Exit(ExitCode.interrupted) from None
     except OSError as exc:

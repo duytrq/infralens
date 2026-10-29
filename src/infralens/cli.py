@@ -137,9 +137,9 @@ def cloud_setup(api_url: CloudApiUrl = None, local: bool = False):
 def cloud_login(api_url: CloudApiUrl = None):
     """Sign in once through the browser and save your Cognito session."""
     with command_errors():
-        from infralens import cloud_config, cloud_session
+        from infralens import cloud_auth, cloud_config, cloud_session
 
-        if not sys.stdin.isatty():
+        if not cloud_auth.interactive_input():
             raise InvalidInput("Login requires an interactive terminal.")
         api, _ = cloud_config.resolve(api_url)
         cloud_session.sign_in(api)
@@ -290,6 +290,11 @@ def _upload_options(
         raise InvalidInput(
             "No project selected. Run 'infralens cloud project use ID' "
             "or pass --project."
+        )
+    if require_scope and scope is None:
+        raise InvalidInput(
+            "Drift upload requires --scope, e.g. --scope dev-default "
+            "for this account/workspace/environment."
         )
     options = UploadOptions(
         api_url,

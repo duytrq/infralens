@@ -26,6 +26,8 @@ def directory():
 
 
 def protect(path, *, directory=False):
+    if path.is_symlink():
+        raise ExecutionError("Session storage must not be a symbolic link.")
     if os.name == "nt":
         import ntsecuritycon
         import win32api

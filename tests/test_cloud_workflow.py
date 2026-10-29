@@ -24,7 +24,7 @@ def test_minimal_upload_uses_repo_and_creates_unique_json(kind, project, monkeyp
         o.format == "json" and o.upload.project == "repo-project" for o in received
     )
     assert received[0].output != received[1].output
-    assert ".infralens/reports" in str(received[0].output)
+    assert received[0].output.parent == project / ".infralens" / "reports"
 
 
 def test_setup_and_project_picker_keep_secrets_out_of_repo(project, monkeypatch):
@@ -58,7 +58,7 @@ def test_setup_and_project_picker_keep_secrets_out_of_repo(project, monkeypatch)
 
 
 def test_setup_never_prompts_in_ci(monkeypatch):
-    monkeypatch.setattr(cloud_workflow.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(cloud_workflow.cloud_auth, "interactive_input", lambda: False)
     result = runner.invoke(app, ["cloud", "setup"])
     assert result.exit_code == 2 and "interactive" in result.output.lower()
 
@@ -69,3 +69,39 @@ def test_explicit_non_json_upload_fails_before_engine(project, monkeypatch):
     )
     result = runner.invoke(app, ["scan", str(project), "--upload", "--format", "sarif"])
     assert result.exit_code == 2 and "json" in result.output
+
+
+def test_cancelled_setup_preserves_settings(project, monkeypatch):
+    monkeypatch.chdir(project)
+    cloud_config.save(API, "old")
+    monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
+    monkeypatch.setattr(cloud_workflow.cloud_auth, "access_token", lambda api: "TOKEN")
+    monkeypatch.setattr(cloud_projects, "list_projects", lambda *a, **k: [])
+    response = runner.invoke(app, ["cloud", "setup"], input="")
+    assert response.exit_code == 130
+    assert cloud_config.load()["project_id"] == "old"
+    assert not (project / ".infralens.toml").exists()
+
+
+def test_setup_creates_project_when_list_is_empty(project, monkeypatch):
+    monkeypatch.chdir(project)
+    monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
+    monkeypatch.setattr("infralens.cloud_auth.access_token", lambda api: "TOKEN")
+    monkeypatch.setattr(cloud_projects, "access_token", lambda api: "TOKEN")
+    writes = []
+
+    def http(method, url, **kw):
+        if method == "PUT":
+            writes.append(json.loads(kw["data"]))
+        data = {"project_id": "new-project", "name": "New project"}
+        return 200, json.dumps(
+            {"items": [], "next_cursor": None} if "?" in url else data
+        ).encode()
+
+    monkeypatch.setattr(cloud_projects, "http", http)
+    response = runner.invoke(
+        app, ["cloud", "setup", "--api-url", API], input="0\nnew-project\nNew project\n"
+    )
+    assert response.exit_code == 0, response.output
+    assert writes == [{"name": "New project"}]
+    assert cloud_config.load()["project_id"] == "new-project"

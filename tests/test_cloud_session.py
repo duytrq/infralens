@@ -43,6 +43,20 @@ def test_login_survives_new_call_without_browser(monkeypatch):
     assert session.token("https://other.example.com") is None
     if os.name != "nt":
         assert session.path(API).stat().st_mode & 0o777 == 0o600
+    else:
+        import win32security
+
+        descriptor = win32security.GetNamedSecurityInfo(
+            str(session.path(API)),
+            win32security.SE_FILE_OBJECT,
+            win32security.DACL_SECURITY_INFORMATION,
+        )
+        acl = descriptor.GetSecurityDescriptorDacl()
+        assert acl.GetAceCount() == 1
+        assert (
+            descriptor.GetSecurityDescriptorControl()[0]
+            & win32security.SE_DACL_PROTECTED
+        )
 
 
 def test_refresh_keeps_original_refresh_token_and_never_logs(monkeypatch, capsys):
@@ -180,3 +194,21 @@ assert cloud_session.token({API!r}) == 'NEXT'
         assert process.returncode == 0, stderr.decode()
         assert not stdout
     assert calls.read_text().splitlines() == ["refresh"]
+
+
+def test_null_stdin_is_noninteractive_in_a_real_process():
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from infralens.cloud_auth import interactive_input; "
+            "assert interactive_input() is False",
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr.decode()

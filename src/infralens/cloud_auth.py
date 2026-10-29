@@ -237,6 +237,25 @@ def login(config, timeout=180, *, session=False):
     return json.loads(payload) if session else token
 
 
+def interactive_input():
+    """Windows NUL is a character device, but cannot host interactive login."""
+    if not sys.stdin.isatty():
+        return False
+    if os.name == "nt":
+        import ctypes
+        import msvcrt
+
+        try:
+            mode = ctypes.c_ulong()
+            handle = ctypes.c_void_p(msvcrt.get_osfhandle(sys.stdin.fileno()))
+            return bool(
+                ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+            )
+        except (OSError, ValueError, AttributeError):
+            return False
+    return True
+
+
 def access_token(api_url):
     token = os.environ.get("INFRALENS_ACCESS_TOKEN")
     if token is not None:
@@ -250,7 +269,7 @@ def access_token(api_url):
     token = cloud_session.token(api_url)
     if token is not None:
         return token
-    if not sys.stdin.isatty():
+    if not interactive_input():
         raise ExecutionError(
             "Noninteractive cloud operations require INFRALENS_ACCESS_TOKEN "
             "or a saved session. Run 'infralens cloud login' interactively."

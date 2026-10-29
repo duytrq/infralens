@@ -1,17 +1,17 @@
 """Interactive onboarding, with no prompts in automated commands."""
 
-import sys
+import os
 from pathlib import Path
 
 import typer
 
-from infralens import cloud_config, cloud_projects
+from infralens import cloud_auth, cloud_config, cloud_projects
 from infralens.errors import InvalidInput
 from infralens.reporting import plain
 
 
 def interactive():
-    if not sys.stdin.isatty():
+    if not cloud_auth.interactive_input():
         raise InvalidInput(
             "Interactive terminal required; supply explicit flags/IDs in CI."
         )
@@ -23,7 +23,12 @@ def choose_project(api):
     for i, project in enumerate(projects, 1):
         typer.echo(f"{i}. {project['project_id']} | {plain(project['name'])}")
     typer.echo("0. Create a project")
-    selected = typer.prompt("Project number", type=int, default=1 if projects else 0)
+    _, current = cloud_config.resolve(api)
+    default = next(
+        (i for i, p in enumerate(projects, 1) if p["project_id"] == current),
+        1 if projects else 0,
+    )
+    selected = typer.prompt("Project number", type=int, default=default)
     if not 0 <= selected <= len(projects):
         raise InvalidInput("Choose one of the displayed project numbers.")
     if selected:
@@ -41,9 +46,13 @@ def setup(api_url=None, local=False):
     if api_url is None:
         _, repo = cloud_config.repo_config(Path.cwd())
         saved = cloud_config.load()
-        api_url = typer.prompt(
-            "API URL", default=repo.get("api_url") or saved.get("api_url")
+        api_url = (
+            os.environ.get("INFRALENS_API_URL")
+            or repo.get("api_url")
+            or saved.get("api_url")
         )
+        if api_url is None:
+            api_url = typer.prompt("API URL")
     api = cloud_auth.origin(api_url)
     cloud_auth.access_token(api)
     project = choose_project(api)
