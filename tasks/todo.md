@@ -107,3 +107,12 @@ Evidence: [cli-workflow-verification.md](cli-workflow-verification.md).
 - [x] Verify CLI/AWS upload with isolated fixture binding; rebuild/install CLI and clarify scope versus Terraform variables.
 
 Evidence: [repo-project-only-verification.md](repo-project-only-verification.md).
+
+
+## Configure list and project prompts
+
+- [x] Add cloud configure list without breaking configure --api-url or cloud status.
+- [x] Prompt missing project create ID/name, share setup helper and fail clearly in CI.
+- [x] Verify regressions and installed wheel, update guide and reinstall the CLI.
+
+Evidence: [configure-list-project-prompts-verification.md](configure-list-project-prompts-verification.md).

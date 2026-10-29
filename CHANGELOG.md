@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- `cloud configure list` shows effective API/project/auth without exposing tokens;
+  `cloud status` remains available and configure --api-url stays compatible.
+- Project create prompts for missing ID/name like setup; CI must supply both fields.
 - Persistent per-API Cognito sessions, automatic refresh and cloud login/logout/status.
   Credentials use private user storage and serialized refresh/logout.
 - Guided cloud setup and project picker always bind public API/project settings to the repo.

@@ -80,6 +80,7 @@ def test_cancelled_setup_preserves_settings(project, monkeypatch):
 
 
 def test_setup_creates_project_when_list_is_empty(project, monkeypatch):
+    monkeypatch.setattr(cloud_workflow.cloud_auth, "interactive_input", lambda: True)
     monkeypatch.chdir(project)
     monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
     monkeypatch.setattr("infralens.cloud_auth.access_token", lambda api: "TOKEN")

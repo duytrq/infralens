@@ -17,6 +17,17 @@ def interactive():
         )
 
 
+def project_details(project_id=None, name=None):
+    if project_id is None or name is None:
+        if not cloud_auth.interactive_input():
+            raise InvalidInput("Supply PROJECT_ID and --name in noninteractive mode.")
+        if project_id is None:
+            project_id = typer.prompt("New project ID")
+        if name is None:
+            name = typer.prompt("Display name", default=project_id)
+    return project_id, name
+
+
 def choose_project(api):
     interactive()
     projects = cloud_projects.list_projects(api, collect=True)
@@ -33,8 +44,7 @@ def choose_project(api):
         raise InvalidInput("Choose one of the displayed project numbers.")
     if selected:
         return projects[selected - 1]["project_id"]
-    project_id = typer.prompt("New project ID")
-    name = typer.prompt("Display name", default=project_id)
+    project_id, name = project_details()
     cloud_projects.create(project_id, name, api, select=False)
     return project_id
 

@@ -52,6 +52,12 @@ project_app = typer.Typer(
 )
 app.add_typer(cloud_app, name="cloud")
 cloud_app.add_typer(project_app, name="project")
+configure_app = typer.Typer(
+    help="Save API settings or list current configuration.",
+    invoke_without_command=True,
+    no_args_is_help=False,
+)
+cloud_app.add_typer(configure_app, name="configure")
 
 
 def show_version(value: bool) -> None:
@@ -107,12 +113,25 @@ CloudApiUrl = Annotated[
 ]
 
 
-@cloud_app.command("configure")
+@configure_app.callback()
 def configure_cloud(
-    api_url: Annotated[str, typer.Option(help="HTTPS API origin to save.")],
+    ctx: typer.Context,
+    api_url: Annotated[
+        str | None, typer.Option(help="HTTPS API origin to save.")
+    ] = None,
 ):
     """Save the API URL once. No credentials are stored."""
     with command_errors():
+        if ctx.invoked_subcommand is not None:
+            if api_url is not None:
+                raise InvalidInput(
+                    "Use --api-url to save settings, or 'configure list' to view them."
+                )
+            return
+        if api_url is None:
+            raise InvalidInput(
+                "Supply --api-url URL or run 'infralens cloud configure list'."
+            )
         from infralens import cloud_config
         from infralens.cloud_auth import origin
 
@@ -203,11 +222,20 @@ def cloud_status():
         typer.echo(f"Auth: {state}")
 
 
+@configure_app.command("list")
+def list_configuration():
+    """Show the effective API, project and auth state without exposing tokens."""
+    cloud_status()
+
+
 @project_app.command("create")
 def create_project(
-    project_id: str,
+    project_id: Annotated[str | None, typer.Argument()] = None,
     name: Annotated[
-        str | None, typer.Option(help="Display name; defaults to the project ID.")
+        str | None,
+        typer.Option(
+            help="Display name; prompts when omitted on an interactive terminal."
+        ),
     ] = None,
     api_url: CloudApiUrl = None,
     select: Annotated[
@@ -217,8 +245,10 @@ def create_project(
     """Create a project and bind this repo for subsequent uploads."""
     with command_errors():
         from infralens.cloud_projects import create
+        from infralens.cloud_workflow import project_details
 
-        create(project_id, name if name is not None else project_id, api_url, select)
+        project_id, name = project_details(project_id, name)
+        create(project_id, name, api_url, select)
 
 
 @project_app.command("list")

@@ -43,6 +43,16 @@ có thể commit file này cho cả nhóm dùng. Không có token trong repo và
 project mặc định chung trên máy. Project chung của bản CLI cũ được bỏ qua.
 API dev: `https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com`.
 
+Tạo project có hướng dẫn:
+
+```bash
+infralens cloud project create
+```
+
+CLI hỏi Project ID và Display name. Nếu truyền ID (`cloud project create my-app`),
+CLI chỉ hỏi tên; Enter nhận tên mặc định bằng ID, giống bước tạo project của setup.
+Trong script/CI phải truyền đủ ID và `--name`, không có prompt hoặc fallback im lặng.
+
 Có thể dùng từng lệnh riêng hoặc trong script:
 
 ```bash
@@ -51,7 +61,7 @@ infralens cloud login
 infralens cloud project create my-app --name "My infrastructure"
 infralens cloud project list
 infralens cloud project use my-app
-infralens cloud status
+infralens cloud configure list
 ```
 
 `create` tự gắn project với repo hiện tại; `--no-select` chỉ tạo. `project use` không có ID
@@ -73,7 +83,7 @@ cấp, hoàn tất browser callback `localhost:8765` trong khoảng 3 phút.
 xuất dashboard hoặc xóa API/project. Nếu mạng lỗi CLI nói rõ chưa xác nhận thu hồi.
 Access token đã phát hành có thể vẫn được API Gateway chấp nhận đến khi hết hạn.
 
-`cloud status` không gọi mạng hoặc mở browser: hiển thị API/project, nguồn cấu hình
+`cloud configure list` (hoặc alias `cloud status`) không gọi mạng hoặc mở browser: hiển thị API/project, nguồn cấu hình
 và tình trạng token local. Token còn hạn local không chứng minh chưa bị thu hồi.
 
 ### Cấu hình repo và credentials

@@ -275,6 +275,11 @@ def verify(wheel: Path, uv: str) -> None:
         )
         run("cloud", "configure", "--api-url", "https://api.example.com")
         assert "https://api.example.com" in run("cloud", "status").stdout
+        listed = run("cloud", "configure", "list")
+        assert "https://api.example.com" in listed.stdout and "Auth:" in listed.stdout
+        assert listed.stdout == run("cloud", "status").stdout
+        missing_name = run("cloud", "project", "create", "demo", code=2)
+        assert "--name" in missing_name.stderr
         missing_login = run("cloud", "project", "list", code=3)
         assert "Noninteractive cloud operations require" in missing_login.stderr
         # The minimal upload command must use input-root repo defaults and retain

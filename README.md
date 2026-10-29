@@ -236,12 +236,13 @@ Lưu API một lần, tạo hoặc chọn project ngay trong CLI:
 infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
 infralens cloud project create my-project --name "My project"
 infralens cloud project list
-infralens cloud status
+infralens cloud configure list
 
 infralens scan ./infra --format json --output ./reports/security.json \
   --fail-on HIGH --upload
 ```
 
+`create` hỏi ID/tên còn thiếu trên terminal; CI phải truyền ID và `--name`.
 `create` tự chọn project; dùng `cloud project use ID` để chuyển project đã có.
 Project có cả Security và Drift. Project được gắn với repo, không có mặc định chung
 trên máy; flag/env có thể chỉ định tường minh cho một lệnh; khi đổi API, project cũ không tự được dùng cho API khác.
