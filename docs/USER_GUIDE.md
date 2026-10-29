@@ -204,15 +204,35 @@ Giới hạn Drift JSON trên cloud là **2 MiB**.
 | --- | --- |
 | `--var-file dev.tfvars` | File biến tính từ Terraform root; có thể lặp lại. |
 | `--profile dev --region ap-southeast-1` | Dùng AWS profile/region đã cấu hình. |
-| `--trace --lookback-days 7` | Tìm sự kiện CloudTrail ứng viên, chủ yếu EC2/Security Group; không xác nhận ai gây drift. |
+| `--trace 7` | Tìm sự kiện CloudTrail ứng viên trong 7 ngày gần nhất; số ngày nguyên 1–90. Mặc định tắt khi không truyền. |
 | `--fail-on HIGH` / `--fail-on MEDIUM` | Chặn high / medium trở lên theo review priority. |
-| `--fail-on-drift` | Chặn mọi managed resource drift. |
-| `--fail-on-unknown` | Chặn priority unknown/chưa đánh giá được. |
+| `--fail-on ANY` | Chặn mọi managed resource drift. |
+| `--fail-on UNKNOWN` | Chặn riêng priority unknown/chưa đánh giá được. |
+| `--fail-on HIGH,UNKNOWN` | Chặn high hoặc unknown; kết hợp bằng dấu phẩy. |
 | `--plan-json plan.json` | Đọc plan JSON có sẵn; không chứng thực độ mới/workspace/coverage. |
 
-Các gate kết hợp bằng OR. `--fail-on-priority` vẫn là alias của `--fail-on`.
+`--fail-on` không phân biệt hoa/thường; có thể kết hợp bằng dấu phẩy (OR).
+Khoảng trắng và giá trị trùng lặp được chuẩn hóa; ANY bao gồm mọi mức.
+Không truyền --fail-on thì vẫn in drift và trả 0 nếu thu thập thành công.
+UNKNOWN là chưa đánh giá được, độc lập với ngưỡng MEDIUM/HIGH.
 Security dùng severity LOW/MEDIUM/HIGH/CRITICAL; Drift dùng review priority
-MEDIUM/HIGH, là heuristic cần con người review.
+MEDIUM/HIGH/UNKNOWN, là heuristic cần con người review.
+
+### Chuyển các lệnh Drift cũ
+
+Các flag trùng chức năng đã bỏ; script/CI cũ cần đổi như sau:
+
+| Lệnh cũ | Lệnh mới |
+| --- | --- |
+| `--fail-on-drift` | `--fail-on ANY` |
+| `--fail-on-priority HIGH` | `--fail-on HIGH` |
+| `--fail-on-unknown` | `--fail-on UNKNOWN` |
+| `--fail-on HIGH --fail-on-unknown` | `--fail-on HIGH,UNKNOWN` |
+| `--trace` (trước đây mặc định 7 ngày) | `--trace 7` |
+| `--trace --lookback-days 14` | `--trace 14` |
+
+`--trace` bây giờ bắt buộc số ngày; thiếu giá trị hoặc ngoài 1–90 trả exit 2
+trước khi chạy Terraform/AWS. Cú pháp mới giữ nguyên cấu trúc report và upload.
 
 ### Đọc output Drift trên terminal
 
@@ -224,7 +244,7 @@ Drift dùng cùng các thao tác quen thuộc với Security: `PATH` mặc đị
 infralens drift
 infralens drift --severity HIGH,MEDIUM --fail-on HIGH
 infralens --no-color drift --format json --output reports/drift.json
-infralens drift --trace --region ap-southeast-1 --lookback-days 1
+infralens drift --trace 1 --region ap-southeast-1
 ```
 
 - Mỗi resource là một card: priority màu, địa chỉ/action, file:dòng, ID và lý do ngắn.
@@ -242,7 +262,8 @@ infralens drift --trace --region ap-southeast-1 --lookback-days 1
 - `--severity` của Drift nhận HIGH/MEDIUM/UNKNOWN, chỉ lọc card terminal.
   Counts, gate, JSON local và JSON upload vẫn tính trên toàn bộ resource drift.
   `--fail-on HIGH` chặn high; `--fail-on MEDIUM` chặn medium/high;
-  thêm `--fail-on-unknown` nếu muốn chặn cả unknown.
+  dùng `--fail-on HIGH,UNKNOWN` nếu muốn chặn cả high và unknown,
+  hoặc `--fail-on ANY` để chặn mọi drift.
 - Code lấy theo AST và chỉ các thuộc tính liên quan; không đọc tfvars để in ra,
   không chép các trường bên cạnh. Giá trị được đánh dấu sensitive/unknown vẫn che.
   Excerpt chỉ phục vụ terminal/file table, không được thêm vào JSON/upload.

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+- **Breaking CLI change:** Drift gates now use one `--fail-on` option: ANY,
+  MEDIUM (includes HIGH), HIGH or UNKNOWN; combine with commas (HIGH,UNKNOWN).
+  Remove --fail-on-drift, --fail-on-priority and --fail-on-unknown.
+- **Breaking CLI change:** `drift --trace DAYS` takes an explicit integer 1–90;
+  remove --lookback-days and the implicit seven-day trace default. Trace is off
+  when omitted. Report/upload schemas stay compatible; see the migration table
+  in docs/USER_GUIDE.md for old-to-new commands.
+
 ### Added
 - Drift resource cards with priority colors, AST-based current attribute excerpts,
   compact saved/observed leaf diffs and inline bounded CloudTrail candidates.
@@ -26,7 +35,7 @@
 - Install boto3 by default so CloudTrail tracing needs no SDK extra; existing
   `aws-trace` install commands remain compatible.
 - Consistent Security/Drift common flags, help order/defaults and upload validation;
-  Drift accepts `--fail-on MEDIUM|HIGH` and retains `--fail-on-priority` as an alias.
+  Drift uses `--fail-on` for all gate conditions; Security keeps its severity threshold.
 - Security `scan --upload` through Cognito and the existing API, full native JSON
   independent of terminal severity filters and a 50 MiB limit.
 - Live browser smoke exercises CLI configuration, projects, Security upload,

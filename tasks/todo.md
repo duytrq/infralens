@@ -126,3 +126,13 @@ Evidence: [configure-list-project-prompts-verification.md](configure-list-projec
 - [x] Verify regressions, redaction mutation, packaged scanner and live lab; rebuild both wheels and install Linux CLI.
 
 Evidence: [drift-terminal-verification.md](drift-terminal-verification.md).
+
+
+## Simplify Drift CLI flags
+
+- [x] Consolidate gate flags into --fail-on ANY/MEDIUM/HIGH/UNKNOWN with comma-separated OR.
+- [x] Replace trace/lookback flags with --trace DAYS (1–90), off by default.
+- [x] Keep report/upload schema and shared engine options compatible; migrate examples/help/guide.
+- [x] Verify tests, cloud contract, packaged CLI and live lab; rebuild both wheels and reinstall Linux.
+
+Evidence: [cli-simplification-verification.md](cli-simplification-verification.md).

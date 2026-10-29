@@ -9,4 +9,4 @@ Keep the existing structured report/upload gate and trace contracts.
 - [x] Regression tests for gate syntax, thresholds, unknown, invalid input and trace days.
 - [x] Replace public flags and validation; preserve shared collection/report models.
 - [x] Migrate current tests, examples, help and guide; document old-to-new commands.
-- [ ] Full checks, packaged CLI verification, local reinstall and live trace check.
+- [x] Full checks, packaged CLI verification, local reinstall and live trace check.

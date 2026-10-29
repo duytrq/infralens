@@ -12,10 +12,10 @@ không phải dependency của hệ thống này. Không chuyển dữ liệu SQ
 ```bash
 uv sync --locked
 uv run infralens drift ./infra --format json --output ./reports/drift.json
-uv run infralens drift ./infra --trace --lookback-days 7
+uv run infralens drift ./infra --trace 7
 uv run infralens drift ./examples/drift-review \
   --plan-json ./examples/drift-review/plan.json \
-  --fail-on HIGH --fail-on-unknown --format json
+  --fail-on HIGH,UNKNOWN --format json
 ```
 
 Chạy từ repo hạ tầng cần quét, dùng CLI đã cài hoặc đường dẫn tuyệt đối phù hợp.
@@ -41,17 +41,21 @@ không tự biến thành thất bại engine.
 
 ## Gate và exit
 
-- `--fail-on-drift`: chặn mọi managed resource drift.
+- `--fail-on ANY`: chặn mọi managed resource drift.
 - `--fail-on HIGH`: chặn high; `MEDIUM`: chặn medium và high.
-- `--fail-on-unknown`: chặn unknown hoặc assessment chưa nhận diện được.
-- Các tiêu chí kết hợp bằng OR, không lọc bớt resource trong report.
+- `--fail-on UNKNOWN`: chặn riêng unknown hoặc assessment chưa nhận diện được.
+- Kết hợp bằng dấu phẩy (OR), ví dụ `--fail-on HIGH,UNKNOWN`;
+  không lọc bớt resource trong report. ANY bao gồm mọi mức; UNKNOWN độc lập với
+  ngưỡng MEDIUM/HIGH. Không truyền --fail-on thì không bật gate.
 - Exit 0: gate không khớp hoặc không bật; 1: gate khớp; 2: input sai;
   3: lỗi công cụ/trace/upload/I/O; 130: ngắt lệnh. Lỗi thực thi ưu tiên hơn gate.
 
 Priority thuộc policy builtin-review-v2, là heuristic hỗ trợ review. Gate passed
 không chứng nhận hạ tầng sạch hoặc bao phủ đầy đủ.
-`--fail-on` không phân biệt hoa/thường, cùng cách truyền ngưỡng với Security.
-`--fail-on-priority` vẫn được nhận như alias để tương thích lệnh cũ.
+`--fail-on` không phân biệt hoa/thường, bỏ khoảng trắng và tiêu chí trùng lặp.
+`--trace DAYS` nhận số nguyên 1–90, mặc định tắt khi không truyền. Các flag gate
+và lookback cũ đã bỏ; xem [guide chuyển lệnh](USER_GUIDE.md#chuyển-các-lệnh-drift-cũ).
+Cấu trúc gate/trace trong JSON và manifest cloud giữ nguyên.
 
 ## Upload và đăng nhập
 

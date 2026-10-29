@@ -174,8 +174,7 @@ def verify(wheel: Path, uv: str) -> None:
                 "--format",
                 "json",
                 "--fail-on",
-                "high",
-                "--fail-on-unknown",
+                "high,unknown",
                 code=1,
             ).stdout
         )
@@ -201,6 +200,58 @@ def verify(wheel: Path, uv: str) -> None:
         assert "Choice:" not in drift_table
         assert "Confirm whether the external change" not in drift_table
         assert "\x1b[" not in drift_table
+        drift_help = run("drift", "--help").stdout
+        assert "--trace DAYS" in drift_help and "HIGH,UNKNOWN" in drift_help
+        for removed in (
+            "--fail-on-drift",
+            "--fail-on-priority",
+            "--fail-on-unknown",
+            "--lookback-days",
+        ):
+            assert removed not in drift_help
+            run("drift", str(drift_project), removed, code=2)
+        for rule, expected in (("ANY", 4), ("UNKNOWN", 1)):
+            gate_report = json.loads(
+                run(
+                    "drift",
+                    str(drift_project),
+                    "--plan-json",
+                    str(drift_project / "plan.json"),
+                    "--format",
+                    "json",
+                    "--fail-on",
+                    rule,
+                    code=1,
+                ).stdout
+            )
+            assert gate_report["gate"]["matched_count"] == expected
+        clean_plan = root / "clean-plan.json"
+        clean_plan.write_text(
+            json.dumps(
+                {
+                    "format_version": "1.2",
+                    "terraform_version": "1.15.7",
+                    "planned_values": {},
+                    "resource_drift": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        clean_trace = json.loads(
+            run(
+                "drift",
+                str(drift_project),
+                "--plan-json",
+                str(clean_plan),
+                "--trace",
+                "7",
+                "--format",
+                "json",
+            ).stdout
+        )
+        assert clean_trace["trace"]["status"] == "not_needed"
+        run("drift", str(drift_project), "--trace", code=2)
+        run("drift", str(drift_project), "--trace", "91", code=2)
         output = root / "reports Việt" / "drift.json"
         failed_upload = run(
             "drift",

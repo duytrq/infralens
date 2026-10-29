@@ -310,9 +310,9 @@ và [report conversion](https://trivy.dev/docs/v0.76/guide/configuration/reporti
 ```bash
 infralens drift ./infra
 infralens drift ./infra --var-file dev.tfvars --var-file overrides.tfvars
-infralens drift ./infra --format json --output ./reports/drift.json --fail-on-drift
+infralens drift ./infra --format json --output ./reports/drift.json --fail-on ANY
 infralens drift ./infra --profile dev --region ap-southeast-1
-infralens drift ./infra --trace --lookback-days 14
+infralens drift ./infra --trace 14
 infralens drift ./infra --severity HIGH,MEDIUM --fail-on HIGH
 infralens --no-color drift ./infra
 ```
@@ -329,11 +329,11 @@ Terraform ổn định >=1.1,<2 phải có trên PATH; dự án đã init, chọ
 xác thực backend/provider. InfraLens chạy refresh-only plan và đọc `resource_drift`,
 không tự init/apply hoặc ghi lại state. Docker/wheel scanner không bundle Terraform.
 `--plan-json` đọc Terraform show JSON có sẵn; freshness và coverage của file import
-chưa được xác minh. `--trace` vẫn cần AWS khi import.
+chưa được xác minh. `--trace DAYS` vẫn cần AWS khi import có resource cần truy vết.
 
 ```bash
 infralens drift ./infra --plan-json ./plan.json --format json
-infralens drift ./infra --fail-on HIGH --fail-on-unknown
+infralens drift ./infra --fail-on HIGH,UNKNOWN
 infralens drift ./infra --format json --output ./reports/drift.json \
   --upload --scope dev-default
 ```
@@ -344,8 +344,13 @@ Báo cáo cloud tối đa 2 MiB; source location thành đường dẫn tương 
 Upload lỗi thông báo nguyên nhân, giữ report local và trả `3`.
 
 `--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
-Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`
-nhận 1–90, chỉ dùng cùng trace; mặc định 7 khi trace bật. `boto3` được cài tự động
+Format là table/json; profile/region từ chối chuỗi trắng. `--trace DAYS`
+nhận số ngày nguyên 1–90 (ví dụ `--trace 7`); mặc định không truy vấn CloudTrail.
+`--fail-on ANY` chặn mọi drift; `MEDIUM` chặn medium/high; `HIGH` chặn high;
+`UNKNOWN` chặn riêng unknown. Kết hợp bằng dấu phẩy như `HIGH,UNKNOWN`.
+Không truyền `--fail-on` thì findings không làm lệnh fail; lỗi thực thi vẫn trả `3`.
+Xem [guide chuyển lệnh cũ](docs/USER_GUIDE.md#chuyển-các-lệnh-drift-cũ).
+`boto3` được cài tự động
 cùng CLI nên không cần extra cho trace. Tên extra `aws-trace` được giữ như alias
 tương thích cho lệnh cài cũ; nó không còn bổ sung dependency riêng.
 
