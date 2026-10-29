@@ -172,7 +172,7 @@ def test_installed_entrypoints(
     cases = [
         ([], 0, "Usage:"),
         (["--version"], 0, "infralens 0.1.0"),
-        (["scan", str(project)], 0, "Security scan"),
+        (["scan", str(project)], 0, "[CRITICAL] TEST-CRITICAL"),
         (["drift", str(project), "--trace"], 0, "CloudTrail trace: not_needed"),
         (["drift"], 2, "Missing argument"),
     ]
@@ -182,6 +182,9 @@ def test_installed_entrypoints(
         )
         assert result.returncode == code
         assert message in (result.stdout if code == 0 else result.stderr)
+        if args and args[0] == "scan":
+            assert "Security scan (Trivy" not in result.stdout
+            assert "\x1b[" not in result.stdout  # Captured output is not a terminal.
         assert not (result.stderr if code == 0 else result.stdout)
 
 

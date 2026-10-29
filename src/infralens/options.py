@@ -36,6 +36,7 @@ class ScanOptions:
     fail_on: str | None
     timeout: int = 300
     upload: UploadOptions | None = None
+    color: bool = False
 
 
 @dataclass(frozen=True)

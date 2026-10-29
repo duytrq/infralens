@@ -5,6 +5,7 @@ import email
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -215,6 +216,10 @@ def verify(wheel: Path, uv: str) -> None:
         assert "source=bundle version=0.76.0" in table.stderr
         assert "AWS-0107" in table.stdout
         assert source.name in table.stdout
+        assert "[HIGH] AWS-0107" in table.stdout
+        assert re.search(r">\s+7\s+\|\s+cidr_blocks", table.stdout)
+        assert "Security scan (Trivy" not in table.stdout
+        assert "\x1b[" not in table.stdout
         for format in ("json", "sarif"):
             output = root / "reports Việt" / f"scan.{format}"
             run(

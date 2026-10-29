@@ -20,6 +20,7 @@ from infralens.options import (
     ScanOptions,
     UploadOptions,
 )
+from infralens.reporting import color_enabled
 from infralens.validation import (
     drift_output_path,
     drift_priority_threshold,
@@ -93,6 +94,7 @@ def root(
 ) -> None:
     # Plain help/errors avoid ANSI even before eager --help is processed.
     ctx.color = False
+    ctx.obj = {"color": color_enabled(no_color)}
     configure_logging(verbose)
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -153,6 +155,7 @@ def _upload_options(
 
 @app.command()
 def scan(
+    ctx: typer.Context,
     path: ProjectPath,
     format: Annotated[
         ScanFormat, typer.Option("--format", help="Report format.")
@@ -196,6 +199,7 @@ def scan(
                 threshold,
                 timeout,
                 upload=cloud_options,
+                color=ctx.find_root().obj["color"],
             )
         )
 

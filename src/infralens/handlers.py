@@ -35,6 +35,9 @@ def handle_scan(options: ScanOptions) -> None:
     for diagnostic in result.diagnostics:
         typer.echo(f"Warning: {diagnostic}", err=True)
     table = render_table(result, options.severity)
+    display = (
+        render_table(result, options.severity, color=True) if options.color else table
+    )
     report = table
     if options.upload is not None:
         # Cloud counts and gate cover every finding, independent of table filters.
@@ -52,10 +55,15 @@ def handle_scan(options: ScanOptions) -> None:
             report = engine.convert(source, options.format, options.severity)
     if options.output is not None:
         write_report(options.output, report)
-        typer.echo(table, nl=False)
+        typer.echo(display, nl=False, color=options.color)
         typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
     else:
-        typer.echo(report, nl=not report.endswith("\n"))
+        screen = display if options.format == "table" else report
+        typer.echo(
+            screen,
+            nl=not screen.endswith("\n"),
+            color=options.color if options.format == "table" else False,
+        )
     if options.upload is not None:
         from infralens import cloud
 

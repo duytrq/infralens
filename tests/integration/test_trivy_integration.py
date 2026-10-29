@@ -54,10 +54,12 @@ def test_real_export_matches_table_and_does_not_modify_inputs(tmp_path, format):
     assert result.exit_code == 1, result.output
     assert "AWS-0107" in result.stdout
     assert "main.tf:7" in result.stdout
+    assert re.search(r">\s+7\s+\|\s+cidr_blocks", result.stdout)
+    assert "Security scan (Trivy" not in result.stdout
     data = json.loads(output.read_text())
     table_rules = set(
         re.findall(
-            r"^(?:CRITICAL|HIGH|MEDIUM|LOW|UNKNOWN) \| ([^| ]+) \|",
+            r"^\[(?:CRITICAL|HIGH|MEDIUM|LOW|UNKNOWN)\] ([^\s]+)",
             result.stdout,
             re.MULTILINE,
         )
