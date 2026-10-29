@@ -313,7 +313,17 @@ infralens drift ./infra --var-file dev.tfvars --var-file overrides.tfvars
 infralens drift ./infra --format json --output ./reports/drift.json --fail-on-drift
 infralens drift ./infra --profile dev --region ap-southeast-1
 infralens drift ./infra --trace --lookback-days 14
+infralens drift ./infra --severity HIGH,MEDIUM --fail-on HIGH
+infralens --no-color drift ./infra
 ```
+
+Terminal Drift hiển thị từng resource với priority màu như Security (HIGH cam,
+MEDIUM vàng, UNKNOWN tím), code thuộc tính hiện tại có dòng `>`, và diff state
+`-` / observed `+`. Chỉ in lý do ngắn; hướng dẫn review/restore/adopt dài ở JSON.
+`--severity` lọc card terminal; JSON/upload và gate vẫn giữ toàn bộ drift.
+Trace hiện ngay trong card với candidate event, thời gian, actor và trạng thái
+matched/no events/unsupported/error. Source excerpt không được thêm vào JSON/upload.
+Xem [guide](docs/USER_GUIDE.md) để đọc output và phân biệt code hiện tại với state.
 
 Terraform ổn định >=1.1,<2 phải có trên PATH; dự án đã init, chọn workspace và
 xác thực backend/provider. InfraLens chạy refresh-only plan và đọc `resource_drift`,

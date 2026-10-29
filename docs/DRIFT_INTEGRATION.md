@@ -157,3 +157,14 @@ vẫn đọc/download/delete được drift đã lưu. Không xóa stack để r
 API 5xx/429, Lambda errors/duration và api_response; không log report/token.
 
 Bằng chứng thực thi: [drift-integration-verification.md](../tasks/drift-integration-verification.md).
+
+
+## Terminal presentation
+
+The CLI shows compact resource cards, current source attribute expressions,
+priority colors, saved-state/observed diffs and per-resource trace candidates.
+Generic review/restore/adopt instructions remain in JSON rather than terminal output.
+Drift --severity HIGH,MEDIUM,UNKNOWN filters terminal cards only; JSON, upload
+counts and gates cover the full result. --no-color/NO_COLOR/non-TTY disable ANSI.
+Current source snippets never become part of the report/upload schema. See the
+[user guide](USER_GUIDE.md) for source availability, sensitivity and trace statuses.

@@ -116,3 +116,13 @@ Evidence: [repo-project-only-verification.md](repo-project-only-verification.md)
 - [x] Verify regressions and installed wheel, update guide and reinstall the CLI.
 
 Evidence: [configure-list-project-prompts-verification.md](configure-list-project-prompts-verification.md).
+
+
+## Drift terminal presentation
+
+- [x] Show colored resource cards, changed source expressions and compact saved/observed diffs.
+- [x] Remove generic terminal reconciliation prose and show concise per-resource trace candidates.
+- [x] Align severity display filtering/no-color with Security while preserving JSON and gate data.
+- [x] Verify regressions, redaction mutation, packaged scanner and live lab; rebuild both wheels and install Linux CLI.
+
+Evidence: [drift-terminal-verification.md](drift-terminal-verification.md).

@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- Drift resource cards with priority colors, AST-based current attribute excerpts,
+  compact saved/observed leaf diffs and inline bounded CloudTrail candidates.
+- Drift --severity display filter and --no-color behavior matching the Security CLI;
+  JSON/uploads and gates retain all resources, and source excerpts stay terminal-only.
 - `cloud configure list` shows effective API/project/auth without exposing tokens;
   `cloud status` remains available and configure --api-url stays compatible.
 - Project create prompts for missing ID/name like setup; CI must supply both fields.

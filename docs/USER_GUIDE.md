@@ -214,6 +214,46 @@ Các gate kết hợp bằng OR. `--fail-on-priority` vẫn là alias của `--f
 Security dùng severity LOW/MEDIUM/HIGH/CRITICAL; Drift dùng review priority
 MEDIUM/HIGH, là heuristic cần con người review.
 
+### Đọc output Drift trên terminal
+
+Drift dùng cùng các thao tác quen thuộc với Security: `PATH` mặc định `.`,
+`--format table/json`, `--output`, `--fail-on`, `--severity`, `--upload`,
+`--project`, `--api-url`, `--timeout` và global `--no-color`.
+
+```bash
+infralens drift
+infralens drift --severity HIGH,MEDIUM --fail-on HIGH
+infralens --no-color drift --format json --output reports/drift.json
+infralens drift --trace --region ap-southeast-1 --lookback-days 1
+```
+
+- Mỗi resource là một card: priority màu, địa chỉ/action, file:dòng, ID và lý do ngắn.
+  HIGH cam, MEDIUM vàng, UNKNOWN tím; có nhãn chữ khi tắt màu/redirect.
+- `Current configuration` chỉ hiển thị các biểu thức thuộc tính liên quan trong
+  HCL/`.tf.json`, đánh dấu `>` ở dòng tương ứng. Đây là code hiện tại, không phải
+  code lịch sử hoặc bản chụp state. Thuộc tính computed/không khai báo có thể không
+  có excerpt. Source ngoài Terraform root, không đọc được hoặc parse không chắc chắn
+  sẽ báo unavailable; không đoán dòng thay đổi.
+- `Saved state -> Observed`: mỗi thuộc tính hiển thị `-` giá trị state và `+` giá trị
+  provider quan sát. Object/rule lớn được tách thành các path nhỏ; phần dài được
+  rút gọn và có báo xem JSON đầy đủ. Không lặp nguyên context không thay đổi.
+- Các đoạn hướng dẫn review/restore/adopt chung và note dài không còn in mặc định.
+  JSON vẫn giữ đầy đủ dữ liệu có cấu trúc, policy/guidance và gate.
+- `--severity` của Drift nhận HIGH/MEDIUM/UNKNOWN, chỉ lọc card terminal.
+  Counts, gate, JSON local và JSON upload vẫn tính trên toàn bộ resource drift.
+  `--fail-on HIGH` chặn high; `--fail-on MEDIUM` chặn medium/high;
+  thêm `--fail-on-unknown` nếu muốn chặn cả unknown.
+- Code lấy theo AST và chỉ các thuộc tính liên quan; không đọc tfvars để in ra,
+  không chép các trường bên cạnh. Giá trị được đánh dấu sensitive/unknown vẫn che.
+  Excerpt chỉ phục vụ terminal/file table, không được thêm vào JSON/upload.
+
+Trace xuất hiện ngay trong từng card: số candidate, thời gian, API action và actor,
+hiện tối đa hai event rồi báo số còn lại trong JSON. Rule có thể ghi `exact rule ID`.
+`unsupported resource`, `no matching events found`, `lookup failed` là các kết quả
+khác nhau. Summary cho biết số resource có candidate, số unsupported và lookup có
+lỗi không; `partial` do unsupported không đồng nghĩa có lỗi AWS. Event là ứng viên
+liên quan, chưa chứng minh người gây drift. Trace lỗi thực sự vẫn trả exit `3`.
+
 ## 5. Dashboard và so sánh
 
 Đăng nhập tại https://ddsw2osqv2rj2.cloudfront.net. Bạn có thể tạo project trên web

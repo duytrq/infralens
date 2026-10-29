@@ -182,6 +182,25 @@ def verify(wheel: Path, uv: str) -> None:
         assert observed["kind"] == "drift"
         assert observed["summary"]["resources"] == 4
         assert observed["gate"]["status"] == "failed"
+        drift_table = run(
+            "--no-color",
+            "drift",
+            str(drift_project),
+            "--plan-json",
+            str(drift_project / "plan.json"),
+            "--severity",
+            "HIGH",
+            "--fail-on",
+            "high",
+            code=1,
+        ).stdout
+        assert "[HIGH]" in drift_table
+        assert "Saved state -> Observed:" in drift_table
+        assert "Current configuration (changed fields):" in drift_table
+        assert re.search(r">\s+\d+\s+\|", drift_table)
+        assert "Choice:" not in drift_table
+        assert "Confirm whether the external change" not in drift_table
+        assert "\x1b[" not in drift_table
         output = root / "reports Việt" / "drift.json"
         failed_upload = run(
             "drift",
