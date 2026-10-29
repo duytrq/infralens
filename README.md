@@ -169,7 +169,7 @@ Nếu Docker Desktop báo WSL integration chưa bật, bật integration cho dis
 Security và Drift dùng chung cú pháp:
 `infralens <scan|drift> PATH --format json --output FILE --fail-on HIGH`.
 Cả hai có `--timeout` (giây, mặc định 300), `--upload`, `--project`, `--api-url`;
-upload đều yêu cầu JSON và file output. Riêng Drift thêm `--scope` khi upload để
+upload tự chọn JSON và lưu report nếu không truyền format/output. Riêng Drift thêm `--scope` khi upload để
 phân biệt môi trường so sánh. Xem [hướng dẫn sử dụng](docs/USER_GUIDE.md).
 
 ```bash
@@ -189,7 +189,7 @@ infralens scan ./infra --timeout 120
 | `--output` | File báo cáo, tương đối với CWD hoặc tuyệt đối. |
 | `--fail-on` | Ngưỡng LOW,MEDIUM,HIGH,CRITICAL gồm chính mức đó và các mức cao hơn. Mặc định không thất bại vì findings. |
 | `--timeout` | Số giây nguyên dương cho scan, mặc định 300. Kiểm tra phiên bản giới hạn 10 giây; convert báo cáo giới hạn 60 giây. |
-| `--upload` | Upload native JSON đầy đủ lên dashboard; yêu cầu `--format json`, `--output` và API/project từ cấu hình, env hoặc flag. Mặc định tắt. |
+| `--upload` | Upload native JSON đầy đủ lên dashboard; tự chọn JSON/output khi bỏ qua, cần API/project từ cấu hình repo/máy, env hoặc flag; JSON/output tự chọn khi bỏ qua. Mặc định tắt. |
 | `--project` | Ghi đè project đã chọn; fallback `INFRALENS_PROJECT`. Chỉ dùng cùng `--upload`. |
 | `--api-url` | Ghi đè API đã lưu; fallback `INFRALENS_API_URL`. Chỉ dùng cùng `--upload`. |
 
@@ -248,9 +248,13 @@ cấu hình đã lưu; khi đổi API, project cũ không tự được dùng ch
 
 Quét local không cần tài khoản InfraLens. Thao tác project và upload yêu cầu
 Cognito: CLI tương tác mở browser đăng nhập; CI dùng `INFRALENS_ACCESS_TOKEN`
-trong secret environment. Token chỉ ở RAM trong một lệnh; cấu hình chỉ lưu API
-và project. Không cần AWS credentials để quét/upload Security. Sau upload, mở
+trong secret environment. CLI lưu phiên Cognito riêng trên máy và tự gia hạn; cấu hình repo chỉ lưu API
+và project. Dùng `cloud setup --local` để thiết lập có hướng dẫn, `cloud logout` để xóa phiên. Không cần AWS credentials để quét/upload Security. Sau upload, mở
 project → **Security**, chờ analysis ready để xem findings và source.
+
+Có thể chạy ngắn `infralens scan --upload` tại thư mục Terraform. Report JSON tự
+lưu vào `.infralens/reports/` với tên riêng; `cloud status` cho biết nguồn cấu hình.
+Xem [guide](docs/USER_GUIDE.md) về setup, repo config và phiên đăng nhập.
 
 Giới hạn Security JSON là **50 MiB**. Gate fail vẫn upload trước khi trả `1`.
 Upload lỗi trả `3`, thông báo nguyên nhân (mạng, đăng nhập, quyền, dịch vụ...) và

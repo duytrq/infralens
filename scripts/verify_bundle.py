@@ -277,6 +277,22 @@ def verify(wheel: Path, uv: str) -> None:
         assert "https://api.example.com" in run("cloud", "status").stdout
         missing_login = run("cloud", "project", "list", code=3)
         assert "Noninteractive cloud operations require" in missing_login.stderr
+        # The minimal upload command must use input-root repo defaults and retain
+        # its automatically named JSON even when no cloud credentials are available.
+        (project / ".infralens.toml").write_text(
+            'api_url = "https://api.example.com"\nproject = "repo-demo"\n',
+            encoding="utf-8",
+        )
+        minimal = run("scan", str(project), "--upload", code=3)
+        assert "project=repo-demo" in minimal.stderr
+        auto_reports = list((root / ".infralens/reports").glob("security-*.json"))
+        assert len(auto_reports) == 1
+        assert json.loads(auto_reports[0].read_text())["SchemaVersion"] == 2
+        assert "Local report kept" in minimal.stderr
+        assert not list((root / ".infralens/reports").glob("*.upload.json"))
+        assert "setup" in run("cloud", "--help").stdout
+        assert "login" in run("cloud", "--help").stdout
+        (project / ".infralens.toml").unlink()
         filtered = json.loads(
             run(
                 "scan",

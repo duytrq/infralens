@@ -88,9 +88,10 @@ rồi trả `1`; lỗi trace còn report vẫn upload rồi trả `3`. Report v�
 được xuất local, nhưng không upload.
 
 Quét local không cần tài khoản InfraLens. Thao tác project và upload cần Cognito:
-CLI tương tác mở browser qua Code + PKCE S256, kiểm tra state và dùng callback
-localhost đã đăng ký. Token chỉ trong RAM của một lệnh; lệnh cloud khác có thể
-mở browser lại. Cấu hình chỉ lưu API URL và project, không lưu token.
+CLI tương tác đăng nhập qua Code + PKCE S256 rồi lưu phiên riêng trên máy, tự gia
+hạn ở các lệnh sau. Dùng `cloud login/logout/status` để quản lý phiên.
+`cloud setup --local` thiết lập API/project trong repo; credentials không nằm trong
+repo. Xem [guide](USER_GUIDE.md) về quyền file và cấu hình.
 
 CI/noninteractive cung cấp `INFRALENS_ACCESS_TOKEN` bằng secret environment của
 pipeline. Token phải còn hạn và có scope infralens/api cho cùng User Pool/client.

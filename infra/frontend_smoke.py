@@ -11,6 +11,7 @@ import os
 import secrets
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from datetime import UTC, datetime
@@ -105,6 +106,13 @@ def main():
     table = session.resource("dynamodb").Table(values["StorageTable"])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     cli_directory = tempfile.TemporaryDirectory(prefix="infralens-security-smoke-")
+    bridge = Path(cli_directory.name) / "open-browser"
+    login_url_file = str(Path(cli_directory.name) / "login-url")
+    bridge.write_text(
+        f"#!{sys.executable}\nimport sys\nfrom pathlib import Path\n"
+        f"Path({login_url_file!r}).write_text(sys.argv[1])\n"
+    )
+    bridge.chmod(0o700)
     try:
         for _ in range(2):
             username = f"infralens-frontend-{uuid4()}@example.invalid"
@@ -163,6 +171,8 @@ def main():
                     "screenshot_directory": str(ROOT / "frontend/verification"),
                     "security_cli": {
                         "executable": str(args.security_cli),
+                        "python": sys.executable,
+                        "browser_bridge": str(bridge),
                         "project": str(ROOT / "tests/fixtures/unsafe"),
                         "output_directory": cli_directory.name,
                     }

@@ -116,10 +116,12 @@ backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 \
   --output infra/deployments/infralens-dev-security-upload-browser-verification.json
 ```
 
-The browser's temporary account supplies its access token to the CLI through a
-child-process environment only. Config and reports use an isolated temporary
-directory; the check verifies no upload sidecar is created. Test users/projects
-and temporary files are removed after verification.
+The CLI signs in through its own real browser PKCE callback and saves its session
+in an isolated temporary directory. The smoke forces access-token expiry, checks
+refresh across separate commands, then verifies logout rejects future refreshes.
+Config/reports stay isolated, no upload sidecar is created, and temporary users,
+projects and files are removed after verification. This CLI PTY smoke runs on POSIX;
+native Windows storage/headless behavior is covered by CLI and wheel tests.
 
 ```bash
 backend/.venv/bin/python infra/inventory.py \

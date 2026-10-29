@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- Persistent per-API Cognito sessions, automatic refresh and cloud login/logout/status.
+  Credentials use private user storage and serialized refresh/logout.
+- Guided cloud setup and project picker; --local writes public repo API/project settings.
+  Resolve scan-input config up to the Git boundary, after flag/environment overrides.
+- Default scan/drift input to the current directory. Upload defaults to native JSON
+  and a unique report in .infralens/reports; show destination, gate and upload states.
 - Save API URL once with `cloud configure`; show defaults with `cloud status` and
   create/list/select authenticated projects from the CLI. Flags override environment
   variables, which override saved defaults; selected projects are API-specific.
@@ -19,7 +25,7 @@
   threshold failure, dashboard source display and exact-byte download.
 - Terraform drift engine, optional CloudTrail candidates, source locations,
   review priorities and CI gates, integrated from drift_develop.
-- Drift upload with memory-only Cognito PKCE or supplied CI access tokens,
+- Drift upload with Cognito PKCE or supplied CI access tokens,
   project-relative source paths and checksums of the written report bytes.
 - Private AWS drift storage, validated report summaries, scoped comparisons,
   and React history/report/comparison views alongside security scans.
@@ -42,7 +48,7 @@
   `.upload.json` sidecars; check the dashboard before rerunning an uncertain upload.
 - Use red text without a background for CRITICAL, orange for HIGH and yellow for
   MEDIUM in the CLI. Cloud auth still uses browser Cognito or a CI access token;
-  local scans need no InfraLens login and tokens are never saved.
+  local scans need no InfraLens login; saved sessions stay in private user storage.
 
 ### Fixed
 - Sign S3 upload/download URLs for the bucket's regional endpoint so new buckets

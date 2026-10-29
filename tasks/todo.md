@@ -87,3 +87,14 @@ Evidence: [security-terminal-verification.md](security-terminal-verification.md)
 
 Evidence: [cli-cloud-ux-verification.md](cli-cloud-ux-verification.md). This supersedes
 older manifest/retry instructions above; those entries describe their original implementation.
+
+
+## CLI workflow and persistent Cognito sessions
+
+- [x] Save/refresh/revoke per-API Cognito sessions with private POSIX/Windows storage.
+- [x] Add guided setup, project picker and repo API/project defaults with safe precedence.
+- [x] Default PATH and upload JSON/output; report destination, gate and upload separately.
+- [x] Verify Linux and native Windows, real Cognito/browser, scanner and both installed wheels.
+- [x] Update guide/sample and install the final Linux CLI locally.
+
+Evidence: [cli-workflow-verification.md](cli-workflow-verification.md).

@@ -29,65 +29,76 @@ Nếu shell chưa nhận lệnh, chạy `uv tool update-shell` rồi mở termin
 Bản cài từ mã nguồn/wheel `py3-none-any` cần Trivy **0.76.x** trên PATH.
 Xem [README](../README.md) nếu dùng mã nguồn thay vì wheel.
 
-## 2. Thiết lập API một lần và quản lý project
+## 2. Setup một lần
+
+Tại repo hạ tầng, chạy:
+
+```bash
+infralens cloud setup --local
+```
+
+CLI hỏi API URL (nếu chưa lưu), mở browser đăng nhập Cognito khi cần, rồi cho
+chọn hoặc tạo project. `--local` lưu API/project vào `.infralens.toml` tại thư mục
+hiện tại; có thể commit file này cho cả nhóm dùng. Không có token trong repo.
+Không truyền `--local` thì lưu project mặc định trên máy.
+API dev: `https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com`.
+
+Có thể dùng từng lệnh riêng hoặc trong script:
 
 ```bash
 infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
-infralens cloud project create my-app --name "My application infrastructure"
+infralens cloud login
+infralens cloud project create my-app --name "My infrastructure"
+infralens cloud project list
+infralens cloud project use my-app --local
 infralens cloud status
 ```
 
-`configure` lưu API URL trên máy. `create` tạo project trên hệ thống rồi tự chọn
-project đó cho các lần upload tiếp theo. Project ID `my-app` là do bạn đặt, dài
-1–64 ký tự chữ thường/số/dấu `-` hoặc `_`, bắt đầu bằng chữ hoặc số.
-`--name` là tên hiển thị, mặc định bằng ID; thêm `--no-select` nếu chỉ muốn tạo.
+`create` tự chọn project trên máy; `--no-select` chỉ tạo. `project use` không có ID
+sẽ mở danh sách chọn trên terminal tương tác. ID dài 1–64 ký tự chữ thường/số/`-`/`_`,
+bắt đầu bằng chữ hoặc số. Một project chứa cả Security và Drift.
 
-Với project đã có từ dashboard hoặc CLI:
+### Đăng nhập một lần
 
-```bash
-infralens cloud project list
-infralens cloud project use my-app
+Scan local không cần tài khoản InfraLens; Drift thật vẫn cần credentials/quyền
+cho Terraform backend/provider. Project và upload dùng Cognito. CLI lưu phiên,
+tự dùng lại access token và gia hạn khi gần hết hạn; không mở browser mỗi lệnh.
+Cấu hình hiện tại: access token 15 phút, refresh token 30 ngày. Khi phiên không còn
+gia hạn được, terminal tương tác mở browser lại; CI báo cần cập nhật xác thực.
+Lỗi mạng không xóa phiên hay ép đăng nhập lại.
+
+`cloud login` đăng nhập mới một cách chủ động. Dùng tài khoản được quản trị viên
+cấp, hoàn tất browser callback `localhost:8765` trong khoảng 3 phút.
+`cloud logout` xóa phiên CLI local và yêu cầu thu hồi refresh token; không đăng
+xuất dashboard hoặc xóa API/project. Nếu mạng lỗi CLI nói rõ chưa xác nhận thu hồi.
+Access token đã phát hành có thể vẫn được API Gateway chấp nhận đến khi hết hạn.
+
+`cloud status` không gọi mạng hoặc mở browser: hiển thị API/project, nguồn cấu hình
+và tình trạng token local. Token còn hạn local không chứng minh chưa bị thu hồi.
+
+### Cấu hình repo và credentials
+
+```toml
+api_url = "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com"
+project = "my-app"
 ```
 
-`list` tự lấy các trang kết quả, đánh dấu project đang chọn bằng `*`.
-`use` kiểm tra project tồn tại và thuộc tài khoản đang đăng nhập trước khi lưu lựa chọn.
-**Một project chứa được cả Security và Drift**; dashboard chia thành hai tab.
+`.infralens.toml` chỉ nhận hai trường trên; scope Drift vẫn phải truyền rõ theo
+môi trường. `project use ID --local` cập nhật file ở thư mục hiện tại sau khi kiểm
+tra quyền truy cập project. Setup chạy lại không bắt tạo project hoặc login lại.
 
-### CLI có cần đăng nhập không?
+Khi upload, ưu tiên **flag → biến môi trường → repo → cấu hình máy**. CLI tìm file
+repo từ thư mục **được quét**, đi lên đến gốc Git (kể cả Git worktree), không lấy
+repo của terminal khi quét một đường dẫn khác. Khi đổi API, project đã lưu của API
+cũ không được tự dùng cho API mới. Scan local không đọc cloud config.
 
-| Thao tác | Xác thực |
-| --- | --- |
-| Security scan local | Không cần đăng nhập hoặc AWS credentials. |
-| Drift local trên AWS | Cần credentials/quyền cho Terraform backend/provider; không cần Cognito nếu không upload. |
-| `cloud configure`, `cloud status` | Chỉ thao tác cấu hình local, không đăng nhập. |
-| Project create/list/use hoặc `--upload` | Phải xác thực Cognito. CLI tự mở trình duyệt để đăng nhập. |
-
-Dùng tài khoản được quản trị viên cấp, cùng tài khoản sẽ xem dữ liệu trên dashboard.
-Hệ thống chưa mở tự đăng ký. Khi CLI mở browser, hoàn tất trong khoảng 3 phút,
-để browser truy cập callback `localhost:8765` rồi quay lại terminal. Phiên đăng nhập
-trên browser có thể giúp bạn không phải nhập lại password ở lệnh sau; CLI không lưu
-password/access token/refresh token trên máy. Một lệnh cloud mới có thể mở browser lại.
-
-CI/terminal không tương tác phải cung cấp `INFRALENS_ACCESS_TOKEN` qua secret
-environment. Đây là Cognito **access token** còn hạn, có scope `infralens/api`,
-không phải AWS access key hoặc ID token. Chưa có cơ chế machine identity trong CLI.
-Tài khoản Cognito không cấp quyền AWS cho Terraform/CloudTrail.
-
-### Cấu hình được lưu ở đâu?
-
-- Linux/WSL: `$XDG_CONFIG_HOME/infralens/config.json`, mặc định `~/.config/infralens/config.json`.
-- Windows: `%APPDATA%\infralens\config.json`.
-- File chỉ có API URL và Project ID đã chọn, không có thông tin đăng nhập.
-
-Thứ tự ưu tiên khi upload:
-
-| Giá trị | Ưu tiên từ cao xuống thấp |
-| --- | --- |
-| API URL | `--api-url` → `INFRALENS_API_URL` → API đã lưu |
-| Project | `--project` → `INFRALENS_PROJECT` → project đã chọn |
-
-Project đã lưu chỉ được dùng khi API đang dùng khớp API của cấu hình. Khi đổi API,
-hãy tạo/chọn project cho hệ thống mới. Scan local không đọc cấu hình cloud.
+- Cấu hình máy: `$XDG_CONFIG_HOME/infralens/config.json`, mặc định `~/.config/infralens/config.json`;
+  Windows dùng `%APPDATA%\infralens\config.json`.
+- Phiên theo API: `sessions/<hash-api>.json` cạnh file cấu hình. Có access/refresh token,
+  không có mật khẩu. Linux/WSL dùng thư mục `0700`, file `0600`; Windows giới hạn ACL
+  cho người dùng hiện tại. Không chia sẻ hoặc commit thư mục này.
+- `cloud status` cho biết file repo và nguồn API/project đang dùng. Env overrides
+  `INFRALENS_API_URL`/`INFRALENS_PROJECT` vẫn có hiệu lực.
 
 ## 3. Security scan
 
@@ -113,7 +124,7 @@ infralens scan ./infra --format sarif --output ./reports/security.sarif
 Sau khi cấu hình API/chọn project ở mục 2, quét và upload không cần nhập lại hai giá trị đó:
 
 ```bash
-infralens scan ./infra --format json --output ./reports/security.json --fail-on HIGH --upload
+infralens scan ./infra --fail-on HIGH --upload
 ```
 
 Mở project → **Security** trên dashboard, Refresh rồi chờ **Analysis: ready**.
@@ -157,7 +168,7 @@ resource ngoài state không nằm trong phạm vi kiểm tra.
 Upload vào cùng project đã chọn, thêm scope để định danh account/workspace/environment:
 
 ```bash
-infralens drift ./infra --format json --output ./reports/drift.json --fail-on HIGH --upload --scope dev-default
+infralens drift ./infra --fail-on HIGH --upload --scope dev-default
 ```
 
 Dùng cùng scope cho các lần kiểm tra cùng phạm vi, đổi scope khi đổi môi trường.
@@ -207,9 +218,15 @@ khắc phục drift; muốn có quan sát mới cần chạy CLI/CI.
 
 ## 6. Upload lỗi và exit code
 
-CLI chỉ tạo report theo `--output`, **không tạo file manifest và không có command
-retry upload**. Mỗi lệnh `scan/drift --upload` là một lần quét mới và upload mới.
-Bạn có thể dùng lại tên output; báo cáo mới thay file cũ bằng thao tác ghi atomic.
+`PATH` mặc định là thư mục hiện tại. Khi dùng `--upload`, format mặc định là JSON;
+không truyền `--output` thì CLI lưu tại `.infralens/reports/` trong thư mục gọi lệnh,
+với tên loại scan + thời gian UTC + hậu tố riêng. Thêm `.infralens/reports/` vào
+`.gitignore` của repo để không commit reports. Terminal vẫn hiển thị findings như
+thường. `--format sarif/table --upload` bị từ chối; có thể truyền output JSON riêng.
+
+Không tạo manifest và không có lệnh retry upload. Một lệnh mới tạo một lượt scan mới.
+CLI báo đích API/project/scope trên stderr trước khi quét, báo gate và run ID khi upload.
+Giữ JSON/SARIF stdout sạch để dùng trong script.
 
 - Quét/xuất thành công: report nằm ở `--output`, kể cả khi gate fail.
 - Gate fail: vẫn upload trước khi trả `1`.
@@ -234,6 +251,10 @@ CLI version, exit code và thông báo đã bỏ dữ liệu riêng tư. Không 
 token, AWS credentials, raw state/tfvars hoặc URL download đã ký.
 
 ## 7. CI và demo
+
+Runner sạch không có phiên đăng nhập máy cá nhân. Trong đợt này CI vẫn dùng access
+token được cấp bên ngoài, có hạn 15 phút; chưa có API key hoặc tự cấp token dài hạn.
+Runner có phiên đã lưu có thể tự gia hạn nhưng không mở browser.
 
 CI đặt `INFRALENS_API_URL`, `INFRALENS_PROJECT` qua environment và
 `INFRALENS_ACCESS_TOKEN` qua secret environment. Sau đó dùng cùng lệnh upload ở

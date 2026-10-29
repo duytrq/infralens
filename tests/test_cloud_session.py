@@ -212,3 +212,19 @@ def test_null_stdin_is_noninteractive_in_a_real_process():
         timeout=10,
     )
     assert result.returncode == 0, result.stderr.decode()
+
+
+def test_failed_browser_login_preserves_existing_session(monkeypatch):
+    from infralens import cloud_auth
+
+    session = seed(monkeypatch)
+    before = session.path(API).read_bytes()
+
+    def cancelled(*args, **kwargs):
+        raise ExecutionError("Login cancelled")
+
+    monkeypatch.setattr(cloud_auth, "login", cancelled)
+    with pytest.raises(ExecutionError, match="cancelled"):
+        session.sign_in(API)
+    assert session.path(API).read_bytes() == before
+    assert session.token(API) == "ACCESS"

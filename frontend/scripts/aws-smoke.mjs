@@ -2,8 +2,8 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
-import { readFile, mkdir } from "node:fs/promises";
+import { spawn, spawnSync } from "node:child_process";
+import { readFile, writeFile, unlink, mkdir } from "node:fs/promises";
 
 const input = JSON.parse(
   await new Promise((resolve) => {
@@ -66,11 +66,45 @@ async function signIn(origin, account) {
   return { page, tokens, errors };
 }
 
+async function cliLogin(cli, env) {
+  const urlPath = cli.output_directory + "/login-url";
+  await unlink(urlPath).catch(error => { if (error.code !== "ENOENT") throw error; });
+  const child = spawn(cli.python, ["-c",
+    "import pty,sys; sys.exit(pty.spawn(sys.argv[1:]))",
+    cli.executable, "cloud", "login"], {
+    env: { ...env, BROWSER: cli.browser_bridge + " %s" }, stdio: ["pipe", "pipe", "pipe"],
+  });
+  child.stdout.on("data", () => {});
+  child.stderr.on("data", () => {});
+  const ended = new Promise(resolve => child.on("close", resolve));
+  const context = await browser.newContext();
+  contexts.push(context);
+  const page = await context.newPage();
+  try {
+    let loginUrl;
+    for (let i = 0; i < 300 && !loginUrl; i++) {
+      try { loginUrl = await readFile(urlPath, "utf8"); }
+      catch (error) { if (error.code !== "ENOENT") throw error; }
+      if (!loginUrl) await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert(loginUrl, "CLI did not provide its browser sign-in URL");
+    await page.goto(loginUrl);
+    await page.locator('input[name="username"]:visible').fill(input.accounts[0].username);
+    await page.locator('input[name="password"]:visible').fill(input.accounts[0].password);
+    await page.locator('input[name="signInSubmitButton"]:visible').click();
+    await page.getByText("Return to the InfraLens terminal.").waitFor();
+    assert.equal(await ended, 0, "CLI PKCE login failed");
+  } finally {
+    if (child.exitCode === null) child.kill("SIGTERM");
+  }
+}
+
 async function checkSecurityCli(owner, project, origin) {
   const cli = input.security_cli;
   const output = `${cli.output_directory}/${randomUUID()}.json`;
-  const env = { ...process.env, INFRALENS_ACCESS_TOKEN: ownerToken,
+  const env = { ...process.env,
     XDG_CONFIG_HOME: cli.output_directory + "/config", APPDATA: cli.output_directory + "/appdata" };
+  delete env.INFRALENS_ACCESS_TOKEN;
   delete env.INFRALENS_API_URL;
   delete env.INFRALENS_PROJECT;
   function run(args, expected = 0) {
@@ -79,10 +113,17 @@ async function checkSecurityCli(owner, project, origin) {
     return result;
   }
   run(["cloud", "configure", "--api-url", endpoint]);
+  await cliLogin(cli, env);
+  const sessionPath = `${env.XDG_CONFIG_HOME}/infralens/sessions/${createHash("sha256").update(endpoint).digest("hex")}.json`;
+  const session = JSON.parse(await readFile(sessionPath, "utf8"));
+  session.expires_at = 0;
+  await writeFile(sessionPath, JSON.stringify(session));
   const cliProject = project + "-cli";
   run(["cloud", "project", "create", cliProject, "--name", "CLI verification"]);
   assert(run(["cloud", "project", "list"]).stdout.includes(cliProject));
   run(["cloud", "project", "use", cliProject]);
+  assert(JSON.parse(await readFile(sessionPath, "utf8")).expires_at > Date.now()/1000);
+  checks.push(`cli_pkce_saved_session_refresh:${origin}`);
   const scanned = run([
     "scan", cli.project, "--format", "json", "--output", output,
     "--severity", "LOW", "--fail-on", "HIGH", "--upload",
@@ -120,6 +161,16 @@ async function checkSecurityCli(owner, project, origin) {
   await api(ownerToken, "DELETE", `/v1/runs/${runId}`, undefined, [202, 204]);
   await owner.page.goto(origin + `/runs/${runId}`);
   await owner.page.getByRole("alert").filter({ hasText: "This item is unavailable" }).waitFor();
+  run(["cloud", "logout"]);
+  assert(run(["cloud", "status"]).stdout.includes("not signed in"));
+  run(["cloud", "project", "list"], 3);
+  const revoked = await fetch(session.auth.token_endpoint, {
+    method: "POST", headers: {"content-type": "application/x-www-form-urlencoded"},
+    body: new URLSearchParams({grant_type: "refresh_token", client_id: session.auth.client_id,
+      refresh_token: session.refresh_token}),
+  });
+  assert.equal(revoked.status, 400, "Logged-out refresh token must be rejected");
+  checks.push(`cli_logout_refresh_revoked:${origin}`);
 }
 
 try {
