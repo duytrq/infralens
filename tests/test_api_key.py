@@ -40,7 +40,7 @@ def test_priority_and_routing(monkeypatch, tmp_path):
         cloud_auth.access_token(API)
 
 
-def test_cli_set_status_and_clear_do_not_reveal_key(monkeypatch, tmp_path):
+def test_cli_set_shows_input_status_does_not_reveal_key(monkeypatch, tmp_path):
     from infralens import cloud_config
 
     monkeypatch.chdir(tmp_path)
@@ -49,7 +49,7 @@ def test_cli_set_status_and_clear_do_not_reveal_key(monkeypatch, tmp_path):
     runner = CliRunner()
     result = runner.invoke(app, ["cloud", "api-key", "set"], input=KEY + "\n")
     assert result.exit_code == 0, result.output
-    assert KEY not in result.output
+    assert KEY in result.output
     result = runner.invoke(app, ["cloud", "status"])
     assert result.exit_code == 0 and "saved API key" in result.output
     assert KEY not in result.output

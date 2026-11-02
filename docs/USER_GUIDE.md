@@ -121,7 +121,7 @@ Dashboard có mục **API keys** để tạo key theo tên với hạn 1, 3, 15,
 hoặc không hết hạn. Sao chép key ngay sau khi tạo: secret chỉ hiển thị một lần.
 Key có quyền truy cập dữ liệu của tài khoản; chỉ phiên Cognito có thể quản lý key.
 
-Trên máy cá nhân, lưu key theo API bằng lệnh nhập ẩn:
+Trên máy cá nhân, lưu key theo API bằng lệnh sau; key hiển thị khi nhập:
 
 ```powershell
 infralens cloud api-key set

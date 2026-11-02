@@ -230,14 +230,14 @@ def cloud_status():
 
 @api_key_app.command("set")
 def set_api_key(api_url: CloudApiUrl = None):
-    """Prompt securely and save an API key for this API."""
+    """Prompt and save an API key for this API."""
     with command_errors():
         from infralens import cloud_api_key, cloud_auth, cloud_config
 
         if not cloud_auth.interactive_input():
             raise InvalidInput("Saving an API key requires an interactive terminal.")
         api, _ = cloud_config.resolve(api_url)
-        key = typer.prompt("API key", hide_input=True)
+        key = typer.prompt("API key")
         cloud_api_key.save(api, key)
         typer.echo("API key saved locally.")
 
