@@ -29,9 +29,11 @@ def _project(data, expected=None):
 
 
 def _request(api, token, method, path, body=None):
+    from infralens.cloud_api_key import route
+
     _, payload = http(
         method,
-        api + path,
+        api + route(token, path),
         data=json.dumps(body).encode() if body is not None else None,
         headers={
             "Authorization": f"Bearer {token}",

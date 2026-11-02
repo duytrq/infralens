@@ -12,6 +12,7 @@ Xem [hướng dẫn CLI](../docs/USER_GUIDE.md) về cấu hình và Cognito log
 ```text
 CLI -- đăng nhập Code + PKCE --> Cognito
 CLI -- access token ----------> HTTP API Gateway --> Lambda --> DynamoDB
+CLI -- API key --> API Gateway --> Lambda authorizer --> Lambda --> DynamoDB
 CLI -- presigned PUT/GET ------------------------------------> S3 private
 DynamoDB Streams -------------> Lambda phân tích JSON --> DynamoDB findings
 EventBridge mỗi giờ ----------> Lambda cleanup
@@ -23,8 +24,14 @@ Backend không chạy Trivy và không cần nhận AWS credentials của ngư�
 
 - `/v1/config` công khai thông tin OAuth cần cho client; không chứa storage config.
 - API Gateway kiểm tra chữ ký, issuer, audience/client, expiry và scope của JWT.
-  Lambda chỉ tin `requestContext.authorizer.jwt.claims`, kiểm tra access token và
-  scope `infralens/api`; `sub` xác định chủ sở hữu. Không đọc owner từ body/header.
+  Với route Cognito, Lambda chỉ tin `requestContext.authorizer.jwt.claims`, kiểm tra
+  access token và scope `infralens/api`; `sub` xác định chủ sở hữu. Với route API
+  key, Lambda nhận chủ sở hữu từ context đã xác thực của Lambda authorizer. Không
+  đọc owner từ body/header.
+- Các route `/v1/cli/...` dùng Lambda authorizer để xác thực API key theo hash,
+  ngày hết hạn và chủ sở hữu trong DynamoDB. Cache authorizer tắt; key bị thu hồi
+  không được chấp nhận ở lần xác thực tiếp theo. Tạo, liệt kê, thu hồi key chỉ
+  dùng Cognito trên `/v1/api-keys`. Secret chỉ trả về một lần khi tạo.
 - Cognito Lite, public client không secret, OAuth code grant, callback mặc định
   `http://localhost:8765/callback`. Client phải dùng PKCE S256 và kiểm tra state.
 - Admin tạo tài khoản; chưa mở đăng ký công khai. Không dùng Cognito Identity Pool.

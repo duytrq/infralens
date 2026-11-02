@@ -41,6 +41,7 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
     auth = api["Auth"]
     assert auth["DefaultAuthorizer"] == "CognitoJwt"
     assert auth["Authorizers"]["CognitoJwt"]["AuthorizationScopes"] == ["infralens/api"]
+    assert auth["Authorizers"]["ApiKeyAuthorizer"]["Identity"]["ReauthorizeEvery"] == 0
     events = template["Resources"]["ApiFunction"]["Properties"]["Events"]
     deployed = {}
     for event in events.values():
@@ -57,6 +58,9 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
         assert (props.get("Auth", {}).get("Authorizer") == "NONE") == (
             method == "get" and path in ("/v1/config", "/v1/dashboard-config")
         )
+        assert (
+            props.get("Auth", {}).get("Authorizer") == "ApiKeyAuthorizer"
+        ) == path.startswith("/v1/cli/")
 
 
 def test_storage_retention_and_upload_integrity_are_enforced_in_infrastructure():

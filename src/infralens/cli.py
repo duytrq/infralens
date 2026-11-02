@@ -52,6 +52,8 @@ project_app = typer.Typer(
 )
 app.add_typer(cloud_app, name="cloud")
 cloud_app.add_typer(project_app, name="project")
+api_key_app = typer.Typer(help="Save or remove a local API key.", no_args_is_help=True)
+cloud_app.add_typer(api_key_app, name="api-key")
 configure_app = typer.Typer(
     help="Save API settings or list current configuration.",
     invoke_without_command=True,
@@ -206,9 +208,13 @@ def cloud_status():
         typer.echo(f"Config: {plain(str(cloud_config.config_path()))}")
         import time
 
-        from infralens import cloud_session
+        from infralens import cloud_api_key, cloud_session
 
-        if os.environ.get("INFRALENS_ACCESS_TOKEN") is not None:
+        if os.environ.get("INFRALENS_API_KEY") is not None:
+            state = "environment API key (not checked)"
+        elif api and cloud_api_key.read(api) is not None:
+            state = "saved API key (not checked)"
+        elif os.environ.get("INFRALENS_ACCESS_TOKEN") is not None:
             state = "environment access token (not saved or refreshed)"
         else:
             session = cloud_session.read(api) if api else None
@@ -220,6 +226,31 @@ def cloud_status():
                 else "saved session; refresh needed on next cloud command"
             )
         typer.echo(f"Auth: {state}")
+
+
+@api_key_app.command("set")
+def set_api_key(api_url: CloudApiUrl = None):
+    """Prompt securely and save an API key for this API."""
+    with command_errors():
+        from infralens import cloud_api_key, cloud_auth, cloud_config
+
+        if not cloud_auth.interactive_input():
+            raise InvalidInput("Saving an API key requires an interactive terminal.")
+        api, _ = cloud_config.resolve(api_url)
+        key = typer.prompt("API key", hide_input=True)
+        cloud_api_key.save(api, key)
+        typer.echo("API key saved locally.")
+
+
+@api_key_app.command("clear")
+def clear_api_key(api_url: CloudApiUrl = None):
+    """Remove the local key; revoke it on the dashboard separately."""
+    with command_errors():
+        from infralens import cloud_api_key, cloud_config
+
+        api, _ = cloud_config.resolve(api_url)
+        cloud_api_key.clear(api)
+        typer.echo("Local API key removed; server key is unchanged.")
 
 
 @configure_app.command("list")

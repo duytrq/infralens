@@ -1,6 +1,7 @@
-"""AWS Lambda entry points. API Gateway is the JWT verification boundary."""
+"""AWS Lambda entry points for API, API-key authorization and background work."""
 
 import logging
+import os
 from functools import lru_cache
 
 import boto3
@@ -45,6 +46,29 @@ def application():
 
 def api_handler(event, context):
     return application().handle(event)
+
+
+@lru_cache(maxsize=1)
+def api_key_table():
+    config = Config(
+        connect_timeout=3, read_timeout=5, retries={"total_max_attempts": 3}
+    )
+    return boto3.resource("dynamodb", config=config).Table(os.environ["TABLE_NAME"])
+
+
+def api_key_authorizer(event, context):
+    from infralens_backend.api_keys import authenticate
+
+    header = event.get("headers", {}).get("authorization", "")
+    credential = (
+        header.removeprefix("Bearer ")
+        if isinstance(header, str) and header.startswith("Bearer ")
+        else ""
+    )
+    owner = authenticate(api_key_table(), credential)
+    if owner is None:
+        return {"isAuthorized": False}
+    return {"isAuthorized": True, "context": {"owner": owner, "auth_type": "api_key"}}
 
 
 def cleanup_handler(event, context):

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const template = readFileSync(
   resolve(process.cwd(), "../infra/frontend.yaml"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const code = template
   .split("      FunctionCode: |\n")[1]
   .split("      Tags:")[0]

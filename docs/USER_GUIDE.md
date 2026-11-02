@@ -115,6 +115,36 @@ cũ không được tự dùng cho API mới. Scan local không đọc cloud con
 
 ## 3. Security scan
 
+### API key cho CLI
+
+Dashboard có mục **API keys** để tạo key theo tên với hạn 1, 3, 15, 30 ngày
+hoặc không hết hạn. Sao chép key ngay sau khi tạo: secret chỉ hiển thị một lần.
+Key có quyền truy cập dữ liệu của tài khoản; chỉ phiên Cognito có thể quản lý key.
+
+Trên máy cá nhân, lưu key theo API bằng lệnh nhập ẩn:
+
+```powershell
+infralens cloud api-key set
+infralens cloud status
+infralens cloud project list
+```
+
+Hoặc truyền key qua `INFRALENS_API_KEY`, ví dụ trong secret environment của CI.
+CLI ưu tiên key từ môi trường, key đã lưu, `INFRALENS_ACCESS_TOKEN`, sau đó là
+phiên Cognito. Nếu key bị từ chối, CLI không tự chuyển sang credential khác.
+`infralens cloud api-key clear` chỉ xóa key local; dùng dashboard để thu hồi key
+trên server. Thu hồi không hủy request đã được xác thực trước đó. Đăng xuất Cognito
+không xóa API key local. Không commit key hoặc đặt key trong `.infralens.toml`.
+
+Muốn ngừng dùng key từ biến môi trường trong PowerShell hiện tại:
+
+```powershell
+Remove-Item Env:\INFRALENS_API_KEY -ErrorAction SilentlyContinue
+```
+
+Các route `/v1/cli/...` yêu cầu API key; các route `/v1/...` vẫn dùng Cognito.
+Tính năng này cần phiên bản backend đã triển khai có hỗ trợ API key.
+
 Các ví dụ giả định bạn đứng tại repo hạ tầng, mã Terraform nằm trong `./infra`.
 Nếu đang đứng ngay thư mục Terraform, thay `./infra` bằng `.`. Input/output tương
 đối tính từ thư mục đang gọi lệnh. Không cần `terraform init` hoặc AWS CLI để scan.

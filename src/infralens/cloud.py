@@ -209,10 +209,12 @@ def upload_report(metadata, payload, api_url):
     except (KeyError, TypeError, ValueError, UnicodeError, RecursionError):
         raise InvalidInput("Report bytes do not match the upload metadata.") from None
     token = access_token(api_url)
+    from infralens.cloud_api_key import route
+
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     _, response = http(
         "POST",
-        api_url + "/v1/runs",
+        api_url + route(token, "/v1/runs"),
         data=json.dumps(metadata).encode(),
         headers=headers,
         statuses=(200, 201),
@@ -264,7 +266,7 @@ def upload_report(metadata, payload, api_url):
         )
         _, completed = http(
             "POST",
-            api_url + f"/v1/runs/{metadata['run_id']}/complete",
+            api_url + route(token, f"/v1/runs/{metadata['run_id']}/complete"),
             data=b"{}",
             headers=headers,
         )

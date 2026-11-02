@@ -10,6 +10,7 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import BotoCoreError, ClientError
 
+from infralens_backend import api_keys
 from infralens_backend import validation as v
 from infralens_backend.analysis import Analysis
 from infralens_backend.drift import Drift
@@ -116,7 +117,36 @@ class Application:
                     503, "dashboard_unavailable", "Dashboard is not configured."
                 )
             return 200, self.settings.dashboard()
-        owner = self.identity(event)
+        cli_path = path.startswith("/v1/cli/")
+        if cli_path:
+            context = (
+                event.get("requestContext", {}).get("authorizer", {}).get("lambda", {})
+            )
+            owner = context.get("owner")
+            if (
+                context.get("auth_type") != "api_key"
+                or not isinstance(owner, str)
+                or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", owner)
+            ):
+                raise ApiError(401, "unauthorized", "A valid API key is required.")
+            path = "/v1/" + path.removeprefix("/v1/cli/")
+            if path.startswith("/v1/api-keys"):
+                raise not_found()
+        else:
+            owner = self.identity(event)
+        if path == "/v1/api-keys" and not cli_path:
+            if method == "POST":
+                v.query(event, [])
+                return 201, api_keys.create(
+                    self.table, owner, v.body(event, api_keys.INPUT), self.now()
+                )
+            if method == "GET":
+                return 200, api_keys.list_keys(self.table, owner, event)
+        match = re.fullmatch(r"/v1/api-keys/([^/]+)", path)
+        if match and method == "DELETE" and not cli_path:
+            v.query(event, [])
+            api_keys.delete(self.table, owner, match[1])
+            return 204, None
         match = re.fullmatch(r"/v1/runs/([^/]+)/drift/(report|comparison)", path)
         if match and method == "GET":
             run = v.run_id(match[1])

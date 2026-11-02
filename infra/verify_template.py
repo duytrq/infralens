@@ -92,6 +92,8 @@ def verify(environment, reserve):
         expected_security = (
             [{"NONE": []}]
             if method == "get" and path in ("/v1/config", "/v1/dashboard-config")
+            else [{"ApiKeyAuthorizer": []}]
+            if path.startswith("/v1/cli/")
             else [{"CognitoJwt": ["infralens/api"]}]
         )
         assert operation["security"] == expected_security, (method, path)
@@ -103,6 +105,11 @@ def verify(environment, reserve):
         "x-amazon-apigateway-authorizer"
     ]
     assert jwt["type"] == "jwt"
+    key_authorizer = body["components"]["securitySchemes"]["ApiKeyAuthorizer"][
+        "x-amazon-apigateway-authorizer"
+    ]
+    assert key_authorizer["type"] == "request"
+    assert key_authorizer["authorizerResultTtlInSeconds"] == 0
     assert jwt["jwtConfiguration"]["audience"] == [
         {"Ref": "CliClient"},
         {"Ref": "DashboardClient"},

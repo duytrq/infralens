@@ -65,7 +65,7 @@ def test_browser_login_checks_state_and_uses_pkce(smoke_tool, monkeypatch):
             observed.update(urllib.parse.parse_qs(urllib.parse.urlsplit(url).query))
             assert observed["code_challenge_method"] == ["S256"]
             callback = (
-                config["auth"]["callback_url"]
+                config["auth"]["callback_url"].replace("localhost", "127.0.0.1")
                 + "?"
                 + urllib.parse.urlencode(
                     {
@@ -89,7 +89,10 @@ def test_browser_login_rejects_an_unrelated_callback(smoke_tool, monkeypatch):
         futures = []
 
         def browser(url):
-            callback = config["auth"]["callback_url"] + "?state=wrong&code=stolen"
+            callback = (
+                config["auth"]["callback_url"].replace("localhost", "127.0.0.1")
+                + "?state=wrong&code=stolen"
+            )
             futures.append(pool.submit(urllib.request.urlopen, callback, timeout=2))
             return True
 

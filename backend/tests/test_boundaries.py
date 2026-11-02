@@ -64,6 +64,7 @@ def test_bearer_header_does_not_bypass_gateway_authorization(cloud):
         ('{"name":', 400),
         ('{"name":"' + "x" * 70000 + '"}', 413),
     ],
+    ids=["duplicate", "nan", "array", "incomplete", "oversized"],
 )
 def test_json_parsing_is_bounded_and_unambiguous(cloud, body, status):
     assert cloud.handle(event(cloud, body))["statusCode"] == status

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ArrowUpRight, FolderKanban, LogOut, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, FolderKanban, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useSession } from "../auth/AuthProvider";
 import styles from "../styles.module.css";
@@ -56,6 +56,10 @@ export function Shell() {
             <FolderKanban size={18} aria-hidden="true" />
             Projects
             <ArrowUpRight size={14} aria-hidden="true" />
+          </NavLink>
+          <NavLink to="/api-keys" className={({ isActive }) => isActive ? styles.navActive : styles.navItem}>
+            <KeyRound size={18} aria-hidden="true" />
+            API keys
           </NavLink>
         </nav>
         <div className={styles.sidebarFooter}>

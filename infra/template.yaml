@@ -304,6 +304,28 @@ Resources:
               issuer: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${UserPool}
               audience: [!Ref CliClient, !Ref DashboardClient]
             AuthorizationScopes: [infralens/api]
+          ApiKeyAuthorizer:
+            FunctionArn: !GetAtt ApiKeyAuthorizerFunction.Arn
+            EnableFunctionDefaultPermissions: true
+            AuthorizerPayloadFormatVersion: '2.0'
+            EnableSimpleResponses: true
+            Identity:
+              Headers: [Authorization]
+              ReauthorizeEvery: 0
+
+  ApiKeyAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: ../backend/
+      Handler: infralens_backend.handler.api_key_authorizer
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem]
+              Resource: !GetAtt StorageTable.Arn
 
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -352,6 +374,57 @@ Resources:
             Path: /v1/dashboard-config
             Method: GET
             Auth: {Authorizer: NONE}
+        ApiKeysList:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/api-keys, Method: GET}
+        ApiKeysCreate:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/api-keys, Method: POST}
+        ApiKeysDelete:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/api-keys/{key_id}', Method: DELETE}
+        CliProjects:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/cli/projects, Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliProjectGet:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/projects/{project_id}', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliProjectPut:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/projects/{project_id}', Method: PUT, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliRunCreate:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/cli/runs, Method: POST, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliRuns:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1/cli/runs, Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliRunGet:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliRunDelete:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}', Method: DELETE, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliComplete:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/complete', Method: POST, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliDownload:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/artifacts/json', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliFindings:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/findings', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliFinding:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/findings/{finding_id}', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliAnalysisRetry:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/analysis/retry', Method: POST, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliDriftReport:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/drift/report', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
+        CliDriftComparison:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: '/v1/cli/runs/{run_id}/drift/comparison', Method: GET, Auth: {Authorizer: ApiKeyAuthorizer}}
         Projects:
           Type: HttpApi
           Properties: {ApiId: !Ref HttpApi, Path: /v1/projects, Method: GET}

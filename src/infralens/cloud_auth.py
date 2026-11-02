@@ -103,6 +103,10 @@ def http(method, url, *, data=None, headers=None, statuses=(200,)):
         if status >= 500
         else "Check your request and API URL.",
     )
+    if status in (401, 403) and (headers or {}).get("Authorization", "").startswith(
+        "Bearer il_key_"
+    ):
+        hint = "API key rejected or permission denied. Check expiration and revocation."
     raise ExecutionError(f"Cloud request failed: HTTP {status}{detail}. {hint}")
 
 
@@ -257,6 +261,11 @@ def interactive_input():
 
 
 def access_token(api_url):
+    from infralens import cloud_api_key
+
+    key = cloud_api_key.selected(api_url)
+    if key is not None:
+        return key
     token = os.environ.get("INFRALENS_ACCESS_TOKEN")
     if token is not None:
         if not re.fullmatch(r"[A-Za-z0-9_.~-]{1,16384}", token):

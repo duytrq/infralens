@@ -1,5 +1,8 @@
 """OpenAPI 3.1 contract generated from the runtime request schemas."""
 
+from copy import deepcopy
+
+from infralens_backend.api_keys import INPUT as API_KEY_INPUT
 from infralens_backend.drift_schemas import (
     COMPARISON,
     DRIFT_RUN,
@@ -201,6 +204,21 @@ SCHEMAS["DashboardConfig"] = obj(
     }
 )
 
+API_KEY = obj(
+    {
+        "key_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+        "name": {"type": "string"},
+        "created_at": TIME,
+        "expires_at": {"anyOf": [TIME, {"type": "null"}]},
+    }
+)
+SCHEMAS["ApiKeyInput"] = API_KEY_INPUT
+SCHEMAS["ApiKey"] = API_KEY
+SCHEMAS["ApiKeyCreated"] = obj({**API_KEY["properties"], "api_key": STRING})
+SCHEMAS["ApiKeyPage"] = obj(
+    {"items": {"type": "array", "items": ref("ApiKey")}, "next_cursor": CURSOR}
+)
+
 
 def response(schema, description="Success"):
     return {
@@ -297,7 +315,7 @@ FINDING_FILTERS = (
 
 
 def openapi():
-    return {
+    result = {
         "openapi": "3.1.0",
         "info": {
             "title": "InfraLens storage API",
@@ -399,3 +417,27 @@ def openapi():
             },
         },
     }
+    result["components"]["securitySchemes"]["ApiKey"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "InfraLens API key",
+    }
+    result["paths"]["/v1/api-keys"] = {
+        "get": operation("listApiKeys", {200: "ApiKeyPage"}, params=PAGINATION),
+        "post": operation("createApiKey", {201: "ApiKeyCreated"}, "ApiKeyInput"),
+    }
+    result["paths"]["/v1/api-keys/{key_id}"] = {
+        "parameters": [parameter("key_id", location="path")],
+        "delete": operation("deleteApiKey", {204: None}),
+    }
+    for path, methods in list(result["paths"].items()):
+        if not path.startswith(("/v1/projects", "/v1/runs")):
+            continue
+        cloned = deepcopy(methods)
+        for method, operation_data in cloned.items():
+            if method == "parameters":
+                continue
+            operation_data["operationId"] += "WithApiKey"
+            operation_data["security"] = [{"ApiKey": []}]
+        result["paths"][path.replace("/v1/", "/v1/cli/", 1)] = cloned
+    return result
