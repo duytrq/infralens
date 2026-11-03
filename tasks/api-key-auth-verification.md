@@ -39,8 +39,25 @@
 
 ## Release boundary
 
-No AWS deployment or live AWS smoke was performed. Native Windows runtime checks
+At implementation time, no AWS deployment or live AWS smoke was performed.
+The subsequent dev deployment is recorded below. Native Windows runtime checks
 remain a CI responsibility; ACL branches have deterministic unit coverage here.
 Publish/upgrade the API-key CLI and migrate CI secrets first; then deploy removal
 of server-side CLI Cognito support. Existing dashboard accounts/data and saved
 API keys remain usable; old CLI Cognito sessions/access-token scripts do not.
+
+
+## AWS dev deployment (2026-11-03)
+
+- Stack `infralens-dev` updated successfully using reviewed CloudFormation changeset.
+- Deleted the obsolete CLI Cognito client and `/v1/config`; 32 API routes remain.
+- Dashboard client/User Pool and all storage physical IDs are unchanged.
+- Live CloudFront and localhost smoke passed 26 checks, including actual CLI
+  login, project operations, Trivy security upload, dashboard indexing/download,
+  local logout and API-key revocation. Temporary accounts/projects were removed;
+  run deletion uses the existing scheduled cleanup.
+- API Gateway metrics showed zero 5xx across 55 requests in the sampled window.
+- Corrected smoke helper timing: Click prints its caption before getpass disables
+  echo/flushes input. Wait for the terminal ECHO flag before sending the key.
+  Regression test and all 15 frontend tests, lint and typecheck pass.
+- Evidence: [AWS cleanup verification](../infra/deployments/infralens-dev-api-key-cleanup-verification.json).
