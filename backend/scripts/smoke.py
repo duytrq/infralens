@@ -1,21 +1,15 @@
-"""Exercise a deployed backend using browser PKCE login and a native JSON report.
-
-Tokens live only in memory. This is an operator verification tool, not CLI login.
-"""
+"""Exercise a deployed backend using INFRALENS_API_KEY and a native JSON report."""
 
 import argparse
-import base64
 import hashlib
-import hmac
 import json
-import secrets
+import os
+import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import webbrowser
 from datetime import UTC, datetime
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from uuid import uuid4
 
@@ -47,89 +41,11 @@ def http(method, url, data=None, headers=None, statuses=(200,), limit=2 * 1024 *
         return response.status, body
 
 
-def login(config, timeout=180):
-    auth = config["auth"]
-    callback = urllib.parse.urlsplit(auth["callback_url"])
-    if (
-        callback.scheme != "http"
-        or callback.hostname != "localhost"
-        or not callback.port
-    ):
-        raise ValueError("Smoke login requires the registered localhost callback.")
-    state = secrets.token_urlsafe(32)
-    verifier = secrets.token_urlsafe(64)
-    challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
-        .rstrip(b"=")
-        .decode()
-    )
-    received = {}
-
-    class Callback(BaseHTTPRequestHandler):
-        def log_message(self, *args):
-            pass  # Never log callback codes or OAuth state.
-
-        def do_GET(self):
-            parsed = urllib.parse.urlsplit(self.path)
-            params = urllib.parse.parse_qs(parsed.query)
-            valid = parsed.path == callback.path and params.get("state") == [state]
-            valid = valid and hmac.compare_digest(params["state"][0], state)
-            if valid:
-                codes = params.get("code", [])
-                received["code"] = codes[0] if len(codes) == 1 else None
-            self.send_response(200 if valid else 400)
-            self.send_header("content-type", "text/plain; charset=utf-8")
-            self.send_header("cache-control", "no-store")
-            self.end_headers()
-            self.wfile.write(b"Return to the InfraLens terminal.")
-
-    with HTTPServer(("127.0.0.1", callback.port), Callback) as server:
-        server.timeout = 0.1
-        url = (
-            auth["authorization_endpoint"]
-            + "?"
-            + urllib.parse.urlencode(
-                {
-                    "response_type": "code",
-                    "client_id": auth["client_id"],
-                    "redirect_uri": auth["callback_url"],
-                    "scope": " ".join(auth["scopes"]),
-                    "state": state,
-                    "code_challenge": challenge,
-                    "code_challenge_method": "S256",
-                }
-            )
-        )
-        print("Sign in using the browser. Tokens are not saved.")
-        if not webbrowser.open(url):
-            print("Open this sign-in URL on this machine:", url)
-        deadline = time.monotonic() + timeout
-        while "code" not in received and time.monotonic() < deadline:
-            server.handle_request()
-    code = received.get("code")
-    if not isinstance(code, str) or not code or len(code) > 4096:
-        raise RuntimeError(
-            "Login was cancelled, timed out or returned no authorization code."
-        )
-    form = urllib.parse.urlencode(
-        {
-            "grant_type": "authorization_code",
-            "client_id": auth["client_id"],
-            "redirect_uri": auth["callback_url"],
-            "code": code,
-            "code_verifier": verifier,
-        }
-    ).encode()
-    _, payload = http(
-        "POST",
-        auth["token_endpoint"],
-        data=form,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    token = json.loads(payload).get("access_token")
-    if not isinstance(token, str) or not token:
-        raise RuntimeError("Cognito did not return an access token.")
-    return token
+def api_key():
+    key = os.environ.get("INFRALENS_API_KEY", "")
+    if not re.fullmatch(r"il_key_[a-f0-9]{32}_[A-Za-z0-9_-]{43}", key):
+        raise ValueError("Supply a valid INFRALENS_API_KEY through the environment.")
+    return key
 
 
 def metadata(report, project):
@@ -186,7 +102,7 @@ def smoke(endpoint, config, token, report, project):
         data = json.dumps(body).encode() if body is not None else None
         status, content = http(
             method,
-            endpoint + path,
+            endpoint + "/v1/cli/" + path.removeprefix("/v1/"),
             data=data,
             statuses=statuses,
             headers={
@@ -254,15 +170,15 @@ def main():
         or parsed.path
     ):
         raise ValueError("Endpoint must be an HTTPS origin without a path.")
-    _, payload = http("GET", endpoint + "/v1/config")
+    _, payload = http("GET", endpoint + "/v1/dashboard-config")
     config = json.loads(payload)
     with args.report.open("rb") as stream:
         report = stream.read(config["upload"]["max_report_bytes"] + 1)
     if not report or len(report) > config["upload"]["max_report_bytes"]:
         raise ValueError("Report is empty or exceeds the upload limit.")
-    metadata(report, project)  # Validate before opening a browser or creating data.
-    http("GET", endpoint + "/v1/projects", statuses=(401,))
-    token = login(config)
+    metadata(report, project)  # Validate before creating data.
+    http("GET", endpoint + "/v1/cli/projects", statuses=(401,))
+    token = api_key()
     smoke(endpoint, config, token, report, project)
 
 

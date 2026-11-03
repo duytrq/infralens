@@ -30,6 +30,7 @@ def test_minimal_upload_uses_repo_and_creates_unique_json(kind, project, monkeyp
 def test_setup_and_project_picker_keep_secrets_out_of_repo(project, monkeypatch):
     monkeypatch.chdir(project)
     monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
+    monkeypatch.setattr(cloud_workflow.cloud_api_key, "selected", lambda api: "KEY")
     monkeypatch.setattr("infralens.cloud_auth.access_token", lambda api: "SECRET")
     monkeypatch.setattr(cloud_projects, "access_token", lambda api: "SECRET")
 
@@ -71,6 +72,7 @@ def test_cancelled_setup_preserves_settings(project, monkeypatch):
     monkeypatch.chdir(project)
     cloud_config.save(API)
     monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
+    monkeypatch.setattr(cloud_workflow.cloud_api_key, "selected", lambda api: "KEY")
     monkeypatch.setattr(cloud_workflow.cloud_auth, "access_token", lambda api: "TOKEN")
     monkeypatch.setattr(cloud_projects, "list_projects", lambda *a, **k: [])
     response = runner.invoke(app, ["cloud", "setup"], input="")
@@ -83,6 +85,7 @@ def test_setup_creates_project_when_list_is_empty(project, monkeypatch):
     monkeypatch.setattr(cloud_workflow.cloud_auth, "interactive_input", lambda: True)
     monkeypatch.chdir(project)
     monkeypatch.setattr(cloud_workflow, "interactive", lambda: None)
+    monkeypatch.setattr(cloud_workflow.cloud_api_key, "selected", lambda api: "KEY")
     monkeypatch.setattr("infralens.cloud_auth.access_token", lambda api: "TOKEN")
     monkeypatch.setattr(cloud_projects, "access_token", lambda api: "TOKEN")
     writes = []
@@ -103,3 +106,33 @@ def test_setup_creates_project_when_list_is_empty(project, monkeypatch):
     assert writes == [{"name": "New project"}]
     assert cloud_config.resolve(root=project) == (API, "new-project")
     assert not cloud_config.config_path().exists()
+
+
+def test_setup_prompts_for_missing_key_then_binds_project(project, monkeypatch):
+    from infralens import cloud_api_key, cloud_auth
+
+    key = "il_key_" + "a" * 32 + "_" + "b" * 43
+    monkeypatch.chdir(project)
+    monkeypatch.setattr(cloud_auth, "interactive_input", lambda: True)
+    monkeypatch.delenv("INFRALENS_API_KEY", raising=False)
+    calls = []
+
+    def http(method, url, **kwargs):
+        calls.append(url)
+        assert kwargs["headers"]["Authorization"] == f"Bearer {key}"
+        data = {"project_id": "demo", "name": "Demo"}
+        return 200, json.dumps(
+            {"items": [data], "next_cursor": None} if "?" in url else data
+        ).encode()
+
+    monkeypatch.setattr(cloud_auth, "http", http)
+    monkeypatch.setattr(cloud_projects, "http", http)
+    result = runner.invoke(
+        app, ["cloud", "setup", "--api-url", API], input=key + "\n1\n"
+    )
+    assert result.exit_code == 0, result.output
+    assert key not in result.output
+    assert calls[0] == API + "/v1/cli/projects?limit=1"
+    assert cloud_api_key.read(API) == key
+    assert cloud_config.resolve(root=project) == (API, "demo")
+    assert key not in (project / ".infralens.toml").read_text()

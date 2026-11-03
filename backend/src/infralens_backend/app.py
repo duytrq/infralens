@@ -58,11 +58,7 @@ class Application:
             not isinstance(owner, str)
             or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", owner)
             or claims.get("iss") != self.settings.issuer
-            or claims.get("client_id")
-            not in {
-                self.settings.client_id,
-                self.settings.dashboard_client_id or self.settings.client_id,
-            }
+            or claims.get("client_id") != self.settings.dashboard_client_id
             or claims.get("token_use") != "access"
             or not isinstance(scope, str)
             or self.settings.scope not in scope.split()
@@ -107,9 +103,6 @@ class Application:
     def route(self, event):
         method = event.get("requestContext", {}).get("http", {}).get("method")
         path = event.get("rawPath", "")
-        if method == "GET" and path == "/v1/config":
-            v.query(event, [])
-            return 200, self.settings.public()
         if method == "GET" and path == "/v1/dashboard-config":
             v.query(event, [])
             if not self.settings.dashboard_client_id:

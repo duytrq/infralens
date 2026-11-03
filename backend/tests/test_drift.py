@@ -114,7 +114,8 @@ def test_drift_upload_report_history_and_security_isolation(api, cloud, drift):
     payload, data = drift
     run = payload["run_id"]
     assert (
-        api("GET", "/v1/config")[1]["upload"]["max_drift_report_bytes"] == 2 * 1024**2
+        api("GET", "/v1/dashboard-config")[1]["upload"]["max_drift_report_bytes"]
+        == 2 * 1024**2
     )
     assert api("POST", "/v1/runs", payload)[0] == 201
     assert api("GET", f"/v1/runs/{run}/drift/report")[0] == 409

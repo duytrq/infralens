@@ -1,21 +1,5 @@
 // Generated from contracts/openapi.json. Do not edit.
 export interface paths {
-    "/v1/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["config"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/dashboard-config": {
         parameters: {
             query?: never;
@@ -1652,32 +1636,6 @@ export interface components {
         } | {
             message: string;
         };
-        Config: {
-            /** @constant */
-            schema_version: 1;
-            /** @constant */
-            api_version: "v1";
-            auth: {
-                issuer: string;
-                client_id: string;
-                authorization_endpoint: string;
-                token_endpoint: string;
-                revocation_endpoint: string;
-                callback_url: string;
-                scopes: string[];
-                /** @constant */
-                pkce_method: "S256";
-            };
-            upload: {
-                /** @constant */
-                formats: [
-                    "json"
-                ];
-                max_report_bytes: number;
-                max_drift_report_bytes: number;
-                url_expires_seconds: number;
-            };
-        };
         DashboardConfig: {
             /** @constant */
             schema_version: 1;
@@ -1740,143 +1698,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    config: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Config"];
-                };
-            };
-            /** @description Invalid JSON */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Invalid or missing access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-            /** @description Access token has insufficient scopes */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-            /** @description Resource not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Conflict; retry or check upload state */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Metadata exceeds 64 KiB */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-            /** @description Unsupported media type */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Invalid metadata or query */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Throttled */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-            /** @description Gateway integration failed */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-            /** @description Dependency unavailable; retry later */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Gateway integration timed out */
-            504: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatewayError"];
-                };
-            };
-        };
-    };
     dashboardConfig: {
         parameters: {
             query?: never;

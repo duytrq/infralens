@@ -116,12 +116,13 @@ backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 \
   --output infra/deployments/infralens-dev-security-upload-browser-verification.json
 ```
 
-The CLI signs in through its own real browser PKCE callback and saves its session
-in an isolated temporary directory. The smoke forces access-token expiry, checks
-refresh across separate commands, then verifies logout rejects future refreshes.
-Config/reports stay isolated, no upload sidecar is created, and temporary users,
-projects and files are removed after verification. This CLI PTY smoke runs on POSIX;
-native Windows storage/headless behavior is covered by CLI and wheel tests.
+The dashboard signs in through Cognito and creates a temporary API key for the CLI.
+The smoke test enters that key through `cloud login`, exercises project selection,
+security upload and dashboard download, then verifies local logout and server-side
+key revocation separately. CLI credentials are isolated in temporary storage.
+
+Config/reports and temporary accounts are isolated and cleaned up. This CLI PTY
+smoke runs on POSIX; native Windows storage/headless behavior is covered by CI.
 
 ```bash
 backend/.venv/bin/python infra/inventory.py \

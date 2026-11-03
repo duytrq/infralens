@@ -2,8 +2,8 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { spawn, spawnSync } from "node:child_process";
-import { readFile, writeFile, unlink, mkdir } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { readFile, mkdir } from "node:fs/promises";
 
 const input = JSON.parse(
   await new Promise((resolve) => {
@@ -66,37 +66,37 @@ async function signIn(origin, account) {
   return { page, tokens, errors };
 }
 
-async function cliLogin(cli, env) {
-  const urlPath = cli.output_directory + "/login-url";
-  await unlink(urlPath).catch(error => { if (error.code !== "ENOENT") throw error; });
-  const child = spawn(cli.python, ["-c",
-    "import pty,sys; sys.exit(pty.spawn(sys.argv[1:]))",
-    cli.executable, "cloud", "login"], {
-    cwd: cli.project, env: { ...env, BROWSER: cli.browser_bridge + " %s" }, stdio: ["pipe", "pipe", "pipe"],
+async function cliLogin(cli, env, key) {
+  // Disable terminal echo before sending the key. Pass the secret only over stdin.
+  const script = `import os,pty,select,signal,sys,time
+key = sys.stdin.readline().rstrip("\\n")
+child, master = pty.fork()
+if child == 0:
+    os.execv(sys.argv[1], sys.argv[1:])
+deadline = time.monotonic() + 45
+output = b""
+sent = False
+try:
+    while True:
+        ended, status = os.waitpid(child, os.WNOHANG)
+        if ended:
+            raise SystemExit(os.waitstatus_to_exitcode(status))
+        if time.monotonic() > deadline:
+            os.kill(child, signal.SIGKILL)
+            os.waitpid(child, 0)
+            raise SystemExit(1)
+        if select.select([master], [], [], 0.1)[0]:
+            try: output = (output + os.read(master, 65536))[-4096:]
+            except OSError: continue
+            if not sent and b"API key:" in output:
+                os.write(master, (key + "\\n").encode())
+                sent = True
+finally:
+    os.close(master)`;
+  const result = spawnSync(cli.python, ["-c", script, cli.executable, "cloud", "login"], {
+    cwd: cli.project, env, input: key + "\n", encoding: "utf8", timeout: 60_000,
   });
-  child.stdout.on("data", () => {});
-  child.stderr.on("data", () => {});
-  const ended = new Promise(resolve => child.on("close", resolve));
-  const context = await browser.newContext();
-  contexts.push(context);
-  const page = await context.newPage();
-  try {
-    let loginUrl;
-    for (let i = 0; i < 300 && !loginUrl; i++) {
-      try { loginUrl = await readFile(urlPath, "utf8"); }
-      catch (error) { if (error.code !== "ENOENT") throw error; }
-      if (!loginUrl) await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    assert(loginUrl, "CLI did not provide its browser sign-in URL");
-    await page.goto(loginUrl);
-    await page.locator('input[name="username"]:visible').fill(input.accounts[0].username);
-    await page.locator('input[name="password"]:visible').fill(input.accounts[0].password);
-    await page.locator('input[name="signInSubmitButton"]:visible').click();
-    await page.getByText("Return to the InfraLens terminal.").waitFor();
-    assert.equal(await ended, 0, "CLI PKCE login failed");
-  } finally {
-    if (child.exitCode === null) child.kill("SIGTERM");
-  }
+  assert.equal(result.status, 0, "CLI API-key login failed");
 }
 
 async function checkSecurityCli(owner, project, origin) {
@@ -105,6 +105,7 @@ async function checkSecurityCli(owner, project, origin) {
   const env = { ...process.env,
     XDG_CONFIG_HOME: cli.output_directory + "/config", APPDATA: cli.output_directory + "/appdata" };
   delete env.INFRALENS_ACCESS_TOKEN;
+  delete env.INFRALENS_API_KEY;
   delete env.INFRALENS_API_URL;
   delete env.INFRALENS_PROJECT;
   function run(args, expected = 0) {
@@ -113,64 +114,66 @@ async function checkSecurityCli(owner, project, origin) {
     return result;
   }
   run(["cloud", "configure", "--api-url", endpoint]);
-  await cliLogin(cli, env);
-  const sessionPath = `${env.XDG_CONFIG_HOME}/infralens/sessions/${createHash("sha256").update(endpoint).digest("hex")}.json`;
-  const session = JSON.parse(await readFile(sessionPath, "utf8"));
-  session.expires_at = 0;
-  await writeFile(sessionPath, JSON.stringify(session));
-  const cliProject = project + "-cli";
-  run(["cloud", "project", "create", cliProject, "--name", "CLI verification"]);
-  assert(run(["cloud", "project", "list"]).stdout.includes(cliProject));
-  run(["cloud", "project", "use", cliProject]);
-  assert(JSON.parse(await readFile(sessionPath, "utf8")).expires_at > Date.now()/1000);
-  checks.push(`cli_pkce_saved_session_refresh:${origin}`);
-  const scanned = run([
-    "scan", cli.project, "--format", "json", "--output", output,
-    "--severity", "LOW", "--fail-on", "HIGH", "--upload",
-  ], 1);
-  const matched = scanned.stderr.match(/Uploaded security scan ([0-9a-f-]{36})/);
-  assert(matched, "CLI must confirm the uploaded run ID before returning its findings exit");
-  const runId = matched[1];
-  runs.push(runId);
-  await assert.rejects(readFile(output + ".upload.json"), { code: "ENOENT" });
-  const report = await readFile(output);
-  let indexed;
-  for (let attempt = 0; attempt < 40; attempt++) {
-    indexed = await api(ownerToken, "GET", `/v1/runs/${runId}`);
-    if (indexed.analysis?.status === "ready") break;
-    assert.notEqual(indexed.analysis?.status, "failed");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  const credential = await api(ownerToken, "POST", "/v1/api-keys", {
+    name: "CLI smoke", expires_in_days: 1,
+  }, [201]);
+  try {
+    await cliLogin(cli, env, credential.api_key);
+    const cliProject = project + "-cli";
+    run(["cloud", "project", "create", cliProject, "--name", "CLI verification"]);
+    assert(run(["cloud", "project", "list"]).stdout.includes(cliProject));
+    run(["cloud", "project", "use", cliProject]);
+    checks.push(`cli_api_key_login_projects:${origin}`);
+    const scanned = run([
+      "scan", cli.project, "--format", "json", "--output", output,
+      "--severity", "LOW", "--fail-on", "HIGH", "--upload",
+    ], 1);
+    const matched = scanned.stderr.match(/Uploaded security scan ([0-9a-f-]{36})/);
+    assert(matched, "CLI must confirm the uploaded run ID before returning its findings exit");
+    const runId = matched[1];
+    runs.push(runId);
+    await assert.rejects(readFile(output + ".upload.json"), { code: "ENOENT" });
+    const report = await readFile(output);
+    let indexed;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      indexed = await api(ownerToken, "GET", `/v1/runs/${runId}`);
+      if (indexed.analysis?.status === "ready") break;
+      assert.notEqual(indexed.analysis?.status, "failed");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    assert.equal(indexed.analysis?.status, "ready");
+    assert.equal(indexed.analysis.counts_match, true);
+    assert.equal(indexed.result.threshold_status, "failed");
+    assert(indexed.result.findings.by_severity.HIGH > 0);
+    assert.equal(indexed.project_id, cliProject);
+    assert.equal(indexed.artifact.sha256, createHash("sha256").update(report).digest("hex"));
+    checks.push(`cli_config_projects_upload_indexing:${origin}`);
+    await owner.page.goto(origin + `/runs/${runId}`);
+    const findings = await api(ownerToken, "GET", `/v1/runs/${runId}/findings`);
+    await owner.page.getByRole("link", { name: findings.items[0].title, exact: true }).first().click();
+    await owner.page.getByRole("heading", { name: findings.items[0].title, exact: true }).waitFor();
+    await owner.page.getByRole("region", { name: "Source code excerpt" }).waitFor();
+    await owner.page.getByRole("link", { name: "Back to scan", exact: true }).click();
+    const downloaded = owner.page.waitForEvent("download");
+    await owner.page.getByRole("button", { name: "Download JSON" }).click();
+    assert.deepEqual(await readFile(await (await downloaded).path()), report);
+    checks.push(`cli_security_dashboard_source_download:${origin}`);
+    await api(ownerToken, "DELETE", `/v1/runs/${runId}`, undefined, [202, 204]);
+    await owner.page.goto(origin + `/runs/${runId}`);
+    await owner.page.getByRole("alert").filter({ hasText: "This item is unavailable" }).waitFor();
+    run(["cloud", "logout"]);
+    assert(run(["cloud", "status"]).stdout.includes("not signed in"));
+    run(["cloud", "project", "list"], 3);
+    // Local logout leaves the server key usable until explicitly revoked.
+    await api(credential.api_key, "GET", "/v1/cli/projects");
+  } finally {
+    await api(ownerToken, "DELETE", `/v1/api-keys/${credential.key_id}`, undefined, [204]);
   }
-  assert.equal(indexed.analysis?.status, "ready");
-  assert.equal(indexed.analysis.counts_match, true);
-  assert.equal(indexed.result.threshold_status, "failed");
-  assert(indexed.result.findings.by_severity.HIGH > 0);
-  assert.equal(indexed.project_id, cliProject);
-  assert.equal(indexed.artifact.sha256, createHash("sha256").update(report).digest("hex"));
-  checks.push(`cli_config_projects_upload_indexing:${origin}`);
-  await owner.page.goto(origin + `/runs/${runId}`);
-  const findings = await api(ownerToken, "GET", `/v1/runs/${runId}/findings`);
-  await owner.page.getByRole("link", { name: findings.items[0].title, exact: true }).first().click();
-  await owner.page.getByRole("heading", { name: findings.items[0].title, exact: true }).waitFor();
-  await owner.page.getByRole("region", { name: "Source code excerpt" }).waitFor();
-  await owner.page.getByRole("link", { name: "Back to scan", exact: true }).click();
-  const downloaded = owner.page.waitForEvent("download");
-  await owner.page.getByRole("button", { name: "Download JSON" }).click();
-  assert.deepEqual(await readFile(await (await downloaded).path()), report);
-  checks.push(`cli_security_dashboard_source_download:${origin}`);
-  await api(ownerToken, "DELETE", `/v1/runs/${runId}`, undefined, [202, 204]);
-  await owner.page.goto(origin + `/runs/${runId}`);
-  await owner.page.getByRole("alert").filter({ hasText: "This item is unavailable" }).waitFor();
-  run(["cloud", "logout"]);
-  assert(run(["cloud", "status"]).stdout.includes("not signed in"));
-  run(["cloud", "project", "list"], 3);
-  const revoked = await fetch(session.auth.token_endpoint, {
-    method: "POST", headers: {"content-type": "application/x-www-form-urlencoded"},
-    body: new URLSearchParams({grant_type: "refresh_token", client_id: session.auth.client_id,
-      refresh_token: session.refresh_token}),
+  const rejected = await fetch(endpoint + "/v1/cli/projects", {
+    headers: { Authorization: `Bearer ${credential.api_key}` },
   });
-  assert.equal(revoked.status, 400, "Logged-out refresh token must be rejected");
-  checks.push(`cli_logout_refresh_revoked:${origin}`);
+  assert([401, 403].includes(rejected.status), "Revoked API key must be rejected");
+  checks.push(`cli_logout_and_api_key_revocation:${origin}`);
 }
 
 try {

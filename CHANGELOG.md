@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — CLI authentication migration
+
+- CLI cloud operations now require API keys. Run `cloud login` to paste a hidden
+  key from the dashboard, or supply `INFRALENS_API_KEY` in CI.
+- `cloud logout` removes local credentials; revoke keys in the dashboard.
+- Removed CLI browser login, Cognito sessions, `INFRALENS_ACCESS_TOKEN`, and
+  `cloud api-key set/clear`. Existing saved API keys remain compatible.
+- Dashboard Cognito login remains supported. Upgrade CLI installations and CI
+  secrets before deploying removal of the CLI Cognito client and `/v1/config`.
+
 ## Unreleased
 
 ### Changed

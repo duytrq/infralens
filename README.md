@@ -248,9 +248,10 @@ Project có cả Security và Drift. Project được gắn với repo, không c
 trên máy; flag/env có thể chỉ định tường minh cho một lệnh; khi đổi API, project cũ không tự được dùng cho API khác.
 
 Quét local không cần tài khoản InfraLens. Thao tác project và upload yêu cầu
-Cognito: CLI tương tác mở browser đăng nhập; CI dùng `INFRALENS_ACCESS_TOKEN`
-trong secret environment. CLI lưu phiên Cognito riêng trên máy và tự gia hạn; cấu hình repo chỉ lưu API
-và project. Dùng `cloud setup` để thiết lập có hướng dẫn, `cloud logout` để xóa phiên. Không cần AWS credentials để quét/upload Security. Sau upload, mở
+API key. Đăng nhập dashboard bằng Cognito để tạo key. CLI dùng `cloud login` để nhập key ẩn,
+kiểm tra với server rồi lưu riêng trên máy; CI dùng `INFRALENS_API_KEY` trong secret
+environment. Repo chỉ lưu API và project. Dùng `cloud setup` để thiết lập có hướng
+dẫn, `cloud logout` để xóa key local; thu hồi key trên dashboard. Không cần AWS credentials để quét/upload Security. Sau upload, mở
 project → **Security**, chờ analysis ready để xem findings và source.
 
 Có thể chạy ngắn `infralens scan --upload` tại thư mục Terraform. Report JSON tự
@@ -339,7 +340,7 @@ infralens drift ./infra --format json --output ./reports/drift.json \
 ```
 
 Dùng API/project đã cấu hình như Security; `--scope` vẫn phải truyền rõ cho Drift.
-CLI đăng nhập Cognito qua browser; CI dùng `INFRALENS_ACCESS_TOKEN`.
+CLI dùng API key qua `cloud login`; CI dùng `INFRALENS_API_KEY`. Dashboard vẫn đăng nhập Cognito.
 Báo cáo cloud tối đa 2 MiB; source location thành đường dẫn tương đối.
 Upload lỗi thông báo nguyên nhân, giữ report local và trả `3`.
 

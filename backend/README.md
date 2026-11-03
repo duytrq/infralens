@@ -4,14 +4,14 @@ Backend cung cấp API quản lý project, metadata lần scan, findings và bá
 Mỗi tài khoản Cognito có dữ liệu riêng. Dashboard React đọc cả security và drift;
 CLI hỗ trợ `scan --upload`, `drift --upload`, lưu API URL và tạo/liệt kê/chọn project.
 Upload lỗi giữ report local và báo nguyên nhân; không có lệnh retry upload riêng.
-Xem [hướng dẫn CLI](../docs/USER_GUIDE.md) về cấu hình và Cognito login.
+Xem [hướng dẫn CLI](../docs/USER_GUIDE.md) về cấu hình và API-key login.
 [Luồng drift](../docs/DRIFT_INTEGRATION.md) mô tả contract và vận hành.
 
 ## Kiến trúc
 
 ```text
-CLI -- đăng nhập Code + PKCE --> Cognito
-CLI -- access token ----------> HTTP API Gateway --> Lambda --> DynamoDB
+Dashboard -- đăng nhập Code + PKCE --> Cognito
+Dashboard -- access token ----> HTTP API Gateway --> Lambda --> DynamoDB
 CLI -- API key --> API Gateway --> Lambda authorizer --> Lambda --> DynamoDB
 CLI -- presigned PUT/GET ------------------------------------> S3 private
 DynamoDB Streams -------------> Lambda phân tích JSON --> DynamoDB findings
@@ -22,7 +22,7 @@ Deploy tạo một bộ tài nguyên dùng chung cho toàn dịch vụ. Tạo pr
 item DynamoDB, không tạo bucket/table hoặc IAM role mới. Tách stack `dev` và `prod`.
 Backend không chạy Trivy và không cần nhận AWS credentials của người dùng.
 
-- `/v1/config` công khai thông tin OAuth cần cho client; không chứa storage config.
+- `/v1/dashboard-config` công khai thông tin OAuth cần cho dashboard; không chứa storage config.
 - API Gateway kiểm tra chữ ký, issuer, audience/client, expiry và scope của JWT.
   Với route Cognito, Lambda chỉ tin `requestContext.authorizer.jwt.claims`, kiểm tra
   access token và scope `infralens/api`; `sub` xác định chủ sở hữu. Với route API
@@ -32,8 +32,8 @@ Backend không chạy Trivy và không cần nhận AWS credentials của ngư�
   ngày hết hạn và chủ sở hữu trong DynamoDB. Cache authorizer tắt; key bị thu hồi
   không được chấp nhận ở lần xác thực tiếp theo. Tạo, liệt kê, thu hồi key chỉ
   dùng Cognito trên `/v1/api-keys`. Secret chỉ trả về một lần khi tạo.
-- Cognito Lite, public client không secret, OAuth code grant, callback mặc định
-  `http://localhost:8765/callback`. Client phải dùng PKCE S256 và kiểm tra state.
+- Dashboard dùng Cognito Lite, public client không secret, OAuth code grant,
+  callback `<DashboardOrigin>/auth/callback`, PKCE S256 và kiểm tra state.
 - Admin tạo tài khoản; chưa mở đăng ký công khai. Không dùng Cognito Identity Pool.
 - Dashboard có public app client riêng trong cùng User Pool và CORS theo
   `DashboardOrigin` (dev mặc định `http://localhost:5173`); xem [DASHBOARD.md](DASHBOARD.md).
@@ -120,9 +120,9 @@ Bucket code artifacts và bucket báo cáo là hai tài nguyên khác nhau, cùn
 deployment. Callback phải khớp chính xác giữa cấu hình Cognito và client.
 Prefix Cognito domain hỗ trợ một stack cho mỗi Environment trong account/region.
 
-Outputs gồm `ApiEndpoint`, `UserPoolId`, `ClientId`, `AuthDomain`, `ReportsBucket`
-và `StorageTable`. Người dùng chỉ cần `ApiEndpoint`; `/v1/config` cung cấp thông tin
-công khai còn lại cho đăng nhập. Không ghi token hoặc AWS keys vào config app.
+Outputs gồm `ApiEndpoint`, `UserPoolId`, `DashboardClientId`, `AuthDomain`, `ReportsBucket`
+và `StorageTable`. Người dùng chỉ cần `ApiEndpoint`; `/v1/dashboard-config` cung cấp thông tin
+công khai cho dashboard; CLI dùng API key. Không ghi token hoặc AWS keys vào config app.
 
 Admin cấp tài khoản bằng Cognito console hoặc `admin-create-user`. Với người dùng
 thật, quy trình này có thể gửi email mời; chỉ thực hiện cho người được phép nhận.
@@ -140,9 +140,9 @@ uv run --project backend python backend/scripts/smoke.py \
   --report /tmp/infralens-smoke-report.json
 ```
 
-Cần Trivy trên PATH hoặc dùng CLI wheel đã bundle. Smoke tool mở trình duyệt,
-nhận callback ở loopback, kiểm tra state/PKCE và giữ token trong RAM. Tool không
-lưu token hoặc mật khẩu. Nó tạo/reuse project `backend-smoke`, đăng ký run UUID
+Cần Trivy trên PATH hoặc dùng CLI wheel đã bundle. Cấp `INFRALENS_API_KEY` qua
+secret environment trước khi chạy smoke tool; không ghi key vào tham số lệnh.
+Tool không dùng browser hay lưu credentials. Nó tạo/reuse project `backend-smoke`, đăng ký run UUID
 mới, thử checksum sai, upload đúng, từ chối overwrite, retry/complete, đọc lịch sử,
 download đúng byte và yêu cầu xóa run khi kết thúc. Thời gian trong metadata của
 smoke run là thời gian kiểm thử ingestion, không phải thời điểm scan ban đầu.
@@ -158,7 +158,7 @@ Schema field, enum, giới hạn và response được kiểm tra trong tests.
 
 | Method / path | Hành vi |
 | --- | --- |
-| `GET /v1/config` | Cấu hình OAuth, format JSON và giới hạn upload; không cần token. |
+| `GET /v1/dashboard-config` | Cấu hình OAuth dashboard, format JSON và giới hạn upload; không cần token. |
 | `PUT /v1/projects/{project_id}` | Body `{"name":"Tên project"}`; 201 khi tạo, 200 khi retry cùng tên, 409 khi tên khác. |
 | `GET /v1/projects` | Liệt kê project của chính mình; `limit`, `cursor`. |
 | `GET /v1/projects/{project_id}` | Chi tiết project; không thấy project tài khoản khác. |

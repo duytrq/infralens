@@ -18,7 +18,7 @@ def test_lambda_presigned_urls_target_bucket_region_without_redirect(
         "TABLE_NAME": "runs",
         "REPORTS_BUCKET": "infralens-test-reports",
         "COGNITO_ISSUER": "https://issuer.example",
-        "COGNITO_CLIENT_ID": "client",
+        "DASHBOARD_CLIENT_ID": "dashboard-client",
         "COGNITO_DOMAIN": "https://auth.example",
     }.items():
         monkeypatch.setenv(key, value)

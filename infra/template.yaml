@@ -7,11 +7,6 @@ Parameters:
     Type: String
     Default: dev
     AllowedValues: [dev, prod]
-  CallbackUrl:
-    Type: String
-    Default: http://localhost:8765/callback
-    AllowedPattern: '^(http://localhost:8765/callback|https://[^\s]+)$'
-    Description: Registered OAuth callback for CLI PKCE login
   ReserveConcurrency:
     Type: String
     Default: 'false'
@@ -56,9 +51,7 @@ Globals:
         TABLE_NAME: !Ref StorageTable
         REPORTS_BUCKET: !Ref ReportsBucket
         COGNITO_ISSUER: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${UserPool}
-        COGNITO_CLIENT_ID: !Ref CliClient
         COGNITO_DOMAIN: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
-        CALLBACK_URL: !Ref CallbackUrl
         FINDINGS_TABLE: !Ref FindingsTable
         DASHBOARD_CLIENT_ID: !Ref DashboardClient
         DASHBOARD_ORIGIN: !Ref DashboardOrigin
@@ -106,28 +99,6 @@ Resources:
       Scopes:
         - ScopeName: api
           ScopeDescription: Manage the signed-in user's projects and scans
-
-  CliClient:
-    Type: AWS::Cognito::UserPoolClient
-    DependsOn: ResourceServer
-    Properties:
-      UserPoolId: !Ref UserPool
-      GenerateSecret: false
-      AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthFlows: [code]
-      AllowedOAuthScopes: [openid, infralens/api]
-      SupportedIdentityProviders: [COGNITO]
-      CallbackURLs: [!Ref CallbackUrl]
-      ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
-      PreventUserExistenceErrors: ENABLED
-      EnableTokenRevocation: true
-      AccessTokenValidity: 15
-      IdTokenValidity: 15
-      RefreshTokenValidity: 30
-      TokenValidityUnits:
-        AccessToken: minutes
-        IdToken: minutes
-        RefreshToken: days
 
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
@@ -302,7 +273,7 @@ Resources:
             IdentitySource: '$request.header.Authorization'
             JwtConfiguration:
               issuer: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${UserPool}
-              audience: [!Ref CliClient, !Ref DashboardClient]
+              audience: [!Ref DashboardClient]
             AuthorizationScopes: [infralens/api]
           ApiKeyAuthorizer:
             FunctionArn: !GetAtt ApiKeyAuthorizerFunction.Arn
@@ -359,14 +330,6 @@ Resources:
               Action: s3:ListBucket
               Resource: !GetAtt ReportsBucket.Arn
       Events:
-        Config:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref HttpApi
-            Path: /v1/config
-            Method: GET
-            Auth:
-              Authorizer: NONE
         DashboardConfig:
           Type: HttpApi
           Properties:
@@ -628,8 +591,6 @@ Outputs:
     Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
   UserPoolId:
     Value: !Ref UserPool
-  ClientId:
-    Value: !Ref CliClient
   AuthDomain:
     Value: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
   ReportsBucket:

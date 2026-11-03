@@ -75,7 +75,6 @@ def main():
         table_name=outputs["StorageTable"],
         bucket=outputs["ReportsBucket"],
         issuer="operator",
-        client_id="operator",
         auth_domain="operator",
     )
     app = Application(

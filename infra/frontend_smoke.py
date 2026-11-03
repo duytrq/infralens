@@ -107,13 +107,6 @@ def main():
     table = session.resource("dynamodb").Table(values["StorageTable"])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     cli_directory = tempfile.TemporaryDirectory(prefix="infralens-security-smoke-")
-    bridge = Path(cli_directory.name) / "open-browser"
-    login_url_file = str(Path(cli_directory.name) / "login-url")
-    bridge.write_text(
-        f"#!{sys.executable}\nimport sys\nfrom pathlib import Path\n"
-        f"Path({login_url_file!r}).write_text(sys.argv[1])\n"
-    )
-    bridge.chmod(0o700)
     scan_project = Path(cli_directory.name) / "terraform"
     shutil.copytree(ROOT / "tests/fixtures/unsafe", scan_project)
     try:
@@ -175,7 +168,6 @@ def main():
                     "security_cli": {
                         "executable": str(args.security_cli),
                         "python": sys.executable,
-                        "browser_bridge": str(bridge),
                         "project": str(scan_project),
                         "output_directory": cli_directory.name,
                     }

@@ -83,7 +83,7 @@ def test_upload_sends_token_only_to_api_and_confirms_ready(
     def http(method, url, **kwargs):
         calls.append((method, url, kwargs))
         ready = {"run_id": metadata["run_id"], "upload_status": "ready"}
-        if url.endswith("/v1/runs"):
+        if url.endswith("/v1/cli/runs"):
             assert json.loads(kwargs["data"]) == metadata
             return 201, json.dumps(
                 {
@@ -241,7 +241,7 @@ def test_imported_drift_report_and_posted_metadata_match_api_contract(
 @pytest.mark.parametrize(
     "status,hint",
     [
-        (401, "Sign-in"),
+        (401, "API key"),
         (403, "Permission"),
         (404, "project"),
         (429, "busy"),
@@ -323,86 +323,16 @@ def test_noninteractive_auth_requires_explicit_token_and_never_prints_it(
     from infralens import cloud_auth
     from infralens.errors import ExecutionError
 
-    monkeypatch.delenv("INFRALENS_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("INFRALENS_API_KEY", raising=False)
     monkeypatch.setattr(cloud_auth.sys.stdin, "isatty", lambda: False)
-    with pytest.raises(ExecutionError, match="Noninteractive"):
+    with pytest.raises(ExecutionError, match="No API key"):
         cloud_auth.access_token(API)
-    monkeypatch.setenv("INFRALENS_ACCESS_TOKEN", "PRIVATE_TOKEN")
-    assert cloud_auth.access_token(API) == "PRIVATE_TOKEN"
-    monkeypatch.setenv("INFRALENS_ACCESS_TOKEN", "PRIVATE_TOKEN\nInjection: value")
+    monkeypatch.setenv(
+        "INFRALENS_API_KEY",
+        "il_key_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    )
+    assert cloud_auth.access_token(API) == "il_key_" + "a" * 32 + "_" + "b" * 43
+    monkeypatch.setenv("INFRALENS_API_KEY", "PRIVATE_TOKEN\nInjection: value")
     with pytest.raises(ExecutionError):
         cloud_auth.access_token(API)
     assert "PRIVATE_TOKEN" not in capsys.readouterr().out
-
-
-def test_pkce_login_checks_state_and_exchanges_code_without_logging(
-    monkeypatch, capsys
-):
-    import base64
-    import socket
-    import threading
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-
-    from infralens import cloud_auth
-
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
-    config = {
-        "auth": {
-            "callback_url": f"http://localhost:{port}/callback",
-            "authorization_endpoint": "https://login.example.com/oauth2/authorize",
-            "token_endpoint": "https://login.example.com/oauth2/token",
-            "pkce_method": "S256",
-            "scopes": ["openid", "infralens/api"],
-            "client_id": "client",
-        }
-    }
-    authorization = {}
-    statuses = []
-    threads = []
-
-    def browser(url):
-        authorization.update(urllib.parse.parse_qs(urllib.parse.urlsplit(url).query))
-
-        def redirect():
-            for state in ("wrong-state", authorization["state"][0]):
-                query = urllib.parse.urlencode({"state": state, "code": "PRIVATE_CODE"})
-                try:
-                    with urllib.request.urlopen(
-                        f"http://127.0.0.1:{port}/callback?{query}", timeout=5
-                    ) as response:
-                        statuses.append(response.status)
-                except urllib.error.HTTPError as exc:
-                    statuses.append(exc.code)
-
-        thread = threading.Thread(target=redirect)
-        threads.append(thread)
-        thread.start()
-        return True
-
-    def exchange(method, url, **kwargs):
-        form = urllib.parse.parse_qs(kwargs["data"].decode())
-        challenge = (
-            base64.urlsafe_b64encode(
-                hashlib.sha256(form["code_verifier"][0].encode()).digest()
-            )
-            .rstrip(b"=")
-            .decode()
-        )
-        assert challenge == authorization["code_challenge"][0]
-        assert authorization["code_challenge_method"] == ["S256"]
-        assert form["code"] == ["PRIVATE_CODE"]
-        return 200, b'{"access_token":"PRIVATE_TOKEN"}'
-
-    monkeypatch.setattr(cloud_auth.webbrowser, "open", browser)
-    monkeypatch.setattr(cloud_auth, "http", exchange)
-    assert cloud_auth.login(config, timeout=5) == "PRIVATE_TOKEN"
-    for thread in threads:
-        thread.join(timeout=5)
-    assert statuses == [400, 200]
-    captured = capsys.readouterr()
-    assert "PRIVATE_CODE" not in captured.out + captured.err
-    assert "PRIVATE_TOKEN" not in captured.out + captured.err

@@ -52,8 +52,6 @@ project_app = typer.Typer(
 )
 app.add_typer(cloud_app, name="cloud")
 cloud_app.add_typer(project_app, name="project")
-api_key_app = typer.Typer(help="Save or remove a local API key.", no_args_is_help=True)
-cloud_app.add_typer(api_key_app, name="api-key")
 configure_app = typer.Typer(
     help="Save API settings or list current configuration.",
     invoke_without_command=True,
@@ -153,24 +151,27 @@ def cloud_setup(api_url: CloudApiUrl = None):
 
 @cloud_app.command("login")
 def cloud_login(api_url: CloudApiUrl = None):
-    """Sign in once through the browser and save your Cognito session."""
+    """Verify and save an API key from the dashboard."""
     with command_errors():
-        from infralens import cloud_auth, cloud_config, cloud_session
+        from infralens import cloud_api_key, cloud_config
 
-        if not cloud_auth.interactive_input():
-            raise InvalidInput("Login requires an interactive terminal.")
         api, _ = cloud_config.resolve(api_url)
-        cloud_session.sign_in(api)
+        cloud_api_key.login(api)
 
 
 @cloud_app.command("logout")
 def cloud_logout(api_url: CloudApiUrl = None):
-    """Remove this API's saved session and request token revocation."""
+    """Remove this API's saved key locally; revoke it in the dashboard."""
     with command_errors():
-        from infralens import cloud_config, cloud_session
+        from infralens import cloud_api_key, cloud_config
 
         api, _ = cloud_config.resolve(api_url)
-        cloud_session.logout(api)
+        cloud_api_key.clear(api)
+        typer.echo(
+            "Local credentials removed. Revoke the API key in the dashboard if needed."
+        )
+        if os.environ.get("INFRALENS_API_KEY") is not None:
+            typer.echo("INFRALENS_API_KEY remains active until unset.")
 
 
 @cloud_app.command("status")
@@ -206,51 +207,15 @@ def cloud_status():
         )
         typer.echo(f"Sources: API={api_source}; project={project_source}")
         typer.echo(f"Config: {plain(str(cloud_config.config_path()))}")
-        import time
-
-        from infralens import cloud_api_key, cloud_session
+        from infralens import cloud_api_key
 
         if os.environ.get("INFRALENS_API_KEY") is not None:
             state = "environment API key (not checked)"
         elif api and cloud_api_key.read(api) is not None:
             state = "saved API key (not checked)"
-        elif os.environ.get("INFRALENS_ACCESS_TOKEN") is not None:
-            state = "environment access token (not saved or refreshed)"
         else:
-            session = cloud_session.read(api) if api else None
-            state = (
-                "not signed in; run 'infralens cloud login'"
-                if session is None
-                else "saved session; token valid locally (revocation not checked)"
-                if session["expires_at"] > time.time() + 60
-                else "saved session; refresh needed on next cloud command"
-            )
+            state = "not signed in; run 'infralens cloud login'"
         typer.echo(f"Auth: {state}")
-
-
-@api_key_app.command("set")
-def set_api_key(api_url: CloudApiUrl = None):
-    """Prompt and save an API key for this API."""
-    with command_errors():
-        from infralens import cloud_api_key, cloud_auth, cloud_config
-
-        if not cloud_auth.interactive_input():
-            raise InvalidInput("Saving an API key requires an interactive terminal.")
-        api, _ = cloud_config.resolve(api_url)
-        key = typer.prompt("API key")
-        cloud_api_key.save(api, key)
-        typer.echo("API key saved locally.")
-
-
-@api_key_app.command("clear")
-def clear_api_key(api_url: CloudApiUrl = None):
-    """Remove the local key; revoke it on the dashboard separately."""
-    with command_errors():
-        from infralens import cloud_api_key, cloud_config
-
-        api, _ = cloud_config.resolve(api_url)
-        cloud_api_key.clear(api)
-        typer.echo("Local API key removed; server key is unchanged.")
 
 
 @configure_app.command("list")

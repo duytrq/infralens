@@ -1,5 +1,5 @@
 def test_config_is_public_and_contains_no_storage_identifiers(api):
-    status, data = api("GET", "/v1/config", user=None)
+    status, data = api("GET", "/v1/dashboard-config", user=None)
     assert status == 200
     assert data["schema_version"] == 1
     assert data["upload"]["formats"] == ["json"]

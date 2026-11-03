@@ -22,14 +22,14 @@ def check(path):
         "TABLE_NAME": "artifact-check",
         "REPORTS_BUCKET": "artifact-check",
         "COGNITO_ISSUER": "https://cognito-idp.ap-southeast-1.amazonaws.com/example",
-        "COGNITO_CLIENT_ID": "example",
+        "DASHBOARD_CLIENT_ID": "example",
         "COGNITO_DOMAIN": "https://example.auth.ap-southeast-1.amazoncognito.com",
     }
     code = """
 import json,sys
 sys.path.insert(0, sys.argv[1])
 from infralens_backend.handler import api_handler
-event = {'rawPath':'/v1/config','requestContext':{'http':{'method':'GET'}}}
+event = {'rawPath':'/v1/dashboard-config','requestContext':{'http':{'method':'GET'}}}
 result = api_handler(event, None)
 assert result['statusCode'] == 200
 assert json.loads(result['body'])['upload']['formats'] == ['json']

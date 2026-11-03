@@ -70,7 +70,6 @@ def cloud(monkeypatch):
             table_name="runs",
             bucket="infralens-test-reports",
             issuer="https://cognito-idp.ap-southeast-1.amazonaws.com/pool",
-            client_id="client",
             auth_domain="https://example.auth.ap-southeast-1.amazoncognito.com",
             dashboard_client_id="dashboard-client",
         )
@@ -121,7 +120,7 @@ def api(cloud):
                     "claims": {
                         "sub": user,
                         "iss": cloud.settings.issuer,
-                        "client_id": "client",
+                        "client_id": "dashboard-client",
                         "token_use": "access",
                         "scope": "openid infralens/api",
                     }

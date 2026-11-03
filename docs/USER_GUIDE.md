@@ -37,7 +37,7 @@ Tại repo hạ tầng, chạy:
 infralens cloud setup
 ```
 
-CLI hỏi API URL (nếu chưa lưu), mở browser đăng nhập Cognito khi cần, rồi cho
+CLI hỏi API URL (nếu chưa lưu), hỏi API key từ dashboard khi chưa có key, rồi cho
 chọn hoặc tạo project. API/project luôn được gắn với repo qua `.infralens.toml`;
 có thể commit file này cho cả nhóm dùng. Không có token trong repo và không có
 project mặc định chung trên máy. Project chung của bản CLI cũ được bỏ qua.
@@ -71,20 +71,19 @@ bắt đầu bằng chữ hoặc số. Một project chứa cả Security và Dr
 ### Đăng nhập một lần
 
 Scan local không cần tài khoản InfraLens; Drift thật vẫn cần credentials/quyền
-cho Terraform backend/provider. Project và upload dùng Cognito. CLI lưu phiên,
-tự dùng lại access token và gia hạn khi gần hết hạn; không mở browser mỗi lệnh.
-Cấu hình hiện tại: access token 15 phút, refresh token 30 ngày. Khi phiên không còn
-gia hạn được, terminal tương tác mở browser lại; CI báo cần cập nhật xác thực.
-Lỗi mạng không xóa phiên hay ép đăng nhập lại.
+cho Terraform backend/provider. Project và upload chỉ dùng API key.
+Đăng nhập dashboard bằng Cognito, tạo key ở **API keys**, rồi chạy `cloud login`.
+CLI ẩn nội dung khi nhập, kiểm tra key với server rồi mới lưu theo API URL.
+Key lỗi/hết hạn/bị thu hồi hoặc lỗi mạng không thay key cũ. Login cần mạng.
 
-`cloud login` đăng nhập mới một cách chủ động. Dùng tài khoản được quản trị viên
-cấp, hoàn tất browser callback `localhost:8765` trong khoảng 3 phút.
-`cloud logout` xóa phiên CLI local và yêu cầu thu hồi refresh token; không đăng
-xuất dashboard hoặc xóa API/project. Nếu mạng lỗi CLI nói rõ chưa xác nhận thu hồi.
-Access token đã phát hành có thể vẫn được API Gateway chấp nhận đến khi hết hạn.
+`cloud logout` xóa key local và file phiên Cognito cũ của API đang chọn, giữ nguyên
+API/project. Muốn thu hồi key trên server, dùng dashboard. Biến `INFRALENS_API_KEY`
+vẫn có hiệu lực sau logout cho tới khi unset. Dashboard vẫn đăng nhập bằng Cognito.
 
-`cloud configure list` (hoặc alias `cloud status`) không gọi mạng hoặc mở browser: hiển thị API/project, nguồn cấu hình
-và tình trạng token local. Token còn hạn local không chứng minh chưa bị thu hồi.
+`cloud configure list` (hoặc `cloud status`) không gọi mạng: hiển thị API/project,
+nguồn cấu hình và nguồn API key, không khẳng định key còn hiệu lực trên server.
+Lệnh thông thường thiếu key sẽ hướng dẫn `cloud login`, không tự mở prompt;
+`cloud setup` có thể hỏi key trong quá trình thiết lập.
 
 ### Cấu hình repo và credentials
 
@@ -107,8 +106,7 @@ cũ không được tự dùng cho API mới. Scan local không đọc cloud con
 
 - Cấu hình máy chỉ lưu API URL: `$XDG_CONFIG_HOME/infralens/config.json`, mặc định `~/.config/infralens/config.json`;
   Windows dùng `%APPDATA%\infralens\config.json`.
-- Phiên theo API: `sessions/<hash-api>.json` cạnh file cấu hình. Có access/refresh token,
-  không có mật khẩu. Linux/WSL dùng thư mục `0700`, file `0600`; Windows giới hạn ACL
+- API key theo API: `sessions/<hash-api>.apikey` cạnh file cấu hình. Không có mật khẩu. Linux/WSL dùng thư mục `0700`, file `0600`; Windows giới hạn ACL
   cho người dùng hiện tại. Không chia sẻ hoặc commit thư mục này.
 - `cloud status` cho biết file repo và nguồn API/project đang dùng. Env overrides
   `INFRALENS_API_URL`/`INFRALENS_PROJECT` vẫn có hiệu lực.
@@ -121,20 +119,24 @@ Dashboard có mục **API keys** để tạo key theo tên với hạn 1, 3, 15,
 hoặc không hết hạn. Sao chép key ngay sau khi tạo: secret chỉ hiển thị một lần.
 Key có quyền truy cập dữ liệu của tài khoản; chỉ phiên Cognito có thể quản lý key.
 
-Trên máy cá nhân, lưu key theo API bằng lệnh sau; key hiển thị khi nhập:
+Trên máy cá nhân, nhập key ẩn, kiểm tra với server rồi lưu theo API:
 
 ```powershell
-infralens cloud api-key set
+infralens cloud login
 infralens cloud status
 infralens cloud project list
 ```
 
 Hoặc truyền key qua `INFRALENS_API_KEY`, ví dụ trong secret environment của CI.
-CLI ưu tiên key từ môi trường, key đã lưu, `INFRALENS_ACCESS_TOKEN`, sau đó là
-phiên Cognito. Nếu key bị từ chối, CLI không tự chuyển sang credential khác.
-`infralens cloud api-key clear` chỉ xóa key local; dùng dashboard để thu hồi key
-trên server. Thu hồi không hủy request đã được xác thực trước đó. Đăng xuất Cognito
-không xóa API key local. Không commit key hoặc đặt key trong `.infralens.toml`.
+CLI ưu tiên `INFRALENS_API_KEY`, sau đó key đã lưu. Key không hợp lệ sẽ báo lỗi,
+không tự chuyển sang credential khác. `cloud login` luôn hỏi key mới; nếu có biến
+môi trường thì biến đó vẫn ưu tiên key vừa lưu. `cloud logout` chỉ xóa key local;
+dùng dashboard để thu hồi trên server. Thu hồi không hủy request đã xác thực.
+Không commit key hoặc đặt key trong `.infralens.toml`.
+
+**Chuyển từ bản cũ:** `INFRALENS_ACCESS_TOKEN` và phiên Cognito CLI không còn được
+hỗ trợ. Tạo API key trong dashboard, cập nhật secret CI thành `INFRALENS_API_KEY`,
+hoặc chạy `cloud login` trên máy cá nhân. Key `.apikey` đã lưu vẫn được dùng lại.
 
 Muốn ngừng dùng key từ biến môi trường trong PowerShell hiện tại:
 
@@ -372,7 +374,7 @@ token được cấp bên ngoài, có hạn 15 phút; chưa có API key hoặc t
 Runner có phiên đã lưu có thể tự gia hạn nhưng không mở browser.
 
 CI đặt `INFRALENS_API_URL`, `INFRALENS_PROJECT` qua environment và
-`INFRALENS_ACCESS_TOKEN` qua secret environment. Sau đó dùng cùng lệnh upload ở
+`INFRALENS_API_KEY` qua secret environment. Sau đó dùng cùng lệnh upload ở
 mục 3/4, không cần browser hoặc cấu hình máy người dùng. Token hết hạn phải được
 cấp lại; CLI không tự lưu/gia hạn token cho pipeline.
 

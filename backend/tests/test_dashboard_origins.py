@@ -8,7 +8,7 @@ def test_dashboard_config_advertises_only_primary_origin_by_default(cloud):
     assert (
         config["auth"]["callback_url"] == "https://dashboard.example.com/auth/callback"
     )
-    assert "allowed_origins" not in settings.public()["auth"]
+    assert "allowed_origins" in settings.dashboard()["auth"]
 
 
 def test_local_dashboard_is_opt_in_and_never_enabled_in_production(cloud):

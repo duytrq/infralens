@@ -1,18 +1,11 @@
-import base64
 import hashlib
 import importlib.util
 import json
-import socket
-import urllib.error
-import urllib.parse
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
 from infralens_backend import validation
-from infralens_backend.settings import Settings
 
 
 @pytest.fixture
@@ -24,84 +17,17 @@ def smoke_tool():
     return module
 
 
-def local_config():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
-    return Settings(
-        "table",
-        "bucket",
-        "https://issuer",
-        "client",
-        "https://example.auth",
-        callback_url=f"http://localhost:{port}/callback",
-    ).public()
-
-
-def test_browser_login_checks_state_and_uses_pkce(smoke_tool, monkeypatch):
-    config = local_config()
-    observed = {}
-
-    def exchange(method, url, data, headers):
-        fields = urllib.parse.parse_qs(data.decode())
-        verifier = fields["code_verifier"][0]
-        actual = (
-            base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
-            .rstrip(b"=")
-            .decode()
-        )
-        assert actual == observed["code_challenge"][0]
-        assert fields["code"] == ["one-time-code"]
-        assert fields["redirect_uri"] == [config["auth"]["callback_url"]]
-        assert method == "POST" and url == config["auth"]["token_endpoint"]
-        assert "client_secret" not in fields
-        return 200, b'{"access_token":"access-token"}'
-
-    monkeypatch.setattr(smoke_tool, "http", exchange)
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        futures = []
-
-        def browser(url):
-            observed.update(urllib.parse.parse_qs(urllib.parse.urlsplit(url).query))
-            assert observed["code_challenge_method"] == ["S256"]
-            callback = (
-                config["auth"]["callback_url"].replace("localhost", "127.0.0.1")
-                + "?"
-                + urllib.parse.urlencode(
-                    {
-                        "state": observed["state"][0],
-                        "code": "one-time-code",
-                    }
-                )
-            )
-            futures.append(pool.submit(urllib.request.urlopen, callback, timeout=2))
-            return True
-
-        monkeypatch.setattr(smoke_tool.webbrowser, "open", browser)
-        assert smoke_tool.login(config, timeout=2) == "access-token"
-        with futures[0].result() as response:
-            assert response.status == 200
-
-
-def test_browser_login_rejects_an_unrelated_callback(smoke_tool, monkeypatch):
-    config = local_config()
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        futures = []
-
-        def browser(url):
-            callback = (
-                config["auth"]["callback_url"].replace("localhost", "127.0.0.1")
-                + "?state=wrong&code=stolen"
-            )
-            futures.append(pool.submit(urllib.request.urlopen, callback, timeout=2))
-            return True
-
-        monkeypatch.setattr(smoke_tool.webbrowser, "open", browser)
-        with pytest.raises(RuntimeError, match="timed out"):
-            smoke_tool.login(config, timeout=0.3)
-        with pytest.raises(urllib.error.HTTPError) as error:
-            futures[0].result()
-        assert error.value.code == 400
+def test_smoke_requires_api_key(smoke_tool, monkeypatch):
+    monkeypatch.delenv("INFRALENS_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="INFRALENS_API_KEY"):
+        smoke_tool.api_key()
+    key = "il_key_" + "a" * 32 + "_" + "b" * 43
+    monkeypatch.setenv("INFRALENS_API_KEY", key)
+    assert smoke_tool.api_key() == key
+    monkeypatch.setenv("INFRALENS_API_KEY", "invalid-secret")
+    with pytest.raises(ValueError) as error:
+        smoke_tool.api_key()
+    assert "invalid-secret" not in str(error.value)
 
 
 def test_smoke_metadata_counts_findings_and_preserves_report_digest(smoke_tool):

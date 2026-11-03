@@ -5,7 +5,7 @@ from pathlib import Path
 
 import typer
 
-from infralens import cloud_auth, cloud_config, cloud_projects
+from infralens import cloud_api_key, cloud_auth, cloud_config, cloud_projects
 from infralens.errors import InvalidInput
 from infralens.reporting import plain
 
@@ -64,7 +64,8 @@ def setup(api_url=None):
         if api_url is None:
             api_url = typer.prompt("API URL")
     api = cloud_auth.origin(api_url)
-    cloud_auth.access_token(api)
+    if cloud_api_key.selected(api) is None:
+        cloud_api_key.login(api)
     project = choose_project(api)
     cloud_projects.use(project, api)
     typer.echo("Setup complete. Run 'infralens scan --upload'.")

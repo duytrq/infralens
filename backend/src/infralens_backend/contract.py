@@ -163,7 +163,7 @@ SCHEMAS = {
     "Error": ERROR,
     # API Gateway rejects invalid JWTs before Lambda with its native error body.
     "GatewayError": {"anyOf": [ERROR, obj({"message": STRING})]},
-    "Config": obj(
+    "DashboardConfig": obj(
         {
             "schema_version": {"const": 1},
             "api_version": {"const": "v1"},
@@ -190,19 +190,17 @@ SCHEMAS = {
         }
     ),
 }
-SCHEMAS["DashboardConfig"] = obj(
+SCHEMAS["DashboardConfig"]["properties"]["auth"]["properties"].update(
     {
-        **SCHEMAS["Config"]["properties"],
-        "auth": obj(
-            {
-                **SCHEMAS["Config"]["properties"]["auth"]["properties"],
-                "logout_url": STRING,
-                "logout_endpoint": STRING,
-                "allowed_origins": {"type": "array", "items": STRING},
-            }
-        ),
+        "logout_url": STRING,
+        "logout_endpoint": STRING,
+        "allowed_origins": {"type": "array", "items": STRING},
     }
 )
+SCHEMAS["DashboardConfig"]["properties"]["auth"]["required"].extend(
+    ["logout_url", "logout_endpoint", "allowed_origins"]
+)
+
 
 API_KEY = obj(
     {
@@ -345,7 +343,6 @@ def openapi():
             "schemas": SCHEMAS,
         },
         "paths": {
-            "/v1/config": {"get": operation("config", {200: "Config"}, public=True)},
             "/v1/dashboard-config": {
                 "get": operation(
                     "dashboardConfig", {200: "DashboardConfig"}, public=True

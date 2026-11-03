@@ -123,7 +123,7 @@ def test_create_list_and_select_projects_use_authenticated_api(monkeypatch):
     def http(method, url, **kwargs):
         calls.append((method, url, kwargs))
         assert kwargs["headers"]["Authorization"] == "Bearer PRIVATE_TOKEN"
-        if "/v1/projects?" in url:
+        if "/v1/cli/projects?" in url:
             return 200, json.dumps({"items": [project], "next_cursor": None}).encode()
         if method == "PUT":
             assert json.loads(kwargs["data"]) == {"name": "Demo"}
@@ -233,4 +233,4 @@ def test_cloud_project_operations_require_authentication(monkeypatch):
         lambda *args, **kwargs: pytest.fail("Unauthenticated API request"),
     )
     result = runner.invoke(app, ["cloud", "project", "list"])
-    assert result.exit_code == 3 and "Noninteractive cloud operations" in result.stderr
+    assert result.exit_code == 3 and "No API key" in result.stderr

@@ -136,3 +136,14 @@ Evidence: [drift-terminal-verification.md](drift-terminal-verification.md).
 - [x] Verify tests, cloud contract, packaged CLI and live lab; rebuild both wheels and reinstall Linux.
 
 Evidence: [cli-simplification-verification.md](cli-simplification-verification.md).
+
+
+## API-key-only CLI authentication
+
+- [x] Replace CLI Cognito login with hidden, verified API-key login and local logout.
+- [x] Preserve private per-origin storage; make reads and missing-key checks non-mutating.
+- [x] Remove CLI Cognito backend/configuration/infrastructure while retaining dashboard login.
+- [x] Update contracts, generated types, smoke tooling and migration documentation.
+- [x] Complete package/build verification and final independent review.
+
+Evidence: [api-key-auth-verification.md](api-key-auth-verification.md).

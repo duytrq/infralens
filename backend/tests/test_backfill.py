@@ -23,3 +23,46 @@ def test_backfill_is_dry_by_default_and_only_changes_unindexed_runs(cloud, reque
         cloud.table.get_item(Key=key)["Item"]["data"]["analysis"]["status"] == "pending"
     )
     assert module.backfill(cloud, apply=True)["eligible"] == 0
+
+
+def test_backfill_entrypoint_initializes_without_cli_cognito(monkeypatch, capsys):
+    import json
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    outputs = {
+        "StorageTable": "table",
+        "ReportsBucket": "bucket",
+        "FindingsTable": "findings",
+    }
+    session = Mock()
+
+    def client(service, **kwargs):
+        if service == "sts":
+            return SimpleNamespace(get_caller_identity=lambda: {"Account": "123"})
+        if service == "cloudformation":
+            return SimpleNamespace(
+                describe_stacks=lambda **k: {
+                    "Stacks": [
+                        {
+                            "Outputs": [
+                                {"OutputKey": key, "OutputValue": value}
+                                for key, value in outputs.items()
+                            ]
+                        }
+                    ]
+                }
+            )
+        return Mock()
+
+    session.client.side_effect = client
+    session.resource.return_value.Table.return_value.scan.return_value = {"Items": []}
+    monkeypatch.setattr(module.boto3, "Session", lambda **kwargs: session)
+    monkeypatch.setattr("sys.argv", ["backfill", "--account", "123"])
+    module.main()
+    assert json.loads(capsys.readouterr().out) == {
+        "apply": False,
+        "eligible": 0,
+        "queued": 0,
+        "conflicts": 0,
+    }

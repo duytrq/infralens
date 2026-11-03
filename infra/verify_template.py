@@ -38,7 +38,6 @@ def verify(environment, reserve):
         copy.deepcopy(template),
         {
             "Environment": environment,
-            "CallbackUrl": "http://localhost:8765/callback",
             "ReserveConcurrency": reserve,
         },
         StaticPolicies(),
@@ -91,7 +90,7 @@ def verify(environment, reserve):
     for (method, path), operation in routes.items():
         expected_security = (
             [{"NONE": []}]
-            if method == "get" and path in ("/v1/config", "/v1/dashboard-config")
+            if method == "get" and path in ("/v1/dashboard-config",)
             else [{"ApiKeyAuthorizer": []}]
             if path.startswith("/v1/cli/")
             else [{"CognitoJwt": ["infralens/api"]}]
@@ -111,7 +110,6 @@ def verify(environment, reserve):
     assert key_authorizer["type"] == "request"
     assert key_authorizer["authorizerResultTtlInSeconds"] == 0
     assert jwt["jwtConfiguration"]["audience"] == [
-        {"Ref": "CliClient"},
         {"Ref": "DashboardClient"},
     ]
     for name, log_group in (
@@ -123,8 +121,8 @@ def verify(environment, reserve):
         assert logging["LogGroup"] == {"Ref": log_group}
         assert logging["LogFormat"] == "JSON"
         assert logging["ApplicationLogLevel"] == "INFO"
-        assert props["Environment"]["Variables"]["COGNITO_CLIENT_ID"] == {
-            "Ref": "CliClient"
+        assert props["Environment"]["Variables"]["DASHBOARD_CLIENT_ID"] == {
+            "Ref": "DashboardClient"
         }
         assert "VpcConfig" not in props
         assert "ProvisionedConcurrencyConfig" not in props

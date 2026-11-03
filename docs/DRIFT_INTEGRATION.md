@@ -92,16 +92,15 @@ tra dashboard trước khi chạy lại vì lệnh mới tạo run mới. Gate f
 rồi trả `1`; lỗi trace còn report vẫn upload rồi trả `3`. Report vượt 2 MiB vẫn
 được xuất local, nhưng không upload.
 
-Quét local không cần tài khoản InfraLens. Thao tác project và upload cần Cognito:
-CLI tương tác đăng nhập qua Code + PKCE S256 rồi lưu phiên riêng trên máy, tự gia
-hạn ở các lệnh sau. Dùng `cloud login/logout/status` để quản lý phiên.
-`cloud setup` thiết lập API/project trong repo; credentials không nằm trong
-repo. Xem [guide](USER_GUIDE.md) về quyền file và cấu hình.
+Quét local không cần tài khoản InfraLens. Project và upload cần API key:
+đăng nhập dashboard bằng Cognito để tạo key, rồi nhập key ẩn bằng `cloud login`.
+CLI kiểm tra trước khi lưu; dùng `cloud login/logout/status` để quản lý key local.
+Logout không thu hồi key trên server; dùng dashboard để thu hồi.
 
-CI/noninteractive cung cấp `INFRALENS_ACCESS_TOKEN` bằng secret environment của
+CI/noninteractive cung cấp `INFRALENS_API_KEY` bằng secret environment của
 pipeline. Token phải còn hạn và có scope infralens/api cho cùng User Pool/client.
 Không truyền token bằng command line, không commit token; v1 chưa có machine
-identity. Credentials Terraform/AWS ở runner độc lập với Cognito dùng cloud.
+identity. Credentials Terraform/AWS ở runner độc lập với API key dùng cloud.
 
 ## Contract và vòng đời
 

@@ -56,7 +56,7 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
     assert set(deployed) == documented
     for (method, path), props in deployed.items():
         assert (props.get("Auth", {}).get("Authorizer") == "NONE") == (
-            method == "get" and path in ("/v1/config", "/v1/dashboard-config")
+            method == "get" and path in ("/v1/dashboard-config", "/v1/dashboard-config")
         )
         assert (
             props.get("Auth", {}).get("Authorizer") == "ApiKeyAuthorizer"
@@ -88,6 +88,6 @@ def test_storage_retention_and_upload_integrity_are_enforced_in_infrastructure()
         for r in policy
     )
     assert "TimeToLiveSpecification" not in resources["StorageTable"]["Properties"]
-    client = resources["CliClient"]["Properties"]
+    client = resources["DashboardClient"]["Properties"]
     assert client["AllowedOAuthFlows"] == ["code"]
     assert client["GenerateSecret"] is False

@@ -138,6 +138,7 @@ def verify(wheel: Path, uv: str) -> None:
         )
         env["PATH"] = ""
         env.pop("INFRALENS_ACCESS_TOKEN", None)
+        env.pop("INFRALENS_API_KEY", None)
         env["TRIVY_CACHE_DIR"] = os.environ.get("TRIVY_CACHE_DIR", str(root / "cache"))
 
         def run(*arguments, code=0):
@@ -271,7 +272,7 @@ def verify(wheel: Path, uv: str) -> None:
             "https://api.example.com",
             code=3,
         )
-        assert "Noninteractive cloud operations require" in failed_upload.stderr
+        assert "No API key configured" in failed_upload.stderr
         assert output.is_file()
         assert not Path(str(output) + ".upload.json").exists()
         assert str(drift_project) not in output.read_text(encoding="utf-8")
@@ -335,7 +336,7 @@ def verify(wheel: Path, uv: str) -> None:
             "https://api.example.com",
             code=3,
         )
-        assert "Noninteractive cloud operations require" in security_upload.stderr
+        assert "No API key configured" in security_upload.stderr
         report = json.loads(output.read_text(encoding="utf-8"))
         assert not Path(str(output) + ".upload.json").exists()
         assert any(
@@ -351,7 +352,7 @@ def verify(wheel: Path, uv: str) -> None:
         missing_name = run("cloud", "project", "create", "demo", code=2)
         assert "--name" in missing_name.stderr
         missing_login = run("cloud", "project", "list", code=3)
-        assert "Noninteractive cloud operations require" in missing_login.stderr
+        assert "No API key configured" in missing_login.stderr
         # The minimal upload command must use input-root repo defaults and retain
         # its automatically named JSON even when no cloud credentials are available.
         (project / ".infralens.toml").write_text(

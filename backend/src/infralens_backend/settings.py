@@ -9,9 +9,7 @@ class Settings:
     table_name: str
     bucket: str
     issuer: str
-    client_id: str
     auth_domain: str
-    callback_url: str = "http://localhost:8765/callback"
     scope: str = "infralens/api"
     upload_seconds: int = 900
     download_seconds: int = 300
@@ -29,9 +27,7 @@ class Settings:
             table_name=os.environ["TABLE_NAME"],
             bucket=os.environ["REPORTS_BUCKET"],
             issuer=os.environ["COGNITO_ISSUER"],
-            client_id=os.environ["COGNITO_CLIENT_ID"],
             auth_domain=os.environ["COGNITO_DOMAIN"],
-            callback_url=os.environ.get("CALLBACK_URL", cls.callback_url),
             findings_table_name=os.environ.get("FINDINGS_TABLE", ""),
             dashboard_client_id=os.environ.get("DASHBOARD_CLIENT_ID", ""),
             dashboard_origin=os.environ.get("DASHBOARD_ORIGIN", cls.dashboard_origin),
@@ -39,17 +35,17 @@ class Settings:
             enable_local_dashboard=os.environ.get("ENABLE_LOCAL_DASHBOARD") == "true",
         )
 
-    def public(self):
-        return {
+    def dashboard(self):
+        config = {
             "schema_version": 1,
             "api_version": "v1",
             "auth": {
                 "issuer": self.issuer,
-                "client_id": self.client_id,
+                "client_id": self.dashboard_client_id,
                 "authorization_endpoint": f"{self.auth_domain}/oauth2/authorize",
                 "token_endpoint": f"{self.auth_domain}/oauth2/token",
                 "revocation_endpoint": f"{self.auth_domain}/oauth2/revoke",
-                "callback_url": self.callback_url,
+                "callback_url": self.dashboard_origin + "/auth/callback",
                 "scopes": ["openid", self.scope],
                 "pkce_method": "S256",
             },
@@ -61,10 +57,6 @@ class Settings:
             },
         }
 
-    def dashboard(self):
-        config = self.public()
-        config["auth"]["client_id"] = self.dashboard_client_id
-        config["auth"]["callback_url"] = self.dashboard_origin + "/auth/callback"
         config["auth"]["logout_url"] = self.dashboard_origin + "/"
         config["auth"]["logout_endpoint"] = self.auth_domain + "/logout"
         origins = [self.dashboard_origin]
