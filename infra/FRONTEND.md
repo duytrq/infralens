@@ -1,14 +1,22 @@
 # Frontend operations
 
 Published dev dashboard: **https://ddsw2osqv2rj2.cloudfront.net**.
-Security and Drift are published together as release
-`20261027T100344Z-d9e3b434ac36` (2026-10-27). Real Cognito/API/S3 browser smoke
+Security, Drift and API-key management are published together as release
+`20261105T144138Z-1f2c89a34d75` (2026-11-05). The previous release
+`20261027T100344Z-d9e3b434ac36` remains available for rollback. Real Cognito/API/S3 browser smoke
 passed on CloudFront and localhost; see the
 [Drift rollout evidence](../tasks/drift-integration-verification.md#dev-deployment-2026-10-27).
 Distribution `E3L2AM9X65Z1OP`; bucket
 `infralens-dev-frontend-frontendbucket-vhzky2sdozev` remains private.
 Real browser smoke, CDN cache/security checks and release rollback have passed;
 see [verification](../tasks/frontend-verification.md).
+
+The API-key release also updates the CloudFront SPA rewrite for `/api-keys`
+and `/api-keys/`, so direct navigation and refresh load the dashboard. Release
+checks are recorded in
+`deployments/infralens-dev-frontend-api-key-release-verification.json` and live
+browser checks in
+`deployments/infralens-dev-frontend-api-key-browser-verification.json`.
 
 The `infralens-dev-frontend` stack serves the dashboard using CloudFront's default
 HTTPS hostname, OAC and a private S3 REST origin in ap-southeast-1. It is separate

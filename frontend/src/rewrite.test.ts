@@ -31,6 +31,8 @@ describe("deployed CloudFront route rewrite", () => {
     for (const route of [
       "/",
       "/projects",
+      "/api-keys",
+      "/api-keys/",
       "/projects/team-infra",
       "/runs/uuid",
       "/runs/uuid/findings/finding",
@@ -49,6 +51,7 @@ describe("deployed CloudFront route rewrite", () => {
       "/v1/runs",
       "/unknown",
       "/projects/a/unknown",
+      "/api-keys/unknown",
     ])
       expect(rewrite(path).uri).toBe(path);
   });
