@@ -138,3 +138,16 @@ def authenticate(table, credential, now=None):
         except (ApiError, TypeError, ValueError):
             return None
     return owner
+
+
+def owner_is_enabled(cognito, user_pool_id, owner):
+    """Check live Cognito membership by immutable sub, without caching approval."""
+    try:
+        user = cognito.admin_get_user(UserPoolId=user_pool_id, Username=owner)
+    except cognito.exceptions.UserNotFoundException:
+        return False
+    # Verify the sub as well: a recreated username must not inherit old keys.
+    return user.get("Enabled") is True and any(
+        attribute.get("Name") == "sub" and attribute.get("Value") == owner
+        for attribute in user.get("UserAttributes", [])
+    )

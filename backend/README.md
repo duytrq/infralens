@@ -32,6 +32,18 @@ Backend không chạy Trivy và không cần nhận AWS credentials của ngư�
   ngày hết hạn và chủ sở hữu trong DynamoDB. Cache authorizer tắt; key bị thu hồi
   không được chấp nhận ở lần xác thực tiếp theo. Tạo, liệt kê, thu hồi key chỉ
   dùng Cognito trên `/v1/api-keys`. Secret chỉ trả về một lần khi tạo.
+- Sau khi xác minh key, authorizer gọi Cognito `AdminGetUser` theo `sub` của chủ
+  sở hữu, kiểm tra `Enabled=true` và `sub` trả về khớp. User bị khóa hoặc đã xóa
+  bị từ chối ở lần xác thực tiếp theo, kể cả key không hết hạn. Chỉ cache SDK
+  client, không cache trạng thái user; lỗi Cognito/DynamoDB không cấp quyền và
+  được báo là lỗi authorizer, không log key hoặc dữ liệu user.
+  Mỗi request có key hợp lệ thêm một lần gọi Cognito (độ trễ, quota và MAU billing
+  của `AdminGetUser` áp dụng). Role chỉ có thêm quyền đọc user trong đúng User Pool.
+  Enable lại cùng user cho phép key chưa hết hạn/chưa bị thu hồi dùng lại; muốn
+  thu hồi vĩnh viễn phải revoke key. Xóa rồi tạo lại cùng email tạo `sub` mới,
+  không khôi phục key cũ. Request đã xác thực và URL S3 đã cấp vẫn có hiệu lực
+  trong phạm vi/thời hạn ban đầu. Deploy cả code và `infra/template.yaml` để bật
+  kiểm tra này; key hiện có không cần migration.
 - Dashboard dùng Cognito Lite, public client không secret, OAuth code grant,
   callback `<DashboardOrigin>/auth/callback`, PKCE S256 và kiểm tra state.
 - Admin tạo tài khoản; chưa mở đăng ký công khai. Không dùng Cognito Identity Pool.

@@ -63,6 +63,28 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
         ) == path.startswith("/v1/cli/")
 
 
+def test_api_key_owner_checks_are_deployed_with_scoped_cognito_access():
+    template, errors = decode(str(ROOT / "infra/template.yaml"))
+    assert not errors
+    props = template["Resources"]["ApiKeyAuthorizerFunction"]["Properties"]
+    assert props["Environment"]["Variables"]["COGNITO_USER_POOL_ID"] == {
+        "Ref": "UserPool"
+    }
+    statements = props["Policies"][0]["Statement"]
+    assert statements == [
+        {
+            "Effect": "Allow",
+            "Action": ["dynamodb:GetItem"],
+            "Resource": {"Fn::GetAtt": ["StorageTable", "Arn"]},
+        },
+        {
+            "Effect": "Allow",
+            "Action": ["cognito-idp:AdminGetUser"],
+            "Resource": {"Fn::GetAtt": ["UserPool", "Arn"]},
+        },
+    ]
+
+
 def test_storage_retention_and_upload_integrity_are_enforced_in_infrastructure():
     template, errors = decode(str(ROOT / "infra/template.yaml"))
     assert not errors

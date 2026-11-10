@@ -291,12 +291,18 @@ Resources:
     Properties:
       CodeUri: ../backend/
       Handler: infralens_backend.handler.api_key_authorizer
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref UserPool
       Policies:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action: [dynamodb:GetItem]
               Resource: !GetAtt StorageTable.Arn
+            - Effect: Allow
+              Action: [cognito-idp:AdminGetUser]
+              Resource: !GetAtt UserPool.Arn
 
   ApiFunction:
     Type: AWS::Serverless::Function

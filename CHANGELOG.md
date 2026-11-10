@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — API key owner status
+
+- Check the owner's live Cognito status on each API-key authorization. Disabled,
+  deleted or mismatched users are denied; Cognito/DynamoDB failures fail closed.
+- Scope the authorizer's AdminGetUser permission to the configured User Pool.
+  Existing keys need no migration. Re-enabling the same user restores otherwise
+  valid keys; previously issued S3 URLs retain their original expiry.
+
 ## Unreleased — CLI authentication migration
 
 - CLI cloud operations now require API keys. Run `cloud login` to paste a hidden
