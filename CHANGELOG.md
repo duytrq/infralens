@@ -1,12 +1,14 @@
 # Changelog
 
-## Unreleased — API key owner status
+## Unreleased — Operator-managed account offboarding
 
-- Check the owner's live Cognito status on each API-key authorization. Disabled,
-  deleted or mismatched users are denied; Cognito/DynamoDB failures fail closed.
-- Scope the authorizer's AdminGetUser permission to the configured User Pool.
-  Existing keys need no migration. Re-enabling the same user restores otherwise
-  valid keys; previously issued S3 URLs retain their original expiry.
+- Replace per-request Cognito owner lookup with a strongly consistent DynamoDB
+  access tombstone check; remove Cognito permissions from the API-key authorizer.
+- Add IAM-operated `backend/scripts/manage_user.py` with dry-run/account/stack/sub
+  checks. Block account access before disabling the user and revoking all keys;
+  delete Cognito users only through this workflow. Old web sessions cannot create
+  replacement keys. Report history remains retained separately.
+- Keep artifact verification for the API-key authorizer, including blocked owners.
 
 ## Unreleased — CLI authentication migration
 

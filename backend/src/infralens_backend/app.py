@@ -127,6 +127,8 @@ class Application:
                 raise not_found()
         else:
             owner = self.identity(event)
+        if api_keys.owner_is_blocked(self.table, owner):
+            raise ApiError(403, "account_disabled", "Account access has been disabled.")
         if path == "/v1/api-keys" and not cli_path:
             if method == "POST":
                 v.query(event, [])

@@ -3,8 +3,7 @@ from types import SimpleNamespace
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError, EndpointConnectionError
-from botocore.stub import Stubber
+from botocore.exceptions import ClientError
 
 from infralens_backend import api_keys, handler
 
@@ -23,7 +22,6 @@ def authorizer(cloud, monkeypatch):
     cloud.now = lambda: datetime.now(UTC)
     monkeypatch.setenv("COGNITO_USER_POOL_ID", pool)
     monkeypatch.setattr(handler, "api_key_table", lambda: cloud.table)
-    monkeypatch.setattr(handler, "api_key_cognito", lambda: cognito)
 
     def call(key):
         return handler.api_key_authorizer(
@@ -105,159 +103,6 @@ def test_api_key_authorizer_handler(api, authorizer):
         == 204
     )
     assert authorizer.call(created["api_key"]) == {"isAuthorized": False}
-
-
-@pytest.mark.parametrize("days", [1, None])
-def test_disabling_owner_blocks_every_key_without_cached_approval(
-    api, authorizer, days
-):
-    keys = [
-        api(
-            "POST",
-            "/v1/api-keys",
-            {"name": name, "expires_in_days": days},
-            user=authorizer.owner,
-        )[1]["api_key"]
-        for name in ("CLI", "CI")
-    ]
-    assert all(authorizer.call(key)["isAuthorized"] for key in keys)
-    authorizer.cognito.admin_disable_user(
-        UserPoolId=authorizer.pool, Username=authorizer.username
-    )
-    assert all(authorizer.call(key) == {"isAuthorized": False} for key in keys)
-    authorizer.cognito.admin_enable_user(
-        UserPoolId=authorizer.pool, Username=authorizer.username
-    )
-    assert all(authorizer.call(key)["isAuthorized"] for key in keys)
-
-
-def test_deleted_and_recreated_owner_cannot_reuse_old_key(api, authorizer):
-    key = api(
-        "POST",
-        "/v1/api-keys",
-        {"name": "CI", "expires_in_days": None},
-        user=authorizer.owner,
-    )[1]["api_key"]
-    assert authorizer.call(key)["isAuthorized"]
-    authorizer.cognito.admin_delete_user(
-        UserPoolId=authorizer.pool, Username=authorizer.username
-    )
-    assert authorizer.call(key) == {"isAuthorized": False}
-    replacement = authorizer.cognito.admin_create_user(
-        UserPoolId=authorizer.pool,
-        Username=authorizer.username,
-        MessageAction="SUPPRESS",
-    )["User"]
-    new_owner = next(
-        a["Value"] for a in replacement["Attributes"] if a["Name"] == "sub"
-    )
-    assert new_owner != authorizer.owner
-    assert authorizer.call(key) == {"isAuthorized": False}
-    new_key = api(
-        "POST",
-        "/v1/api-keys",
-        {"name": "New CI", "expires_in_days": None},
-        user=new_owner,
-    )[1]["api_key"]
-    assert authorizer.call(new_key)["context"]["owner"] == new_owner
-
-
-@pytest.mark.parametrize(
-    "response",
-    [
-        {"Enabled": False},
-        {"Enabled": True},
-        {"Enabled": True, "UserAttributes": [{"Name": "sub", "Value": "another-user"}]},
-    ],
-)
-def test_owner_lookup_requires_enabled_user_and_matching_sub(api, authorizer, response):
-    key = api(
-        "POST",
-        "/v1/api-keys",
-        {"name": "CI", "expires_in_days": None},
-        user=authorizer.owner,
-    )[1]["api_key"]
-    with Stubber(authorizer.cognito) as stub:
-        stub.add_response(
-            "admin_get_user",
-            {"Username": authorizer.username, **response},
-            {"UserPoolId": authorizer.pool, "Username": authorizer.owner},
-        )
-        assert authorizer.call(key) == {"isAuthorized": False}
-        stub.assert_no_pending_responses()
-
-
-@pytest.mark.parametrize("reason", ["malformed", "wrong_secret", "expired", "revoked"])
-def test_invalid_keys_do_not_query_cognito(cloud, api, authorizer, monkeypatch, reason):
-    if reason == "expired":
-        cloud.now = lambda: datetime.now(UTC) - timedelta(days=2)
-    created = api(
-        "POST",
-        "/v1/api-keys",
-        {"name": "CI", "expires_in_days": 1},
-        user=authorizer.owner,
-    )[1]
-    key = created["api_key"]
-    if reason == "malformed":
-        key = "not-an-api-key"
-    elif reason == "wrong_secret":
-        key = key[:-1] + ("A" if key[-1] != "A" else "B")
-    elif reason == "revoked":
-        api("DELETE", f"/v1/api-keys/{created['key_id']}", user=authorizer.owner)
-
-    def unexpected_lookup(**kwargs):
-        pytest.fail("Invalid API keys must not trigger Cognito lookups")
-
-    monkeypatch.setattr(authorizer.cognito, "admin_get_user", unexpected_lookup)
-    assert authorizer.call(key) == {"isAuthorized": False}
-
-
-@pytest.mark.parametrize(
-    "error",
-    ["TooManyRequestsException", "InternalErrorException", "AccessDeniedException"],
-)
-def test_cognito_service_errors_fail_closed_without_logging_secrets(
-    api, authorizer, caplog, error
-):
-    key = api(
-        "POST",
-        "/v1/api-keys",
-        {"name": "CI", "expires_in_days": None},
-        user=authorizer.owner,
-    )[1]["api_key"]
-    with Stubber(authorizer.cognito) as stub:
-        stub.add_client_error(
-            "admin_get_user",
-            service_error_code=error,
-            service_message="private Cognito response",
-            expected_params={
-                "UserPoolId": authorizer.pool,
-                "Username": authorizer.owner,
-            },
-        )
-        with pytest.raises(RuntimeError, match="API key verification is unavailable"):
-            authorizer.call(key)
-        stub.assert_no_pending_responses()
-    assert "api_key_authorization_dependency_failed" in caplog.text
-    assert key not in caplog.text
-    assert authorizer.owner not in caplog.text
-    assert "private Cognito response" not in caplog.text
-
-
-def test_cognito_network_error_fails_closed(api, authorizer, monkeypatch):
-    key = api(
-        "POST",
-        "/v1/api-keys",
-        {"name": "CI", "expires_in_days": None},
-        user=authorizer.owner,
-    )[1]["api_key"]
-
-    def unavailable(**kwargs):
-        raise EndpointConnectionError(endpoint_url="https://cognito.example")
-
-    monkeypatch.setattr(authorizer.cognito, "admin_get_user", unavailable)
-    with pytest.raises(RuntimeError, match="API key verification is unavailable"):
-        authorizer.call(key)
 
 
 def test_dynamodb_error_does_not_grant_access(cloud, api, authorizer, monkeypatch):

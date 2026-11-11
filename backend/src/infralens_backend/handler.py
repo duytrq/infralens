@@ -58,21 +58,8 @@ def api_key_table():
     return boto3.resource("dynamodb", config=config).Table(os.environ["TABLE_NAME"])
 
 
-@lru_cache(maxsize=1)
-def api_key_cognito():
-    # Cache the connection only; user status must be checked on every request.
-    return boto3.client(
-        "cognito-idp",
-        config=Config(
-            connect_timeout=2,
-            read_timeout=3,
-            retries={"mode": "standard", "total_max_attempts": 2},
-        ),
-    )
-
-
 def api_key_authorizer(event, context):
-    from infralens_backend.api_keys import authenticate, owner_is_enabled
+    from infralens_backend.api_keys import authenticate
 
     header = event.get("headers", {}).get("authorization", "")
     credential = (
@@ -82,13 +69,11 @@ def api_key_authorizer(event, context):
     )
     try:
         owner = authenticate(api_key_table(), credential)
-        if owner is None or not owner_is_enabled(
-            api_key_cognito(), os.environ["COGNITO_USER_POOL_ID"], owner
-        ):
+        if owner is None:
             return {"isAuthorized": False}
     except (BotoCoreError, ClientError):
         # Fail closed and surface an authorizer failure without logging credentials
-        # or Cognito response data. An outage must never grant access.
+        # or dependency response data. An outage must never grant access.
         logger.error("api_key_authorization_dependency_failed")
         raise RuntimeError("API key verification is unavailable.") from None
     return {"isAuthorized": True, "context": {"owner": owner, "auth_type": "api_key"}}

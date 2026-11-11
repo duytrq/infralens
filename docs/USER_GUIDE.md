@@ -134,10 +134,11 @@ môi trường thì biến đó vẫn ưu tiên key vừa lưu. `cloud logout` c
 dùng dashboard để thu hồi trên server. Thu hồi không hủy request đã xác thực.
 Không commit key hoặc đặt key trong `.infralens.toml`.
 
-Với backend đã cập nhật kiểm tra chủ sở hữu, khóa hoặc xóa Cognito user sẽ chặn
-key ở lần xác thực tiếp theo. Mở lại cùng user cho phép key còn hạn dùng lại;
-tạo lại cùng email sau khi xóa không khôi phục key cũ. Request đã xác thực và
-URL S3 đã cấp vẫn giữ thời hạn ban đầu. Muốn thu hồi key vĩnh viễn, dùng Revoke.
+Khi cần khóa/xóa tài khoản, người vận hành dùng [lệnh quản trị InfraLens](../backend/USER_ADMIN.md)
+để chặn truy cập và thu hồi tất cả key trước khi disable/delete Cognito user.
+Backend kiểm tra key và marker khóa trong DynamoDB, không gọi Cognito trên mỗi
+request. Xóa/disable trực tiếp trong Cognito Console không tự khóa key InfraLens.
+Request đã xác thực và URL S3 đã cấp vẫn giữ thời hạn ban đầu.
 
 **Chuyển từ bản cũ:** `INFRALENS_ACCESS_TOKEN` và phiên Cognito CLI không còn được
 hỗ trợ. Tạo API key trong dashboard, cập nhật secret CI thành `INFRALENS_API_KEY`,
