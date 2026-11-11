@@ -10,11 +10,14 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import BotoCoreError, ClientError
 
+from infralens_backend import api_keys
 from infralens_backend import validation as v
 from infralens_backend.analysis import Analysis
+from infralens_backend.drift import Drift
+from infralens_backend.drift_schemas import RUN_INPUT
 from infralens_backend.errors import ApiError, conflict, not_found
 from infralens_backend.runs import Runs
-from infralens_backend.schemas import PROJECT, RUN
+from infralens_backend.schemas import PROJECT
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,7 @@ class Application:
         self.s3 = s3
         self.now = lambda: datetime.now(UTC)
         self.runs = Runs(settings, table, s3, lambda: self.now())
+        self.drift = Drift(self.runs)
         self.analysis = (
             Analysis(self.runs, findings_table) if findings_table is not None else None
         )
@@ -54,11 +58,7 @@ class Application:
             not isinstance(owner, str)
             or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", owner)
             or claims.get("iss") != self.settings.issuer
-            or claims.get("client_id")
-            not in {
-                self.settings.client_id,
-                self.settings.dashboard_client_id or self.settings.client_id,
-            }
+            or claims.get("client_id") != self.settings.dashboard_client_id
             or claims.get("token_use") != "access"
             or not isinstance(scope, str)
             or self.settings.scope not in scope.split()
@@ -103,9 +103,6 @@ class Application:
     def route(self, event):
         method = event.get("requestContext", {}).get("http", {}).get("method")
         path = event.get("rawPath", "")
-        if method == "GET" and path == "/v1/config":
-            v.query(event, [])
-            return 200, self.settings.public()
         if method == "GET" and path == "/v1/dashboard-config":
             v.query(event, [])
             if not self.settings.dashboard_client_id:
@@ -113,7 +110,45 @@ class Application:
                     503, "dashboard_unavailable", "Dashboard is not configured."
                 )
             return 200, self.settings.dashboard()
-        owner = self.identity(event)
+        cli_path = path.startswith("/v1/cli/")
+        if cli_path:
+            context = (
+                event.get("requestContext", {}).get("authorizer", {}).get("lambda", {})
+            )
+            owner = context.get("owner")
+            if (
+                context.get("auth_type") != "api_key"
+                or not isinstance(owner, str)
+                or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", owner)
+            ):
+                raise ApiError(401, "unauthorized", "A valid API key is required.")
+            path = "/v1/" + path.removeprefix("/v1/cli/")
+            if path.startswith("/v1/api-keys"):
+                raise not_found()
+        else:
+            owner = self.identity(event)
+        if api_keys.owner_is_blocked(self.table, owner):
+            raise ApiError(403, "account_disabled", "Account access has been disabled.")
+        if path == "/v1/api-keys" and not cli_path:
+            if method == "POST":
+                v.query(event, [])
+                return 201, api_keys.create(
+                    self.table, owner, v.body(event, api_keys.INPUT), self.now()
+                )
+            if method == "GET":
+                return 200, api_keys.list_keys(self.table, owner, event)
+        match = re.fullmatch(r"/v1/api-keys/([^/]+)", path)
+        if match and method == "DELETE" and not cli_path:
+            v.query(event, [])
+            api_keys.delete(self.table, owner, match[1])
+            return 204, None
+        match = re.fullmatch(r"/v1/runs/([^/]+)/drift/(report|comparison)", path)
+        if match and method == "GET":
+            run = v.run_id(match[1])
+            if match[2] == "report":
+                v.query(event, [])
+                return 200, self.drift.report(owner, run)
+            return 200, self.drift.comparison(owner, run, event)
         match = re.fullmatch(
             r"/v1/runs/([^/]+)/(findings(?:/([^/]+))?|analysis/retry)", path
         )
@@ -133,7 +168,7 @@ class Application:
                 return 200, self.analysis.page(owner, run, event)
         if path == "/v1/runs" and method == "POST":
             v.query(event, [])
-            payload = v.scan(v.body(event, RUN), self.settings.max_report_bytes)
+            payload = v.scan(v.body(event, RUN_INPUT), self.settings.max_report_bytes)
             self.project(owner, payload["project_id"])
             return self.runs.register(owner, payload)
         if path == "/v1/runs" and method == "GET":
@@ -229,13 +264,27 @@ class Application:
         params = v.query(
             event, ["include", "limit", "cursor"] if pagination else ["include"]
         )
-        if "include" in params and params["include"] != "latest_scan":
-            raise v.invalid("Only include=latest_scan is supported.")
-        return "include" in params
+        include = params.get("include", "").split(",") if params.get("include") else []
+        if set(include) - {"latest_scan", "latest_drift"} or len(include) != len(
+            set(include)
+        ):
+            raise v.invalid("Include supports latest_scan and latest_drift.")
+        return include
 
     def project_data(self, owner, data, include, budget=None):
         if not include:
             return data
+        result = dict(data)
+        budget = (
+            budget
+            if budget is not None
+            else {"pages": 120, "deadline": time.monotonic() + 8}
+        )
+        for name in include:
+            result[name] = self.latest(owner, data, name, budget)
+        return result
+
+    def latest(self, owner, data, name, budget):
         # Reuse history's strong state/generation checks, including empty GSI pages.
         cursor = None
         budget = (
@@ -252,6 +301,8 @@ class Application:
                 )
             budget["pages"] -= 1
             params = {"project_id": data["project_id"], "limit": "5" if cursor else "1"}
+            if name == "latest_drift":
+                params["run_type"] = "drift"
             if cursor:
                 params["cursor"] = cursor
             page = self.runs.history(owner, {"queryStringParameters": params})
@@ -261,7 +312,10 @@ class Application:
                     key: run[key]
                     for key in ("run_id", "started_at", "finished_at", "result")
                 }
-                return {**data, "latest_scan": summary}
+                if name == "latest_drift":
+                    summary["scope"] = run["scope"]
+                    summary["input_mode"] = run["drift_options"]["input_mode"]
+                return summary
             cursor = page["next_cursor"]
             if not cursor:
-                return {**data, "latest_scan": None}
+                return None

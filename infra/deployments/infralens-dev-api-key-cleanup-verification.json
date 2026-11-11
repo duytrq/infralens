@@ -1,0 +1,105 @@
+{
+  "status": "passed",
+  "checked_at": "2026-11-03T08:56:24.290405+00:00",
+  "account": "695650811791",
+  "region": "ap-southeast-1",
+  "stack": "infralens-dev",
+  "release": "20261103T084245Z-auth-cleanup-0c7422a",
+  "git_revision": "0c7422a",
+  "cleanup": {
+    "stack_status": "UPDATE_COMPLETE",
+    "routes": 32,
+    "old_cli_client_removed": true,
+    "dashboard_client_and_storage_unchanged": true,
+    "http_checks": [
+      {
+        "path": "/v1/config",
+        "status": 404
+      },
+      {
+        "path": "/v1/dashboard-config",
+        "status": 200
+      },
+      {
+        "path": "/v1/cli/projects",
+        "status": 401
+      },
+      {
+        "path": "/v1/api-keys",
+        "status": 401
+      }
+    ]
+  },
+  "live_smoke": {
+    "status": "passed",
+    "checks": [
+      "real_pkce_login:https://ddsw2osqv2rj2.cloudfront.net",
+      "stream_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+      "dashboard_history_detail_download:https://ddsw2osqv2rj2.cloudfront.net",
+      "cli_api_key_login_projects:https://ddsw2osqv2rj2.cloudfront.net",
+      "cli_config_projects_upload_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+      "cli_security_dashboard_source_download:https://ddsw2osqv2rj2.cloudfront.net",
+      "cli_logout_and_api_key_revocation:https://ddsw2osqv2rj2.cloudfront.net",
+      "drift_signed_upload_report_comparison_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+      "drift_dashboard_deep_link_download:https://ddsw2osqv2rj2.cloudfront.net",
+      "drift_cross_user_isolation_and_deletion:https://ddsw2osqv2rj2.cloudfront.net",
+      "cross_user_api_and_ui_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+      "retry_and_delete:https://ddsw2osqv2rj2.cloudfront.net",
+      "logout_revocation:https://ddsw2osqv2rj2.cloudfront.net",
+      "real_pkce_login:http://localhost:5173",
+      "stream_indexing:http://localhost:5173",
+      "dashboard_history_detail_download:http://localhost:5173",
+      "cli_api_key_login_projects:http://localhost:5173",
+      "cli_config_projects_upload_indexing:http://localhost:5173",
+      "cli_security_dashboard_source_download:http://localhost:5173",
+      "cli_logout_and_api_key_revocation:http://localhost:5173",
+      "drift_signed_upload_report_comparison_isolation:http://localhost:5173",
+      "drift_dashboard_deep_link_download:http://localhost:5173",
+      "drift_cross_user_isolation_and_deletion:http://localhost:5173",
+      "cross_user_api_and_ui_isolation:http://localhost:5173",
+      "retry_and_delete:http://localhost:5173",
+      "logout_revocation:http://localhost:5173"
+    ],
+    "run_ids": [
+      "be5e316e-e4cf-4840-a0e4-9744d1885cdc",
+      "654e2121-8327-4387-aa7f-3e037c5df524",
+      "4bbaefbb-09f2-45a4-af7c-cceb1be2a92a",
+      "954b81be-b4e2-4a97-8697-f2cb54feaf21",
+      "9ce087a5-59c3-4e5a-b385-531e43afcc55",
+      "6c3a8cfa-0abb-4dc6-ba17-21856b5d7ea4",
+      "40f577fd-d655-49f0-8c55-c69d2a21f68f",
+      "77e539a3-6176-4707-b859-a15849e883a3"
+    ],
+    "checked_at": "2026-11-03T08:55:46.800913+00:00",
+    "account": "695650811791",
+    "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+    "origins": [
+      "https://ddsw2osqv2rj2.cloudfront.net",
+      "http://localhost:5173"
+    ],
+    "temporary_accounts": 2,
+    "cloudfront_included": true,
+    "build_mode": "production",
+    "temporary_users_removed": 2,
+    "project_rows_removed": 4,
+    "run_cleanup": "Protected tombstones/derived data use scheduled backend cleanup",
+    "real_security_cli": true
+  },
+  "cloudwatch_last_10_minutes": {
+    "5xx": {
+      "datapoints": 5,
+      "sum": 0.0
+    },
+    "Count": {
+      "datapoints": 5,
+      "sum": 55.0
+    }
+  },
+  "rollback_archive": {
+    "bucket": "infralens-dev-artifacts-artifactsbucket-yswxkvh81khb",
+    "key": "backend-releases/infralens-dev/20261103T084245Z-auth-cleanup-0c7422a/previous-template.json",
+    "sha256": "7572422d2283187930743e73c582e538ff39a80f37bc4620111d29842d3ceb1d",
+    "note": "Restores previous backend template/code; deleted CLI Cognito client cannot recover its original client ID."
+  },
+  "smoke_helper_fix": "Wait for terminal ECHO to be disabled after the CLI caption before sending the key; regression test included."
+}

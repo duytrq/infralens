@@ -15,6 +15,25 @@ def test_exported_contract_is_valid_and_current():
     assert json.loads((ROOT / "contracts/openapi.json").read_text()) == contract
 
 
+def test_contract_export_is_stable_across_python_hash_seeds():
+    import os
+    import subprocess
+    import sys
+
+    for seed in ("1", "2"):
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "backend/scripts/export_contract.py"),
+                "--check",
+            ],
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
 def test_all_contract_routes_are_deployed_and_only_config_is_public():
     template, errors = decode(str(ROOT / "infra/template.yaml"))
     assert not errors
@@ -22,6 +41,7 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
     auth = api["Auth"]
     assert auth["DefaultAuthorizer"] == "CognitoJwt"
     assert auth["Authorizers"]["CognitoJwt"]["AuthorizationScopes"] == ["infralens/api"]
+    assert auth["Authorizers"]["ApiKeyAuthorizer"]["Identity"]["ReauthorizeEvery"] == 0
     events = template["Resources"]["ApiFunction"]["Properties"]["Events"]
     deployed = {}
     for event in events.values():
@@ -36,8 +56,36 @@ def test_all_contract_routes_are_deployed_and_only_config_is_public():
     assert set(deployed) == documented
     for (method, path), props in deployed.items():
         assert (props.get("Auth", {}).get("Authorizer") == "NONE") == (
-            method == "get" and path in ("/v1/config", "/v1/dashboard-config")
+            method == "get" and path in ("/v1/dashboard-config", "/v1/dashboard-config")
         )
+        assert (
+            props.get("Auth", {}).get("Authorizer") == "ApiKeyAuthorizer"
+        ) == path.startswith("/v1/cli/")
+
+
+def test_api_key_authorizer_only_requires_dynamodb_access():
+    template, errors = decode(str(ROOT / "infra/template.yaml"))
+    assert not errors
+    props = template["Resources"]["ApiKeyAuthorizerFunction"]["Properties"]
+    assert "COGNITO_USER_POOL_ID" not in props.get("Environment", {}).get(
+        "Variables", {}
+    )
+    statements = props["Policies"][0]["Statement"]
+    assert statements == [
+        {
+            "Effect": "Allow",
+            "Action": ["dynamodb:GetItem"],
+            "Resource": {"Fn::GetAtt": ["StorageTable", "Arn"]},
+        },
+    ]
+    api_statements = template["Resources"]["ApiFunction"]["Properties"]["Policies"][0][
+        "Statement"
+    ]
+    assert {
+        "Effect": "Allow",
+        "Action": "dynamodb:ConditionCheckItem",
+        "Resource": {"Fn::GetAtt": ["StorageTable", "Arn"]},
+    } in api_statements
 
 
 def test_storage_retention_and_upload_integrity_are_enforced_in_infrastructure():
@@ -65,6 +113,6 @@ def test_storage_retention_and_upload_integrity_are_enforced_in_infrastructure()
         for r in policy
     )
     assert "TimeToLiveSpecification" not in resources["StorageTable"]["Properties"]
-    client = resources["CliClient"]["Properties"]
+    client = resources["DashboardClient"]["Properties"]
     assert client["AllowedOAuthFlows"] == ["code"]
     assert client["GenerateSecret"] is False

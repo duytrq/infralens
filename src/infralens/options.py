@@ -3,6 +3,9 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from threading import Event
+
+DRIFT_PRIORITIES = ("UNKNOWN", "MEDIUM", "HIGH")
 
 SEVERITIES = ("UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL")
 
@@ -19,6 +22,13 @@ class DriftFormat(str, Enum):
 
 
 @dataclass(frozen=True)
+class UploadOptions:
+    api_url: str
+    project: str
+    scope: str | None = None
+
+
+@dataclass(frozen=True)
 class ScanOptions:
     path: Path
     severity: tuple[str, ...]
@@ -27,6 +37,8 @@ class ScanOptions:
     # Inclusive threshold across ALL findings, independent of the report filter.
     fail_on: str | None
     timeout: int = 300
+    upload: UploadOptions | None = None
+    color: bool = False
 
 
 @dataclass(frozen=True)
@@ -40,3 +52,13 @@ class DriftOptions:
     trace: bool
     lookback_days: int | None
     fail_on_drift: bool
+    timeout: int = 300
+    plan_json: Path | None = None
+    workspace: str | None = None
+    data_dir: Path | None = None
+    cancel: Event | None = None
+    fail_on_priority: str | None = None
+    fail_on_unknown: bool = False
+    upload: UploadOptions | None = None
+    color: bool = False
+    severity: tuple[str, ...] = DRIFT_PRIORITIES

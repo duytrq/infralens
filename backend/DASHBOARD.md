@@ -7,7 +7,8 @@ The frontend lives in `../frontend/`. OpenAPI: `../contracts/openapi.json`.
 
 `GET /v1/dashboard-config` is public and returns the dashboard Cognito client,
 authorization/token/revocation/logout endpoints, PKCE method S256, callback and
-logout URL. `/v1/config` retains the CLI client and callback. Both clients use the
+logout URL. The CLI uses API keys; the obsolete `/v1/config` endpoint and CLI
+Cognito client have been removed. The dashboard client uses the
 same User Pool; ownership is the authenticated user's `sub`, never the client ID.
 Send an access token with scope `infralens/api` as `Authorization: Bearer ...`.
 ID tokens and other app clients are rejected. The frontend should use an OIDC

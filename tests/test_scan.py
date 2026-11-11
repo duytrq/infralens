@@ -176,3 +176,38 @@ def test_output_failure_preserves_report_and_cleans_temp(
     assert "PRIVATE" not in result.stderr
     assert output.read_text() == "old"
     assert not list(tmp_path.glob(".infralens-*.tmp"))
+
+
+@pytest.mark.parametrize("format", ["table", "json", "sarif"])
+def test_color_stays_on_terminal_and_never_enters_report_files(
+    project, tmp_path, monkeypatch, format
+):
+    monkeypatch.setattr(
+        "infralens.cli.color_enabled", lambda no_color: not no_color, raising=False
+    )
+    output = tmp_path / "report"
+    response = runner.invoke(
+        app,
+        ["scan", str(project), "--format", format, "--output", str(output)],
+        color=True,
+    )
+    assert response.exit_code == 0, response.output
+    assert "\x1b[" in response.stdout and "Security scan (Trivy" not in response.stdout
+    assert "\x1b" not in output.read_text()
+    if format != "table":
+        json.loads(output.read_text())
+    plain = runner.invoke(app, ["--no-color", "scan", str(project)], color=True)
+    assert "\x1b[" not in plain.stdout
+
+
+@pytest.mark.parametrize("format", ["json", "sarif"])
+def test_machine_stdout_is_json_even_on_a_color_terminal(project, monkeypatch, format):
+    monkeypatch.setattr(
+        "infralens.cli.color_enabled", lambda no_color: True, raising=False
+    )
+    response = runner.invoke(
+        app, ["scan", str(project), "--format", format], color=True
+    )
+    assert response.exit_code == 0, response.output
+    assert "\x1b" not in response.stdout
+    json.loads(response.stdout)

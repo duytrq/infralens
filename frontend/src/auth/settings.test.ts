@@ -21,6 +21,7 @@ const config = {
   upload: {
     formats: ["json"],
     max_report_bytes: 52428800,
+    max_drift_report_bytes: 2097152,
     url_expires_seconds: 900,
   },
 } satisfies DashboardConfig;

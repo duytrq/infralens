@@ -29,7 +29,11 @@ export function Projects() {
     queryFn: ({ pageParam, signal }) =>
       api.request<Page<Project>>("/v1/projects", {
         signal,
-        query: { include: "latest_scan", limit: 20, cursor: pageParam },
+        query: {
+          include: "latest_scan,latest_drift",
+          limit: 20,
+          cursor: pageParam,
+        },
       }),
     getNextPageParam: (page) => page.next_cursor ?? undefined,
   });
@@ -61,7 +65,8 @@ export function Projects() {
           </>
         }
       >
-        Your Terraform projects and their latest security scans.
+        Your Terraform projects, security scans and infrastructure drift
+        reports.
       </PageHeading>
       <section className={styles.panel}>
         <div className={styles.sectionHeading}>
@@ -87,6 +92,7 @@ export function Projects() {
                     <tr>
                       <th>Project</th>
                       <th>Latest scan</th>
+                      <th>Latest drift</th>
                       <th>Threshold</th>
                       <th>Findings</th>
                       <th>
@@ -116,6 +122,25 @@ export function Projects() {
                             <Time value={project.latest_scan.started_at} />
                           ) : (
                             <span className={styles.subtle}>No scans yet</span>
+                          )}
+                        </td>
+                        <td>
+                          {project.latest_drift ? (
+                            <Link
+                              to={`/runs/${project.latest_drift.run_id}`}
+                              className={styles.rowLink}
+                            >
+                              <Time value={project.latest_drift.started_at} />
+                              <span className={styles.secondaryLine}>
+                                {project.latest_drift.scope} ·{" "}
+                                {project.latest_drift.result.summary.resources}{" "}
+                                resources
+                              </span>
+                            </Link>
+                          ) : (
+                            <span className={styles.subtle}>
+                              No drift reports
+                            </span>
                           )}
                         </td>
                         <td>

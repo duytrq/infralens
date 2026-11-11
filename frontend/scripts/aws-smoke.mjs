@@ -1,7 +1,9 @@
 // Operator smoke: credentials arrive on stdin, stay in memory, and are never logged.
 import { chromium } from "@playwright/test";
+import { cliLogin } from "./cli-login.mjs";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { readFile, mkdir } from "node:fs/promises";
 
 const input = JSON.parse(
@@ -63,6 +65,83 @@ async function signIn(origin, account) {
   assert.equal(page.url(), origin + "/projects");
   assert.deepEqual(errors, []);
   return { page, tokens, errors };
+}
+
+async function checkSecurityCli(owner, project, origin) {
+  const cli = input.security_cli;
+  const output = `${cli.output_directory}/${randomUUID()}.json`;
+  const env = { ...process.env,
+    XDG_CONFIG_HOME: cli.output_directory + "/config", APPDATA: cli.output_directory + "/appdata" };
+  delete env.INFRALENS_ACCESS_TOKEN;
+  delete env.INFRALENS_API_KEY;
+  delete env.INFRALENS_API_URL;
+  delete env.INFRALENS_PROJECT;
+  function run(args, expected = 0) {
+    const result = spawnSync(cli.executable, args, { cwd: cli.project, env, encoding: "utf8", timeout: 240_000, input: "" });
+    assert.equal(result.status, expected, "CLI cloud operation returned an unexpected exit code");
+    return result;
+  }
+  run(["cloud", "configure", "--api-url", endpoint]);
+  const credential = await api(ownerToken, "POST", "/v1/api-keys", {
+    name: "CLI smoke", expires_in_days: 1,
+  }, [201]);
+  try {
+    await cliLogin(cli, env, credential.api_key);
+    const cliProject = project + "-cli";
+    run(["cloud", "project", "create", cliProject, "--name", "CLI verification"]);
+    assert(run(["cloud", "project", "list"]).stdout.includes(cliProject));
+    run(["cloud", "project", "use", cliProject]);
+    checks.push(`cli_api_key_login_projects:${origin}`);
+    const scanned = run([
+      "scan", cli.project, "--format", "json", "--output", output,
+      "--severity", "LOW", "--fail-on", "HIGH", "--upload",
+    ], 1);
+    const matched = scanned.stderr.match(/Uploaded security scan ([0-9a-f-]{36})/);
+    assert(matched, "CLI must confirm the uploaded run ID before returning its findings exit");
+    const runId = matched[1];
+    runs.push(runId);
+    await assert.rejects(readFile(output + ".upload.json"), { code: "ENOENT" });
+    const report = await readFile(output);
+    let indexed;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      indexed = await api(ownerToken, "GET", `/v1/runs/${runId}`);
+      if (indexed.analysis?.status === "ready") break;
+      assert.notEqual(indexed.analysis?.status, "failed");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    assert.equal(indexed.analysis?.status, "ready");
+    assert.equal(indexed.analysis.counts_match, true);
+    assert.equal(indexed.result.threshold_status, "failed");
+    assert(indexed.result.findings.by_severity.HIGH > 0);
+    assert.equal(indexed.project_id, cliProject);
+    assert.equal(indexed.artifact.sha256, createHash("sha256").update(report).digest("hex"));
+    checks.push(`cli_config_projects_upload_indexing:${origin}`);
+    await owner.page.goto(origin + `/runs/${runId}`);
+    const findings = await api(ownerToken, "GET", `/v1/runs/${runId}/findings`);
+    await owner.page.getByRole("link", { name: findings.items[0].title, exact: true }).first().click();
+    await owner.page.getByRole("heading", { name: findings.items[0].title, exact: true }).waitFor();
+    await owner.page.getByRole("region", { name: "Source code excerpt" }).waitFor();
+    await owner.page.getByRole("link", { name: "Back to scan", exact: true }).click();
+    const downloaded = owner.page.waitForEvent("download");
+    await owner.page.getByRole("button", { name: "Download JSON" }).click();
+    assert.deepEqual(await readFile(await (await downloaded).path()), report);
+    checks.push(`cli_security_dashboard_source_download:${origin}`);
+    await api(ownerToken, "DELETE", `/v1/runs/${runId}`, undefined, [202, 204]);
+    await owner.page.goto(origin + `/runs/${runId}`);
+    await owner.page.getByRole("alert").filter({ hasText: "This item is unavailable" }).waitFor();
+    run(["cloud", "logout"]);
+    assert(run(["cloud", "status"]).stdout.includes("not signed in"));
+    run(["cloud", "project", "list"], 3);
+    // Local logout leaves the server key usable until explicitly revoked.
+    await api(credential.api_key, "GET", "/v1/cli/projects");
+  } finally {
+    await api(ownerToken, "DELETE", `/v1/api-keys/${credential.key_id}`, undefined, [204]);
+  }
+  const rejected = await fetch(endpoint + "/v1/cli/projects", {
+    headers: { Authorization: `Bearer ${credential.api_key}` },
+  });
+  assert([401, 403].includes(rejected.status), "Revoked API key must be rejected");
+  checks.push(`cli_logout_and_api_key_revocation:${origin}`);
 }
 
 try {
@@ -231,8 +310,123 @@ try {
     const downloaded = await attachment;
     assert.deepEqual(await readFile(await downloaded.path()), report);
     checks.push(`dashboard_history_detail_download:${origin}`);
+    if (input.security_cli) {
+      stage = "CLI config/projects/Security upload and dashboard";
+      await checkSecurityCli(owner, project, origin);
+    }
+    stage = "drift ingestion and comparison";
+    const driftRuns = [];
+    for (const observed of ["t3.small", "t3.medium"]) {
+      const timestamp = new Date().toISOString();
+      const driftReport = {
+        schema_version: "1.0",
+        kind: "drift",
+        terraform_version: "1.15.7",
+        input_mode: "imported_plan",
+        checked_at: timestamp,
+        has_drift: true,
+        summary: { resources: 1, attributes: 1 },
+        resources: [{
+          address: "aws_instance.smoke",
+          resource_type: "aws_instance",
+          actions: ["update"],
+          identifiers: {},
+          attributes: [{
+            path: ["instance_type"],
+            before: { status: "known", value: "t3.micro" },
+            after: { status: "known", value: observed },
+          }],
+          source: {
+            status: "located",
+            context: "current_configuration",
+            block_address: "aws_instance.smoke",
+            locations: [{ file: "main.tf", start_line: 1, end_line: 4, syntax: "hcl" }],
+          },
+        }],
+        normalizations: [],
+        notes: ["Deployment verification fixture; no infrastructure was changed."],
+      };
+      const bytes = Buffer.from(JSON.stringify(driftReport));
+      const driftMetadata = {
+        schema_version: 1,
+        run_id: randomUUID(),
+        project_id: project,
+        run_type: "drift",
+        scope: "deployment-smoke",
+        started_at: timestamp,
+        finished_at: timestamp,
+        duration_ms: 0,
+        source: { relative_path: "." },
+        tool: { infralens_version: "0.1.0", engine: "terraform", engine_version: "1.15.7" },
+        drift_options: {
+          input_mode: "imported_plan",
+          trace: false,
+          lookback_days: null,
+          gate: { any_drift: false, minimum_priority: null, unknown_priority: false },
+        },
+        result: {
+          collection_status: "completed",
+          has_drift: true,
+          summary: driftReport.summary,
+          priority_counts: { high: 0, medium: 0, unknown: 1 },
+          gate_status: "disabled",
+          trace_status: "disabled",
+        },
+        artifact: {
+          format: "json",
+          content_type: "application/json",
+          size_bytes: bytes.length,
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+          schema_version: "1.0",
+        },
+      };
+      const registered = await api(ownerToken, "POST", "/v1/runs", driftMetadata, [201]);
+      runs.push(driftMetadata.run_id);
+      const put = await fetch(registered.upload.url, {
+        method: "PUT", headers: registered.upload.headers, body: bytes,
+      });
+      assert.equal(put.status, 200, "Signed drift upload failed");
+      const completed = await api(ownerToken, "POST", `/v1/runs/${driftMetadata.run_id}/complete`);
+      assert.equal(completed.upload_status, "ready");
+      assert.equal(completed.analysis, undefined);
+      assert.deepEqual(await api(ownerToken, "GET", `/v1/runs/${driftMetadata.run_id}/drift/report`), driftReport);
+      driftRuns.push({ id: driftMetadata.run_id, bytes });
+    }
+    const currentDrift = driftRuns[1];
+    const comparison = await api(ownerToken, "GET", `/v1/runs/${currentDrift.id}/drift/comparison`);
+    assert.equal(comparison.status, "compared");
+    assert.equal(comparison.baseline_run_id, driftRuns[0].id);
+    assert.equal(comparison.summary.changed, 1);
+    const securityHistory = await api(ownerToken, "GET", `/v1/runs?project_id=${project}`);
+    assert.deepEqual(securityHistory.items.map((run) => run.run_id), [metadata.run_id]);
+    const driftHistory = await api(ownerToken, "GET", `/v1/runs?project_id=${project}&run_type=drift&scope=deployment-smoke`);
+    assert.equal(driftHistory.items.length, 2);
+    checks.push(`drift_signed_upload_report_comparison_isolation:${origin}`);
+    stage = "drift dashboard and download";
+    await owner.page.goto(origin + `/projects/${project}`);
+    await owner.page.getByRole("link", { name: "Drift", exact: true }).click();
+    await owner.page.getByRole("link", { name: `Open drift ${currentDrift.id.slice(0, 8)}` }).click();
+    await owner.page.getByRole("heading", { name: `Drift ${currentDrift.id.slice(0, 8)}`, exact: true }).waitFor();
+    await owner.page.getByRole("region", { name: "Resource changes" }).getByText('"t3.medium"', { exact: true }).waitFor();
+    await owner.page.getByRole("region", { name: "Compared resources" }).getByText("changed", { exact: true }).waitFor();
+    await owner.page.reload();
+    await owner.page.getByRole("region", { name: "Drift summary" }).waitFor();
+    const driftAttachment = owner.page.waitForEvent("download");
+    await owner.page.getByRole("button", { name: "Download JSON" }).click();
+    assert.deepEqual(await readFile(await (await driftAttachment).path()), currentDrift.bytes);
+    await owner.page.screenshot({
+      path: `${input.screenshot_directory}/aws-drift-${new URL(origin).hostname}.png`,
+      fullPage: true,
+    });
+    checks.push(`drift_dashboard_deep_link_download:${origin}`);
     stage = "cross-user ownership";
     const other = await signIn(origin, input.accounts[1]);
+    for (const suffix of ["", "/drift/report", "/drift/comparison", "/artifacts/json"])
+      await api(other.tokens.access_token, "GET", `/v1/runs/${currentDrift.id}${suffix}`, undefined, [404]);
+    for (const run of driftRuns)
+      await api(ownerToken, "DELETE", `/v1/runs/${run.id}`, undefined, [202, 204]);
+    await api(ownerToken, "GET", `/v1/runs/${currentDrift.id}/drift/report`, undefined, [404]);
+    checks.push(`drift_cross_user_isolation_and_deletion:${origin}`);
     const findings = await api(
       ownerToken,
       "GET",
@@ -258,6 +452,7 @@ try {
       .waitFor();
     checks.push(`cross_user_api_and_ui_isolation:${origin}`);
     stage = "retry and delete";
+    await owner.page.goto(origin + `/runs/${metadata.run_id}`);
     await api(
       ownerToken,
       "POST",

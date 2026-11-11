@@ -10,6 +10,7 @@ import { Projects } from "./pages/Projects";
 import { History } from "./pages/History";
 import { Scan } from "./pages/Scan";
 import { FindingDetail } from "./pages/FindingDetail";
+import { ApiKeys } from "./pages/ApiKeys";
 import styles from "./styles.module.css";
 
 const queries = new QueryClient({
@@ -60,6 +61,7 @@ export function App() {
               <Route element={<AuthGate />}>
                 <Route element={<Shell />}>
                   <Route path="/projects" element={<Projects />} />
+                  <Route path="/api-keys" element={<ApiKeys />} />
                   <Route path="/projects/:projectId" element={<History />} />
                   <Route path="/runs/:runId" element={<Scan />} />
                   <Route

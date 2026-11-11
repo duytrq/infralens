@@ -1,5 +1,15 @@
 """OpenAPI 3.1 contract generated from the runtime request schemas."""
 
+from copy import deepcopy
+
+from infralens_backend.api_keys import INPUT as API_KEY_INPUT
+from infralens_backend.drift_schemas import (
+    COMPARISON,
+    DRIFT_RUN,
+    REPORT,
+    RESULT,
+    RUN_INPUT,
+)
 from infralens_backend.schemas import COUNT, PROJECT, RUN, SEVERITIES, TIME, obj
 
 
@@ -75,6 +85,17 @@ RUN_ITEM = obj(
     },
     optional=("analysis",),
 )
+SECURITY_RUN_ITEM = RUN_ITEM
+DRIFT_RUN_ITEM = obj(
+    {
+        **DRIFT_RUN["properties"],
+        **{
+            key: RUN_ITEM["properties"][key]
+            for key in ("received_at", "uploaded_at", "upload_status")
+        },
+    }
+)
+RUN_ITEM = {"oneOf": [SECURITY_RUN_ITEM, DRIFT_RUN_ITEM]}
 LATEST = obj(
     {
         key: RUN["properties"][key]
@@ -87,16 +108,35 @@ PROJECT_ITEM = obj(
         "project_id": STRING,
         "created_at": TIME,
         "latest_scan": {"anyOf": [LATEST, {"type": "null"}]},
+        "latest_drift": {
+            "anyOf": [
+                obj(
+                    {
+                        **{
+                            key: DRIFT_RUN["properties"][key]
+                            for key in ("run_id", "started_at", "finished_at", "scope")
+                        },
+                        "result": RESULT,
+                        "input_mode": REPORT["properties"]["input_mode"],
+                    }
+                ),
+                {"type": "null"},
+            ]
+        },
     },
-    optional=("latest_scan",),
+    optional=("latest_scan", "latest_drift"),
 )
 ERROR = obj({"error": obj({"code": STRING, "message": STRING})})
 
 SCHEMAS = {
     "ProjectInput": PROJECT,
-    "RunInput": RUN,
+    "RunInput": RUN_INPUT,
     "Project": PROJECT_ITEM,
     "Run": RUN_ITEM,
+    "SecurityRun": SECURITY_RUN_ITEM,
+    "DriftRun": DRIFT_RUN_ITEM,
+    "DriftReport": REPORT,
+    "DriftComparison": COMPARISON,
     "Analysis": ANALYSIS,
     "Finding": FINDING,
     "FindingSummary": FINDING_SUMMARY,
@@ -123,7 +163,7 @@ SCHEMAS = {
     "Error": ERROR,
     # API Gateway rejects invalid JWTs before Lambda with its native error body.
     "GatewayError": {"anyOf": [ERROR, obj({"message": STRING})]},
-    "Config": obj(
+    "DashboardConfig": obj(
         {
             "schema_version": {"const": 1},
             "api_version": {"const": "v1"},
@@ -143,24 +183,38 @@ SCHEMAS = {
                 {
                     "formats": {"const": ["json"]},
                     "max_report_bytes": {"type": "integer", "minimum": 1},
+                    "max_drift_report_bytes": {"type": "integer", "minimum": 1},
                     "url_expires_seconds": {"type": "integer", "minimum": 1},
                 }
             ),
         }
     ),
 }
-SCHEMAS["DashboardConfig"] = obj(
+SCHEMAS["DashboardConfig"]["properties"]["auth"]["properties"].update(
     {
-        **SCHEMAS["Config"]["properties"],
-        "auth": obj(
-            {
-                **SCHEMAS["Config"]["properties"]["auth"]["properties"],
-                "logout_url": STRING,
-                "logout_endpoint": STRING,
-                "allowed_origins": {"type": "array", "items": STRING},
-            }
-        ),
+        "logout_url": STRING,
+        "logout_endpoint": STRING,
+        "allowed_origins": {"type": "array", "items": STRING},
     }
+)
+SCHEMAS["DashboardConfig"]["properties"]["auth"]["required"].extend(
+    ["logout_url", "logout_endpoint", "allowed_origins"]
+)
+
+
+API_KEY = obj(
+    {
+        "key_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+        "name": {"type": "string"},
+        "created_at": TIME,
+        "expires_at": {"anyOf": [TIME, {"type": "null"}]},
+    }
+)
+SCHEMAS["ApiKeyInput"] = API_KEY_INPUT
+SCHEMAS["ApiKey"] = API_KEY
+SCHEMAS["ApiKeyCreated"] = obj({**API_KEY["properties"], "api_key": STRING})
+SCHEMAS["ApiKeyPage"] = obj(
+    {"items": {"type": "array", "items": ref("ApiKey")}, "next_cursor": CURSOR}
 )
 
 
@@ -231,8 +285,25 @@ HISTORY = (
     parameter("project_id"),
     parameter("from", TIME),
     parameter("to", TIME),
+    parameter(
+        "run_type", {"enum": ["security_scan", "drift"], "default": "security_scan"}
+    ),
+    parameter("scope"),
+    parameter("gate_status", {"enum": ["disabled", "passed", "failed", "incomplete"]}),
 )
-INCLUDE_LATEST = (parameter("include", {"enum": ["latest_scan"]}),)
+INCLUDE_LATEST = (
+    parameter(
+        "include",
+        {
+            "enum": [
+                "latest_scan",
+                "latest_drift",
+                "latest_scan,latest_drift",
+                "latest_drift,latest_scan",
+            ]
+        },
+    ),
+)
 FINDING_FILTERS = (
     *PAGINATION,
     parameter("severity", {"enum": list(SEVERITIES)}),
@@ -242,13 +313,13 @@ FINDING_FILTERS = (
 
 
 def openapi():
-    return {
+    result = {
         "openapi": "3.1.0",
         "info": {
             "title": "InfraLens storage API",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "description": (
-                "User-private projects and immutable native Trivy JSON reports. "
+                "User-private projects and immutable Trivy/drift reports. "
                 "Caller-reported scan metadata is not independently attested."
             ),
         },
@@ -272,7 +343,6 @@ def openapi():
             "schemas": SCHEMAS,
         },
         "paths": {
-            "/v1/config": {"get": operation("config", {200: "Config"}, public=True)},
             "/v1/dashboard-config": {
                 "get": operation(
                     "dashboardConfig", {200: "DashboardConfig"}, public=True
@@ -330,5 +400,41 @@ def openapi():
                 "parameters": [parameter("run_id", location="path")],
                 "post": operation("retryAnalysis", {200: "Run", 202: "Run"}),
             },
+            "/v1/runs/{run_id}/drift/report": {
+                "parameters": [parameter("run_id", location="path")],
+                "get": operation("getDriftReport", {200: "DriftReport"}),
+            },
+            "/v1/runs/{run_id}/drift/comparison": {
+                "parameters": [parameter("run_id", location="path")],
+                "get": operation(
+                    "compareDrift",
+                    {200: "DriftComparison"},
+                    params=(*PAGINATION, parameter("baseline_id")),
+                ),
+            },
         },
     }
+    result["components"]["securitySchemes"]["ApiKey"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "InfraLens API key",
+    }
+    result["paths"]["/v1/api-keys"] = {
+        "get": operation("listApiKeys", {200: "ApiKeyPage"}, params=PAGINATION),
+        "post": operation("createApiKey", {201: "ApiKeyCreated"}, "ApiKeyInput"),
+    }
+    result["paths"]["/v1/api-keys/{key_id}"] = {
+        "parameters": [parameter("key_id", location="path")],
+        "delete": operation("deleteApiKey", {204: None}),
+    }
+    for path, methods in list(result["paths"].items()):
+        if not path.startswith(("/v1/projects", "/v1/runs")):
+            continue
+        cloned = deepcopy(methods)
+        for method, operation_data in cloned.items():
+            if method == "parameters":
+                continue
+            operation_data["operationId"] += "WithApiKey"
+            operation_data["security"] = [{"ApiKey": []}]
+        result["paths"][path.replace("/v1/", "/v1/cli/", 1)] = cloned
+    return result

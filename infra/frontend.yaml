@@ -86,7 +86,7 @@ Resources:
         function handler(event) {
           var request = event.request;
           var uri = request.uri;
-          if (uri === '/' || uri === '/auth/callback' ||
+          if (uri === '/' || uri === '/auth/callback' || /^\/api-keys\/?$/.test(uri) ||
               /^\/projects(?:\/[^/]+)?\/?$/.test(uri) ||
               /^\/runs\/[^/]+(?:\/findings\/[^/]+)?\/?$/.test(uri)) {
             request.uri = '/index.html';

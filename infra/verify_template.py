@@ -38,7 +38,6 @@ def verify(environment, reserve):
         copy.deepcopy(template),
         {
             "Environment": environment,
-            "CallbackUrl": "http://localhost:8765/callback",
             "ReserveConcurrency": reserve,
         },
         StaticPolicies(),
@@ -91,7 +90,9 @@ def verify(environment, reserve):
     for (method, path), operation in routes.items():
         expected_security = (
             [{"NONE": []}]
-            if method == "get" and path in ("/v1/config", "/v1/dashboard-config")
+            if method == "get" and path in ("/v1/dashboard-config",)
+            else [{"ApiKeyAuthorizer": []}]
+            if path.startswith("/v1/cli/")
             else [{"CognitoJwt": ["infralens/api"]}]
         )
         assert operation["security"] == expected_security, (method, path)
@@ -103,8 +104,22 @@ def verify(environment, reserve):
         "x-amazon-apigateway-authorizer"
     ]
     assert jwt["type"] == "jwt"
+    key_authorizer = body["components"]["securitySchemes"]["ApiKeyAuthorizer"][
+        "x-amazon-apigateway-authorizer"
+    ]
+    assert key_authorizer["type"] == "request"
+    assert key_authorizer["authorizerResultTtlInSeconds"] == 0
+    authorizer_function = resources["ApiKeyAuthorizerFunction"]["Properties"]
+    assert "COGNITO_USER_POOL_ID" not in authorizer_function["Environment"]["Variables"]
+    authorizer_statements = resources["ApiKeyAuthorizerFunctionRole"]["Properties"][
+        "Policies"
+    ][0]["PolicyDocument"]["Statement"]
+    assert {
+        "Effect": "Allow",
+        "Action": ["cognito-idp:AdminGetUser"],
+        "Resource": {"Fn::GetAtt": ["UserPool", "Arn"]},
+    } not in authorizer_statements
     assert jwt["jwtConfiguration"]["audience"] == [
-        {"Ref": "CliClient"},
         {"Ref": "DashboardClient"},
     ]
     for name, log_group in (
@@ -116,8 +131,8 @@ def verify(environment, reserve):
         assert logging["LogGroup"] == {"Ref": log_group}
         assert logging["LogFormat"] == "JSON"
         assert logging["ApplicationLogLevel"] == "INFO"
-        assert props["Environment"]["Variables"]["COGNITO_CLIENT_ID"] == {
-            "Ref": "CliClient"
+        assert props["Environment"]["Variables"]["DASHBOARD_CLIENT_ID"] == {
+            "Ref": "DashboardClient"
         }
         assert "VpcConfig" not in props
         assert "ProvisionedConcurrencyConfig" not in props

@@ -1,15 +1,18 @@
-"""AWS Lambda entry points. API Gateway is the JWT verification boundary."""
+"""AWS Lambda entry points for API, API-key authorization and background work."""
 
 import logging
+import os
 from functools import lru_cache
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 
 from infralens_backend.app import Application
 from infralens_backend.settings import Settings
 
 logging.getLogger().setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -47,6 +50,35 @@ def api_handler(event, context):
     return application().handle(event)
 
 
+@lru_cache(maxsize=1)
+def api_key_table():
+    config = Config(
+        connect_timeout=3, read_timeout=5, retries={"total_max_attempts": 3}
+    )
+    return boto3.resource("dynamodb", config=config).Table(os.environ["TABLE_NAME"])
+
+
+def api_key_authorizer(event, context):
+    from infralens_backend.api_keys import authenticate
+
+    header = event.get("headers", {}).get("authorization", "")
+    credential = (
+        header.removeprefix("Bearer ")
+        if isinstance(header, str) and header.startswith("Bearer ")
+        else ""
+    )
+    try:
+        owner = authenticate(api_key_table(), credential)
+        if owner is None:
+            return {"isAuthorized": False}
+    except (BotoCoreError, ClientError):
+        # Fail closed and surface an authorizer failure without logging credentials
+        # or dependency response data. An outage must never grant access.
+        logger.error("api_key_authorization_dependency_failed")
+        raise RuntimeError("API key verification is unavailable.") from None
+    return {"isAuthorized": True, "context": {"owner": owner, "auth_type": "api_key"}}
+
+
 def cleanup_handler(event, context):
     result = application().runs.cleanup()
     if application().analysis is not None:
@@ -77,6 +109,7 @@ def analysis_handler(event, context):
         if (
             analysis.get("status") != "pending"
             or item["data"].get("upload_status") != "ready"
+            or item["data"].get("run_type") != "security_scan"
         ):
             continue
         service.process(

@@ -17,7 +17,7 @@ def event(cloud, body='{"name":"Demo"}'):
                     "claims": {
                         "sub": "user-a",
                         "iss": cloud.settings.issuer,
-                        "client_id": cloud.settings.client_id,
+                        "client_id": cloud.settings.dashboard_client_id,
                         "token_use": "access",
                         "scope": "openid infralens/api",
                     }
@@ -64,6 +64,7 @@ def test_bearer_header_does_not_bypass_gateway_authorization(cloud):
         ('{"name":', 400),
         ('{"name":"' + "x" * 70000 + '"}', 413),
     ],
+    ids=["duplicate", "nan", "array", "incomplete", "oversized"],
 )
 def test_json_parsing_is_bounded_and_unambiguous(cloud, body, status):
     assert cloud.handle(event(cloud, body))["statusCode"] == status
@@ -126,10 +127,10 @@ def test_project_pagination_rejects_cursor_from_another_user(api):
 
 
 def test_config_does_not_require_a_user_even_with_an_invalid_bearer(api):
-    assert api("GET", "/v1/config", user=None)[0] == 200
+    assert api("GET", "/v1/dashboard-config", user=None)[0] == 200
 
 
 def test_public_config_does_not_mutate_settings(cloud):
-    first = cloud.settings.public()
+    first = cloud.settings.dashboard()
     first["upload"]["formats"].append("sarif")
-    assert copy.deepcopy(cloud.settings.public())["upload"]["formats"] == ["json"]
+    assert copy.deepcopy(cloud.settings.dashboard())["upload"]["formats"] == ["json"]

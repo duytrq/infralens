@@ -14,6 +14,14 @@ from infralens.process import run_process
 
 
 @dataclass(frozen=True)
+class SourceLine:
+    number: int
+    content: str
+    cause: bool
+    truncated: bool = False
+
+
+@dataclass(frozen=True)
 class Finding:
     rule_id: str
     severity: str
@@ -25,6 +33,7 @@ class Finding:
     end_line: int | None
     remediation: str
     references: tuple[str, ...]
+    code: tuple[SourceLine, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -92,6 +101,7 @@ def parse_report(payload: str, diagnostics: tuple[str, ...] = ()) -> ScanResult:
                         _line(cause.get("EndLine")),
                         _text(item.get("Resolution")) or "",
                         tuple(references),
+                        _source_lines(cause),
                     )
                 )
         info = raw.get("Trivy", {})
@@ -115,6 +125,37 @@ def _text(value: object) -> str | None:
 
 def _line(value: object) -> int | None:
     return value if type(value) is int and value > 0 else None
+
+
+def _source_lines(cause: dict) -> tuple[SourceLine, ...]:
+    """Optional native excerpts only; never read paths supplied by the report."""
+    code = cause.get("Code")
+    lines = code.get("Lines") if isinstance(code, dict) else None
+    if not isinstance(lines, list):
+        return ()
+    start = _line(cause.get("StartLine"))
+    end = _line(cause.get("EndLine")) or start
+    parsed = {}
+    for line in lines[:200]:
+        if not isinstance(line, dict):
+            continue
+        number = _line(line.get("Number"))
+        content = line.get("Content")
+        if number is None or number > 10_000_000 or not isinstance(content, str):
+            continue
+        marked = line.get("IsCause")
+        if type(marked) is not bool:
+            marked = bool(start is not None and start <= number <= end)
+        parsed.setdefault(
+            number,
+            SourceLine(
+                number,
+                content[:1000],
+                marked,
+                line.get("Truncated") is True,
+            ),
+        )
+    return tuple(parsed[number] for number in sorted(parsed))
 
 
 def _diagnostics(stderr: str) -> tuple[str, ...]:

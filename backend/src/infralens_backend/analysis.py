@@ -77,6 +77,7 @@ class Analysis:
             not item
             or item["generation"] != generation
             or item["data"]["upload_status"] != "ready"
+            or item["data"]["run_type"] != "security_scan"
         ):
             return None
         analysis = item["data"].get("analysis", {})
@@ -170,6 +171,10 @@ class Analysis:
 
     def retry(self, owner, run):
         item = self.runs.get(owner, run)
+        if item["data"]["run_type"] != "security_scan":
+            raise ApiError(
+                409, "unsupported_run_type", "Indexing requires a security scan."
+            )
         if item["data"]["upload_status"] != "ready":
             raise ApiError(409, "artifact_pending", "Complete the report upload first.")
         status = item["data"].get("analysis", {}).get("status")
@@ -184,6 +189,10 @@ class Analysis:
 
     def readable(self, owner, run):
         item = self.runs.get(owner, run)
+        if item["data"]["run_type"] != "security_scan":
+            raise ApiError(
+                409, "unsupported_run_type", "Findings require a security scan."
+            )
         analysis = item["data"].get("analysis", {})
         if (
             item["data"]["upload_status"] != "ready"

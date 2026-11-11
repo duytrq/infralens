@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ArrowUpRight, FolderKanban, LogOut, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, FolderKanban, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useSession } from "../auth/AuthProvider";
 import styles from "../styles.module.css";
@@ -57,12 +57,16 @@ export function Shell() {
             Projects
             <ArrowUpRight size={14} aria-hidden="true" />
           </NavLink>
+          <NavLink to="/api-keys" className={({ isActive }) => isActive ? styles.navActive : styles.navItem}>
+            <KeyRound size={18} aria-hidden="true" />
+            API keys
+          </NavLink>
         </nav>
         <div className={styles.sidebarFooter}>
           <ShieldCheck size={18} aria-hidden="true" />
           <div>
             <strong>Your infrastructure, in focus.</strong>
-            <p>Terraform security insights powered by Trivy.</p>
+            <p>Terraform security and infrastructure drift insights.</p>
           </div>
         </div>
       </aside>
@@ -86,7 +90,7 @@ export function Shell() {
           <Outlet />
         </main>
         <footer className={styles.footer}>
-          InfraLens <span>Static analysis · Terraform</span>
+          InfraLens <span>Security · Drift · Terraform</span>
         </footer>
       </div>
     </div>

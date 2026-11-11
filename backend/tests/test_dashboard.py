@@ -127,7 +127,10 @@ def test_dashboard_public_config(api):
     assert status == 200
     assert config["auth"]["client_id"] == "dashboard-client"
     assert config["auth"]["callback_url"] == "http://localhost:5173/auth/callback"
-    assert api("GET", "/v1/config", user=None)[1]["auth"]["client_id"] == "client"
+    assert (
+        api("GET", "/v1/dashboard-config", user=None)[1]["auth"]["client_id"]
+        == "dashboard-client"
+    )
 
 
 def test_cursor_is_bound_to_filter_owner_and_build(api, cloud, completed):
@@ -347,7 +350,7 @@ def test_dashboard_client_allowed_but_other_clients_rejected(cloud):
         }
 
     assert cloud.handle(event("dashboard-client"))["statusCode"] == 200
-    assert cloud.handle(event("client"))["statusCode"] == 200
+    assert cloud.handle(event("client"))["statusCode"] == 401
     assert cloud.handle(event("unknown-client"))["statusCode"] == 401
     assert cloud.handle(event("dashboard-client", "id"))["statusCode"] == 401
 

@@ -22,14 +22,42 @@ def check(path):
         "TABLE_NAME": "artifact-check",
         "REPORTS_BUCKET": "artifact-check",
         "COGNITO_ISSUER": "https://cognito-idp.ap-southeast-1.amazonaws.com/example",
-        "COGNITO_CLIENT_ID": "example",
+        "DASHBOARD_CLIENT_ID": "example",
         "COGNITO_DOMAIN": "https://example.auth.ap-southeast-1.amazoncognito.com",
     }
-    code = """
+    if artifact.name == "ApiKeyAuthorizerFunction":
+        code = """
+import copy, hashlib, sys
+sys.path.insert(0, sys.argv[1])
+from botocore.stub import Stubber
+from infralens_backend import handler
+
+table = handler.api_key_table()
+key_id, secret, owner = 'a' * 32, 'b' * 43, 'artifact-owner'
+event = {'headers': {'authorization': f'Bearer il_key_{key_id}_{secret}'}}
+item = {
+    'owner': {'S': owner},
+    'secret_hash': {'S': hashlib.sha256(secret.encode()).hexdigest()},
+    'expires_at': {'NULL': True},
+}
+with Stubber(table.meta.client) as database:
+    for enabled in (True, False):
+        database.add_response('get_item', {'Item': copy.deepcopy(item)})
+        database.add_response('get_item', {} if enabled else {
+            'Item': {'pk': {'S': f'USER#{owner}'}, 'sk': {'S': 'ACCESS'}}
+        })
+        result = handler.api_key_authorizer(event, None)
+        assert result['isAuthorized'] is enabled
+        if enabled:
+            assert result['context']['owner'] == owner
+    database.assert_no_pending_responses()
+"""
+    else:
+        code = """
 import json,sys
 sys.path.insert(0, sys.argv[1])
 from infralens_backend.handler import api_handler
-event = {'rawPath':'/v1/config','requestContext':{'http':{'method':'GET'}}}
+event = {'rawPath':'/v1/dashboard-config','requestContext':{'http':{'method':'GET'}}}
 result = api_handler(event, None)
 assert result['statusCode'] == 200
 assert json.loads(result['body'])['upload']['formats'] == ['json']

@@ -23,6 +23,10 @@ if mode == "broken":
     sys.exit()
 if mode == "parse":
     print("time\tERROR\t[terraform parser] Error parsing PRIVATE", file=sys.stderr)
+if mode == "warning":
+    print("time\tWARN\tPRIVATE_ENGINE_WARNING", file=sys.stderr)
+if mode == "embedded":
+    print("time\tERROR\t[misconfig] Falling back to embedded checks", file=sys.stderr)
 if "config" in args:
     findings = (
         []

@@ -1,10 +1,22 @@
 # Frontend operations
 
 Published dev dashboard: **https://ddsw2osqv2rj2.cloudfront.net**.
+Security, Drift and API-key management are published together as release
+`20261105T144138Z-1f2c89a34d75` (2026-11-05). The previous release
+`20261027T100344Z-d9e3b434ac36` remains available for rollback. Real Cognito/API/S3 browser smoke
+passed on CloudFront and localhost; see the
+[Drift rollout evidence](../tasks/drift-integration-verification.md#dev-deployment-2026-10-27).
 Distribution `E3L2AM9X65Z1OP`; bucket
 `infralens-dev-frontend-frontendbucket-vhzky2sdozev` remains private.
 Real browser smoke, CDN cache/security checks and release rollback have passed;
 see [verification](../tasks/frontend-verification.md).
+
+The API-key release also updates the CloudFront SPA rewrite for `/api-keys`
+and `/api-keys/`, so direct navigation and refresh load the dashboard. Release
+checks are recorded in
+`deployments/infralens-dev-frontend-api-key-release-verification.json` and live
+browser checks in
+`deployments/infralens-dev-frontend-api-key-browser-verification.json`.
 
 The `infralens-dev-frontend` stack serves the dashboard using CloudFront's default
 HTTPS hostname, OAC and a private S3 REST origin in ap-southeast-1. It is separate
@@ -100,6 +112,25 @@ blocked; omit it to exercise both CloudFront and localhost after publication:
 backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 --local-only \
   --output infra/deployments/infralens-dev-frontend-local-verification.json
 ```
+
+To include CLI API configuration, project create/list/use and a real Security
+scan/upload using the saved defaults, supply the installed CLI executable. Trivy
+0.76.x must be available for the scan (or bundled in that CLI). The checks also
+verify the threshold gate, indexing, source display and downloaded bytes:
+
+```bash
+backend/.venv/bin/python infra/frontend_smoke.py --account 695650811791 \
+  --security-cli /absolute/path/to/infralens \
+  --output infra/deployments/infralens-dev-security-upload-browser-verification.json
+```
+
+The dashboard signs in through Cognito and creates a temporary API key for the CLI.
+The smoke test enters that key through `cloud login`, exercises project selection,
+security upload and dashboard download, then verifies local logout and server-side
+key revocation separately. CLI credentials are isolated in temporary storage.
+
+Config/reports and temporary accounts are isolated and cleaned up. This CLI PTY
+smoke runs on POSIX; native Windows storage/headless behavior is covered by CI.
 
 ```bash
 backend/.venv/bin/python infra/inventory.py \

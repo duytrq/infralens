@@ -1,4 +1,4 @@
-.PHONY: build-ApiFunction build-CleanupFunction build-AnalysisFunction
+.PHONY: build-ApiFunction build-CleanupFunction build-AnalysisFunction build-ApiKeyAuthorizerFunction
 
 build-ApiFunction:
 	uv pip install --python 3.12 --require-hashes --only-binary :all: --no-deps --target "$(ARTIFACTS_DIR)" -r requirements.txt
@@ -7,3 +7,5 @@ build-ApiFunction:
 build-CleanupFunction: build-ApiFunction
 
 build-AnalysisFunction: build-ApiFunction
+
+build-ApiKeyAuthorizerFunction: build-ApiFunction

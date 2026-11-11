@@ -2,9 +2,13 @@
 
 CLI Python để quét bảo mật mã Terraform và kiểm tra drift hạ tầng.
 
-**Security scan đã hoạt động bằng Trivy.** Drift và CloudTrail trace hiện chỉ
-validate đầu vào rồi trả mã `4`. [Backend lưu trữ cloud](backend/README.md) cung cấp
-API Cognito/S3/DynamoDB và SAM template; các lệnh cloud/upload trong CLI chưa tích hợp.
+Người dùng bắt đầu tại [hướng dẫn sử dụng hệ thống](docs/USER_GUIDE.md): đăng nhập
+dashboard, cài CLI, quét Security, kiểm tra/upload Drift và xử lý lỗi thường gặp.
+
+Security scan dùng Trivy; drift dùng Terraform refresh-only, có CloudTrail trace,
+review priority và CI gate. [Backend cloud](backend/README.md) dùng
+Cognito/S3/DynamoDB; CLI có thể upload Security/Drift, lưu API URL và quản lý project.
+Xem [hướng dẫn drift tích hợp](docs/DRIFT_INTEGRATION.md).
 
 [Dashboard frontend](frontend/README.md) cung cấp giao diện React cho project,
 lịch sử scan và findings; triển khai bằng [S3 private + CloudFront/OAC](infra/FRONTEND.md).
@@ -117,7 +121,9 @@ uv tool uninstall infralens
 
 Không có subcommand sẽ hiện help và thoát `0`. Global options `--verbose`,
 `--no-color`, `--version` đặt **trước** subcommand. Help và thông báo CLI dùng
-tiếng Anh; terminal sử dụng văn bản thuần, không ANSI.
+tiếng Anh. Security dùng màu khi stdout là terminal; `--no-color`, `NO_COLOR=1`
+hoặc `TERM=dumb` tắt màu. Redirect/pipe, file report, JSON/SARIF luôn không nhận
+ANSI do phần hiển thị thêm vào.
 
 ## Chạy bằng Docker
 
@@ -160,6 +166,12 @@ Nếu Docker Desktop báo WSL integration chưa bật, bật integration cho dis
 
 ## Security scan
 
+Security và Drift dùng chung cú pháp:
+`infralens <scan|drift> PATH --format json --output FILE --fail-on HIGH`.
+Cả hai có `--timeout` (giây, mặc định 300), `--upload`, `--project`, `--api-url`;
+upload tự chọn JSON và lưu report nếu không truyền format/output. Riêng Drift thêm `--scope` khi upload để
+phân biệt môi trường so sánh. Xem [hướng dẫn sử dụng](docs/USER_GUIDE.md).
+
 ```bash
 infralens scan ./infra
 infralens --verbose scan "./terraform project" --severity "high, critical"
@@ -177,6 +189,9 @@ infralens scan ./infra --timeout 120
 | `--output` | File báo cáo, tương đối với CWD hoặc tuyệt đối. |
 | `--fail-on` | Ngưỡng LOW,MEDIUM,HIGH,CRITICAL gồm chính mức đó và các mức cao hơn. Mặc định không thất bại vì findings. |
 | `--timeout` | Số giây nguyên dương cho scan, mặc định 300. Kiểm tra phiên bản giới hạn 10 giây; convert báo cáo giới hạn 60 giây. |
+| `--upload` | Upload native JSON đầy đủ lên dashboard; tự chọn JSON/output khi bỏ qua, cần project từ repo hoặc truyền tường minh; JSON/output tự chọn khi bỏ qua. Mặc định tắt. |
+| `--project` | Ghi đè project đã chọn; fallback `INFRALENS_PROJECT`. Chỉ dùng cùng `--upload`. |
+| `--api-url` | Ghi đè API đã lưu; fallback `INFRALENS_API_URL`. Chỉ dùng cùng `--upload`. |
 
 Trivy quét cấu hình Terraform đệ quy; InfraLens không chạy Terraform hay AWS CLI.
 Bước khám phá đầu vào bỏ qua `.git`, `.terraform` và không đi theo symlink thư mục.
@@ -187,21 +202,71 @@ Việc resolve và đánh giá module do Trivy đảm nhiệm.
 `--severity` chỉ lọc **báo cáo**. `--fail-on` đánh giá **tất cả findings chưa
 bị ignore**. Vì vậy `--severity LOW --fail-on HIGH` vẫn trả `1` nếu có
 HIGH/CRITICAL bị ẩn. UNKNOWN không vượt các ngưỡng LOW–CRITICAL.
+Riêng khi bật `--upload`, JSON local/upload luôn giữ toàn bộ findings chưa bị
+suppression; `--severity` chỉ lọc bảng terminal. Counts và threshold trên dashboard
+vì vậy khớp JSON đầy đủ. Các lệnh không upload giữ nguyên cách lọc JSON/SARIF.
 
-Bảng terminal gồm tổng số findings, số đang hiển thị, số lượng theo severity,
-rule ID, cảnh báo, resource và vị trí nguồn khi xác định được. Thứ tự hiển thị:
-CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN. Thiếu dòng thì chỉ hiện file; thiếu cả
-vị trí thì hiện `unknown location`.
+Terminal hiển thị tổng findings, số đang hiển thị và badge số lượng theo severity.
+Mỗi finding là một khối gồm severity/rule, file:dòng, resource, mô tả và source
+excerpt do Trivy cung cấp. Dòng liên quan được đánh dấu `>` và tô màu theo severity:
+CRITICAL chữ đỏ không nền, HIGH cam, MEDIUM vàng, LOW cyan, UNKNOWN tím. Nhãn severity
+vẫn hiện khi không có màu. Không còn tiêu đề `Security scan (Trivy ...)`.
+
+Thứ tự: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN. Excerpt tối đa 9 dòng quanh dòng
+liên quan đầu tiên, giữ indentation; phần bị rút gọn có dấu `...`. Nếu report
+không có code thì hiện `Source excerpt unavailable`; CLI không tự đọc file khác
+theo đường dẫn trong report. Thiếu dòng thì chỉ hiện file; thiếu cả vị trí thì
+hiện `unknown location`.
 
 | Lựa chọn | stdout | File |
 | --- | --- | --- |
-| Mặc định | Bảng kết quả | Không tạo. |
+| Mặc định | Findings kèm source excerpt | Không tạo. |
 | JSON/SARIF, không output | Chỉ dữ liệu JSON/SARIF | Không tạo. |
-| Có output | Bảng kết quả | Định dạng đã chọn. |
+| Có output | Findings kèm source excerpt | Định dạng đã chọn; `table` lưu văn bản thuần. |
 
 JSON giữ schema gốc của Trivy; SARIF dùng phiên bản 2.1.0. Mỗi lệnh chỉ quét
 một lần, sau đó chuyển đổi báo cáo từ JSON. Báo cáo có thể chứa trích đoạn
 mã nguồn do Trivy cung cấp. Báo cáo được xuất trước khi trả exit code `1`.
+
+### Upload Security lên dashboard
+
+Lưu API một lần, tạo hoặc chọn project ngay trong CLI:
+
+```bash
+infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens cloud project create my-project --name "My project"
+infralens cloud project list
+infralens cloud configure list
+
+infralens scan ./infra --format json --output ./reports/security.json \
+  --fail-on HIGH --upload
+```
+
+`create` hỏi ID/tên còn thiếu trên terminal; CI phải truyền ID và `--name`.
+`create` tự chọn project; dùng `cloud project use ID` để chuyển project đã có.
+Project có cả Security và Drift. Project được gắn với repo, không có mặc định chung
+trên máy; flag/env có thể chỉ định tường minh cho một lệnh; khi đổi API, project cũ không tự được dùng cho API khác.
+
+Quét local không cần tài khoản InfraLens. Thao tác project và upload yêu cầu
+API key. Đăng nhập dashboard bằng Cognito để tạo key. CLI dùng `cloud login` để nhập key ẩn,
+kiểm tra với server rồi lưu riêng trên máy; CI dùng `INFRALENS_API_KEY` trong secret
+environment. Repo chỉ lưu API và project. Dùng `cloud setup` để thiết lập có hướng
+dẫn, `cloud logout` để xóa key local; thu hồi key trên dashboard. Không cần AWS credentials để quét/upload Security. Sau upload, mở
+project → **Security**, chờ analysis ready để xem findings và source.
+
+Có thể chạy ngắn `infralens scan --upload` tại thư mục Terraform. Report JSON tự
+lưu vào `.infralens/reports/` với tên riêng; `cloud status` cho biết nguồn cấu hình.
+Xem [guide](docs/USER_GUIDE.md) về setup, repo config và phiên đăng nhập.
+
+Giới hạn Security JSON là **50 MiB**. Gate fail vẫn upload trước khi trả `1`.
+Upload lỗi trả `3`, thông báo nguyên nhân (mạng, đăng nhập, quyền, dịch vụ...) và
+đường dẫn report local còn giữ. Không tạo sidecar `.upload.json`, không có lệnh
+`cloud upload` hay vòng lặp retry. Nếu kết quả upload chưa được xác nhận, kiểm
+tra dashboard trước khi chạy scan mới để tránh tạo lượt trùng.
+
+Metadata chứa counts toàn bộ findings, bộ lọc terminal, ngưỡng fail, phiên bản
+Trivy, hash `.trivyignore` nếu có và mã warning an toàn. Native JSON có thể chứa
+source snippets hoặc giá trị cấu hình; chỉ upload khi bạn muốn lưu lên hệ thống.
 
 ### Checks, ignore và network
 
@@ -214,8 +279,8 @@ mã nguồn do Trivy cung cấp. Báo cáo được xuất trước khi trả ex
   Proxy/TLS và cấu hình Git/Docker thông thường vẫn được kế thừa.
 - Telemetry Trivy được tắt.
 - Trivy có thể tải remote Terraform modules. Quét local không bảo đảm offline
-  hoặc hoàn toàn không có network; mã nguồn và báo cáo không được InfraLens
-  upload lên cloud.
+  hoặc hoàn toàn không có network. InfraLens chỉ upload báo cáo lên hệ thống
+  khi bật `--upload`; mặc định quét local không gửi report lên dashboard.
 - Trivy thực hiện static analysis, không truy vấn provider để resolve giá trị
   chỉ biết từ hạ tầng thật. Chất lượng phát hiện phụ thuộc checks và khả năng
   phân tích của Trivy. Lỗi parse được phát hiện phải trả lỗi, không báo scan sạch.
@@ -246,19 +311,49 @@ và [report conversion](https://trivy.dev/docs/v0.76/guide/configuration/reporti
 ```bash
 infralens drift ./infra
 infralens drift ./infra --var-file dev.tfvars --var-file overrides.tfvars
-infralens drift ./infra --format json --output ./reports/drift.json --fail-on-drift
+infralens drift ./infra --format json --output ./reports/drift.json --fail-on ANY
 infralens drift ./infra --profile dev --region ap-southeast-1
-infralens drift ./infra --trace --lookback-days 14
+infralens drift ./infra --trace 14
+infralens drift ./infra --severity HIGH,MEDIUM --fail-on HIGH
+infralens --no-color drift ./infra
 ```
 
-Drift hiện validate đầu vào rồi trả mã `4`: thông báo engine chưa triển khai,
-hoặc CloudTrail trace chưa hỗ trợ khi có `--trace`. Lỗi đầu vào được báo trước.
-Không kiểm tra binary/credentials, gọi Terraform/AWS, đọc nội dung state/tfvars
-hoặc tạo báo cáo cho drift.
+Terminal Drift hiển thị từng resource với priority màu như Security (HIGH cam,
+MEDIUM vàng, UNKNOWN tím), code thuộc tính hiện tại có dòng `>`, và diff state
+`-` / observed `+`. Chỉ in lý do ngắn; hướng dẫn review/restore/adopt dài ở JSON.
+`--severity` lọc card terminal; JSON/upload và gate vẫn giữ toàn bộ drift.
+Trace hiện ngay trong card với candidate event, thời gian, actor và trạng thái
+matched/no events/unsupported/error. Source excerpt không được thêm vào JSON/upload.
+Xem [guide](docs/USER_GUIDE.md) để đọc output và phân biệt code hiện tại với state.
+
+Terraform ổn định >=1.1,<2 phải có trên PATH; dự án đã init, chọn workspace và
+xác thực backend/provider. InfraLens chạy refresh-only plan và đọc `resource_drift`,
+không tự init/apply hoặc ghi lại state. Docker/wheel scanner không bundle Terraform.
+`--plan-json` đọc Terraform show JSON có sẵn; freshness và coverage của file import
+chưa được xác minh. `--trace DAYS` vẫn cần AWS khi import có resource cần truy vết.
+
+```bash
+infralens drift ./infra --plan-json ./plan.json --format json
+infralens drift ./infra --fail-on HIGH,UNKNOWN
+infralens drift ./infra --format json --output ./reports/drift.json \
+  --upload --scope dev-default
+```
+
+Dùng API/project đã cấu hình như Security; `--scope` vẫn phải truyền rõ cho Drift.
+CLI dùng API key qua `cloud login`; CI dùng `INFRALENS_API_KEY`. Dashboard vẫn đăng nhập Cognito.
+Báo cáo cloud tối đa 2 MiB; source location thành đường dẫn tương đối.
+Upload lỗi thông báo nguyên nhân, giữ report local và trả `3`.
 
 `--var-file` có thể lặp lại, tính tương đối từ thư mục Terraform, giữ thứ tự.
-Format là table/json; profile/region từ chối chuỗi trắng. `--lookback-days`
-là số nguyên dương, chỉ dùng cùng trace; mặc định 7 khi trace bật.
+Format là table/json; profile/region từ chối chuỗi trắng. `--trace DAYS`
+nhận số ngày nguyên 1–90 (ví dụ `--trace 7`); mặc định không truy vấn CloudTrail.
+`--fail-on ANY` chặn mọi drift; `MEDIUM` chặn medium/high; `HIGH` chặn high;
+`UNKNOWN` chặn riêng unknown. Kết hợp bằng dấu phẩy như `HIGH,UNKNOWN`.
+Không truyền `--fail-on` thì findings không làm lệnh fail; lỗi thực thi vẫn trả `3`.
+Xem [guide chuyển lệnh cũ](docs/USER_GUIDE.md#chuyển-các-lệnh-drift-cũ).
+`boto3` được cài tự động
+cùng CLI nên không cần extra cho trace. Tên extra `aws-trace` được giữ như alias
+tương thích cho lệnh cài cũ; nó không còn bổ sung dependency riêng.
 
 ## Logging và exit code
 
@@ -269,10 +364,10 @@ Trivy, exception payload, source, credentials hoặc environment.
 | Mã | Ý nghĩa |
 | --- | --- |
 | `0` | Thành công; findings không vượt ngưỡng hoặc không đặt ngưỡng. |
-| `1` | Findings đạt/vượt fail-on. |
+| `1` | Security findings hoặc drift khớp gate đã chọn. |
 | `2` | Sai cú pháp hoặc đầu vào không hợp lệ. |
-| `3` | Thiếu/sai phiên bản Trivy, lỗi scan/convert/JSON, timeout hoặc I/O. |
-| `4` | Drift engine hoặc trace chưa triển khai. |
+| `3` | Lỗi công cụ/JSON, CloudTrail, upload, timeout hoặc I/O. |
+| `4` | Dành cho feature unavailable; drift hiện đã triển khai. |
 | `130` | Người dùng ngắt bằng Ctrl+C. |
 
 Lỗi thực thi/ghi báo cáo ưu tiên hơn trạng thái findings. Timeout và Ctrl+C

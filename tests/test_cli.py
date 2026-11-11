@@ -104,5 +104,9 @@ def test_rejects_output_collision(project, target, symlink):
     assert "--output" in result.stderr
 
 
-def test_missing_path():
-    assert runner.invoke(app, ["scan"]).exit_code == 2
+def test_default_path_is_current_directory(project, monkeypatch):
+    monkeypatch.chdir(project)
+    received = []
+    monkeypatch.setattr("infralens.cli.handle_scan", received.append)
+    assert runner.invoke(app, ["scan"]).exit_code == 0
+    assert received[0].path == project.resolve()

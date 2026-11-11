@@ -1,7 +1,7 @@
 {
   "account": "695650811791",
   "region": "ap-southeast-1",
-  "recorded_at": "2026-10-23T09:20:22.733043+00:00",
+  "recorded_at": "2026-10-27T10:03:54.330273+00:00",
   "tags": {
     "Project": "infralens",
     "Environment": "dev",
@@ -164,6 +164,22 @@
         {
           "LogicalResourceId": "ApiFunctionDownloadPermission",
           "PhysicalResourceId": "infralens-dev-ApiFunctionDownloadPermission-DILY4F8yS6S6",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionDriftComparisonPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionDriftComparisonPermission-GyS9iQW40Rlk",
+          "ResourceType": "AWS::Lambda::Permission",
+          "ResourceStatus": "CREATE_COMPLETE",
+          "tagging": "unsupported",
+          "cleanup_note": "Owned by its Lambda function"
+        },
+        {
+          "LogicalResourceId": "ApiFunctionDriftReportPermission",
+          "PhysicalResourceId": "infralens-dev-ApiFunctionDriftReportPermission-w8mGmNExRhTB",
           "ResourceType": "AWS::Lambda::Permission",
           "ResourceStatus": "CREATE_COMPLETE",
           "tagging": "unsupported",

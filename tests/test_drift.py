@@ -7,31 +7,33 @@ runner = CliRunner()
 
 
 @pytest.mark.parametrize(
-    "extra, message",
+    "extra",
     [
-        ([], "Drift engine is not implemented"),
-        (["--format", "json", "--fail-on-drift"], "Drift engine is not implemented"),
-        (["--trace"], "CloudTrail trace is not supported"),
-        (["--trace", "--lookback-days", "14"], "CloudTrail trace is not supported"),
+        ["--trace", "7"],
+        ["--trace", "14"],
     ],
 )
-def test_valid_drift_reports_missing_feature(project, extra, message):
+def test_clean_trace_requires_no_aws_calls(project, extra, fake_terraform, monkeypatch):
+    def forbidden(*args):
+        pytest.fail("Clean drift must not initialize an AWS session")
+
+    monkeypatch.setattr("infralens.cloudtrail._session", forbidden)
     result = runner.invoke(app, ["drift", str(project), *extra])
-    assert result.exit_code == 4
-    assert message in result.stderr
-    assert result.stdout == ""
+    assert result.exit_code == 0
+    assert "CloudTrail trace: not_needed" in result.stdout
 
 
 @pytest.mark.parametrize(
     "extra, parameter",
     [
-        (["--lookback-days", "7"], "--lookback-days"),
-        (["--trace", "--lookback-days", "0"], "--lookback-days"),
-        (["--trace", "--lookback-days", "-1"], "--lookback-days"),
-        (["--trace", "--lookback-days", "1.5"], "--lookback-days"),
+        (["--trace"], "--trace"),
+        (["--trace", "0"], "--trace"),
+        (["--trace", "-1"], "--trace"),
+        (["--trace", "1.5"], "--trace"),
+        (["--trace", "91"], "--trace"),
         (["--profile", "  "], "--profile"),
         (["--region", ""], "--region"),
-        (["--trace", "--var-file", "missing.tfvars"], "--var-file"),
+        (["--trace", "7", "--var-file", "missing.tfvars"], "--var-file"),
         (["--format", "sarif"], "--format"),
         (["--unknown"], "--unknown"),
     ],
@@ -74,8 +76,9 @@ def test_drift_options_and_relative_paths(project, tmp_path, monkeypatch, trace,
             " dev ",
             "--region",
             " us-east-1 ",
-            "--fail-on-drift",
-            *(["--trace"] if trace else []),
+            "--fail-on",
+            "ANY",
+            *(["--trace", "7"] if trace else []),
         ],
     )
     assert result.exit_code == 0

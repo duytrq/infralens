@@ -190,7 +190,14 @@ class Runs:
                 ChecksumMode="ENABLED",
             )
             with response["Body"] as stream:
-                validate_report(stream)
+                if data["run_type"] == "drift":
+                    from infralens_backend.drift import (
+                        validate_report as validate_drift,
+                    )
+
+                    validate_drift(stream, data)
+                else:
+                    validate_report(stream)
         except ClientError as exc:
             if exc.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
                 raise conflict("Report was deleted while completing upload.") from None
@@ -211,7 +218,7 @@ class Runs:
         item["revision"] = revision + 1
         data["upload_status"] = "ready"
         data["uploaded_at"] = v.iso(self.now())
-        if self.analysis is not None:
+        if self.analysis is not None and data["run_type"] == "security_scan":
             data["analysis"] = self.analysis.pending()
             self.analysis.ensure_job(item)
         item["history_pk"] = item["pk"]
@@ -237,13 +244,41 @@ class Runs:
         return data
 
     def history(self, owner, event):
-        params = v.query(event, ["project_id", "from", "to", "limit", "cursor"])
+        params = v.query(
+            event,
+            [
+                "project_id",
+                "from",
+                "to",
+                "limit",
+                "cursor",
+                "run_type",
+                "scope",
+                "gate_status",
+            ],
+        )
+        run_type = params.get("run_type", "security_scan")
+        if run_type not in ("security_scan", "drift"):
+            raise v.invalid("Unsupported run type.")
+        if run_type != "drift" and ("scope" in params or "gate_status" in params):
+            raise v.invalid("Drift filters require run_type=drift.")
+        drift_scope = v.project_id(params["scope"]) if "scope" in params else None
+        gate = params.get("gate_status")
+        if gate is not None and gate not in (
+            "disabled",
+            "passed",
+            "failed",
+            "incomplete",
+        ):
+            raise v.invalid("Unsupported gate status.")
         project = v.project_id(params["project_id"]) if "project_id" in params else None
         start = v.iso(v.timestamp(params.get("from", "1970-01-01T00:00:00Z")))
         finish = v.iso(v.timestamp(params.get("to", "9999-12-31T23:59:59.999999Z")))
         if start > finish:
             raise v.invalid("'from' must not be later than 'to'.")
         scope = {"owner": owner, "project_id": project, "from": start, "to": finish}
+        if run_type != "security_scan":
+            scope.update(run_type=run_type, scope=drift_scope, gate_status=gate)
         index = "ProjectHistoryIndex" if project else "HistoryIndex"
         attribute = "project_pk" if project else "history_pk"
         partition = f"USER#{owner}" + (f"#PROJECT#{project}" if project else "")
@@ -282,6 +317,9 @@ class Runs:
                 and item["generation"] == entry["generation"]
                 and item.get(attribute) == entry.get(attribute)
                 and item.get("history_sk") == entry.get("history_sk")
+                and item["data"]["run_type"] == run_type
+                and (drift_scope is None or item["data"].get("scope") == drift_scope)
+                and (gate is None or item["data"]["result"].get("gate_status") == gate)
             ):
                 items.append(item["data"])
         return {

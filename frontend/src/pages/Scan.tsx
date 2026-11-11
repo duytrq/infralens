@@ -14,6 +14,7 @@ import {
   Time,
 } from "../components/ui";
 import { FindingsList } from "./FindingsList";
+import { Drift } from "./Drift";
 import { ScanActions } from "./ScanActions";
 import { useRun } from "./useRun";
 import { analysisPolling } from "./scan-state";
@@ -47,6 +48,16 @@ export function Scan() {
       />
     ) : (
       <Loading label="Loading scan" />
+    );
+  if (run.run_type === "drift")
+    return (
+      <Drift
+        run={run}
+        refresh={() => {
+          void query.refetch();
+        }}
+        refreshing={query.isFetching}
+      />
     );
   const analysis = run.analysis;
   const ready = run.upload_status === "ready" && analysis?.status === "ready";
