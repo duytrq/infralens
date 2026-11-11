@@ -24,3 +24,17 @@ frontend/verification/
 
 .infralens/reports/
 tmp/
+
+# Local AWS CLI installer and its extracted files.
+/awscliv2.zip
+/aws/
+
+# Local scan output, scanner cache and scratch files.
+/reports/
+.infralens-cache/
+/temp/
+*.tfplan
+
+# Operating-system metadata.
+.DS_Store
+Thumbs.db
