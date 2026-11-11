@@ -109,6 +109,16 @@ def verify(environment, reserve):
     ]
     assert key_authorizer["type"] == "request"
     assert key_authorizer["authorizerResultTtlInSeconds"] == 0
+    authorizer_function = resources["ApiKeyAuthorizerFunction"]["Properties"]
+    assert "COGNITO_USER_POOL_ID" not in authorizer_function["Environment"]["Variables"]
+    authorizer_statements = resources["ApiKeyAuthorizerFunctionRole"]["Properties"][
+        "Policies"
+    ][0]["PolicyDocument"]["Statement"]
+    assert {
+        "Effect": "Allow",
+        "Action": ["cognito-idp:AdminGetUser"],
+        "Resource": {"Fn::GetAtt": ["UserPool", "Arn"]},
+    } not in authorizer_statements
     assert jwt["jwtConfiguration"]["audience"] == [
         {"Ref": "DashboardClient"},
     ]

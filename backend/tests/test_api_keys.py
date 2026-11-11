@@ -1,8 +1,36 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
+import boto3
 import pytest
+from botocore.exceptions import ClientError
 
-from infralens_backend import api_keys
+from infralens_backend import api_keys, handler
+
+
+@pytest.fixture
+def authorizer(cloud, monkeypatch):
+    cognito = boto3.client("cognito-idp")
+    pool = cognito.create_user_pool(
+        PoolName="api-key-owners", UsernameAttributes=["email"]
+    )["UserPool"]["Id"]
+    username = "owner@example.com"
+    user = cognito.admin_create_user(
+        UserPoolId=pool, Username=username, MessageAction="SUPPRESS"
+    )["User"]
+    owner = next(a["Value"] for a in user["Attributes"] if a["Name"] == "sub")
+    cloud.now = lambda: datetime.now(UTC)
+    monkeypatch.setenv("COGNITO_USER_POOL_ID", pool)
+    monkeypatch.setattr(handler, "api_key_table", lambda: cloud.table)
+
+    def call(key):
+        return handler.api_key_authorizer(
+            {"headers": {"authorization": "Bearer " + key}}, None
+        )
+
+    return SimpleNamespace(
+        cognito=cognito, pool=pool, username=username, owner=owner, call=call
+    )
 
 
 @pytest.mark.parametrize("days", [1, 3, 15, 30, None])
@@ -58,22 +86,39 @@ def test_api_key_context_only_accepted_on_cli_routes(cloud, api):
     assert "demo" not in cloud.handle(event)["body"]
 
 
-def test_api_key_authorizer_handler(cloud, api, monkeypatch):
-    from infralens_backend.handler import api_key_authorizer, api_key_table
-
-    monkeypatch.setenv("TABLE_NAME", cloud.table.name)
-    api_key_table.cache_clear()
+def test_api_key_authorizer_handler(api, authorizer):
     status, created = api(
-        "POST", "/v1/api-keys", {"name": "CI", "expires_in_days": None}
+        "POST",
+        "/v1/api-keys",
+        {"name": "CI", "expires_in_days": None},
+        user=authorizer.owner,
     )
     assert status == 201
-    event = {"headers": {"authorization": "Bearer " + created["api_key"]}}
-    assert api_key_authorizer(event, None) == {
+    assert authorizer.call(created["api_key"]) == {
         "isAuthorized": True,
-        "context": {"owner": "user-a", "auth_type": "api_key"},
+        "context": {"owner": authorizer.owner, "auth_type": "api_key"},
     }
-    assert api("DELETE", f"/v1/api-keys/{created['key_id']}")[0] == 204
-    assert api_key_authorizer(event, None) == {"isAuthorized": False}
+    assert (
+        api("DELETE", f"/v1/api-keys/{created['key_id']}", user=authorizer.owner)[0]
+        == 204
+    )
+    assert authorizer.call(created["api_key"]) == {"isAuthorized": False}
+
+
+def test_dynamodb_error_does_not_grant_access(cloud, api, authorizer, monkeypatch):
+    key = api(
+        "POST",
+        "/v1/api-keys",
+        {"name": "CI", "expires_in_days": None},
+        user=authorizer.owner,
+    )[1]["api_key"]
+
+    def unavailable(**kwargs):
+        raise ClientError({"Error": {"Code": "InternalServerError"}}, "GetItem")
+
+    monkeypatch.setattr(cloud.table, "get_item", unavailable)
+    with pytest.raises(RuntimeError, match="API key verification is unavailable"):
+        authorizer.call(key)
 
 
 def test_invalid_key_requests(cloud, api):

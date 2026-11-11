@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Operator-managed account offboarding
+
+- Replace per-request Cognito owner lookup with a strongly consistent DynamoDB
+  access tombstone check; remove Cognito permissions from the API-key authorizer.
+- Add IAM-operated `backend/scripts/manage_user.py` with dry-run/account/stack/sub
+  checks. Block account access before disabling the user and revoking all keys;
+  delete Cognito users only through this workflow. Old web sessions cannot create
+  replacement keys. Report history remains retained separately.
+- Keep artifact verification for the API-key authorizer, including blocked owners.
+
 ## Unreleased — CLI authentication migration
 
 - CLI cloud operations now require API keys. Run `cloud login` to paste a hidden

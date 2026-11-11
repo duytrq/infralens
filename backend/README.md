@@ -32,6 +32,13 @@ Backend không chạy Trivy và không cần nhận AWS credentials của ngư�
   ngày hết hạn và chủ sở hữu trong DynamoDB. Cache authorizer tắt; key bị thu hồi
   không được chấp nhận ở lần xác thực tiếp theo. Tạo, liệt kê, thu hồi key chỉ
   dùng Cognito trên `/v1/api-keys`. Secret chỉ trả về một lần khi tạo.
+- Authorizer xác minh key và trạng thái khóa nội bộ trong DynamoDB, không gọi
+  Cognito trên từng request. Operator khóa/xóa tài khoản bằng
+  [lệnh quản trị IAM](USER_ADMIN.md): ghi marker khóa trước, thu hồi mọi key,
+  rồi disable/delete Cognito user. Marker cũng chặn phiên JWT cũ và việc tạo key
+  mới, kể cả khi một bước Cognito lỗi. Request đã chạy và URL S3 đã cấp vẫn giữ
+  thời hạn ban đầu. Không disable/delete trực tiếp trong Cognito Console vì
+  thao tác đó không đồng bộ marker/key của InfraLens.
 - Dashboard dùng Cognito Lite, public client không secret, OAuth code grant,
   callback `<DashboardOrigin>/auth/callback`, PKCE S256 và kiểm tra state.
 - Admin tạo tài khoản; chưa mở đăng ký công khai. Không dùng Cognito Identity Pool.

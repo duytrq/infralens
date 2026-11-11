@@ -49,13 +49,22 @@ def create(table, owner, payload, now):
     table.meta.client.transact_write_items(
         TransactItems=[
             {
-                "Put": {
+                "ConditionCheck": {
                     "TableName": table.name,
-                    "Item": item,
+                    "Key": {"pk": f"USER#{owner}", "sk": "ACCESS"},
                     "ConditionExpression": "attribute_not_exists(pk)",
                 }
-            }
-            for item in (lookup, listed)
+            },
+            *[
+                {
+                    "Put": {
+                        "TableName": table.name,
+                        "Item": item,
+                        "ConditionExpression": "attribute_not_exists(pk)",
+                    }
+                }
+                for item in (lookup, listed)
+            ],
         ]
     )
     return {**metadata, "api_key": f"il_key_{key_id}_{secret}"}
@@ -137,4 +146,13 @@ def authenticate(table, credential, now=None):
                 return None
         except (ApiError, TypeError, ValueError):
             return None
-    return owner
+    return None if owner_is_blocked(table, owner) else owner
+
+
+def owner_is_blocked(table, owner):
+    """An operator-created tombstone blocks requests and key creation permanently."""
+    return bool(
+        table.get_item(
+            Key={"pk": f"USER#{owner}", "sk": "ACCESS"}, ConsistentRead=True
+        ).get("Item")
+    )
