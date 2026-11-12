@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-11-12T19:15:18.219602+00:00",
+  "release": "20261112T191236Z-54b376a2d331",
+  "dashboard": "https://ddsw2osqv2rj2.cloudfront.net",
+  "unit_tests": 20,
+  "playwright_tests": 42,
+  "cloudfront_readback": true,
+  "browser_check": {
+    "mode": "deployed bundle with read-only live metadata replay and synthetic session",
+    "commit": "aaaeb6d07b3429459abb8df8944f123c1b64c525",
+    "security_reports": 1,
+    "drift_reports": 1,
+    "page_errors": 0
+  },
+  "backend_changed": false,
+  "snapshot_includes_credentials": false
+}

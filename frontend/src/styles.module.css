@@ -487,6 +487,7 @@
   padding-bottom: 1.5rem;
 }
 .projectMeta > code {
+  color: var(--text);
   background: #e9eff1;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;

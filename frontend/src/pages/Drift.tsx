@@ -1,3 +1,4 @@
+import { RunSource } from "../components/RunSource";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DriftReport, DriftRun } from "../api/types";
 import { useSession } from "../auth/AuthProvider";
@@ -87,6 +88,7 @@ export function Drift({
           refreshing={refreshing || query.isFetching}
         />
       </div>
+      <RunSource run={run} />
       {run.upload_status !== "ready" ? (
         <EmptyState title="Report upload is not complete">
           The drift report becomes available after the CLI finishes its upload.

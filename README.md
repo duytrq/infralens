@@ -125,6 +125,14 @@ mở thẳng báo cáo. Khi chạy trên GitHub Actions, link cũng xuất hiệ
 Summary, kể cả khi gate fail. Địa chỉ dashboard được lấy từ API đang dùng;
 không cần cấu hình thêm URL. Nếu không lấy được link, kết quả upload/gate vẫn
 được giữ nguyên. Có thể mở project → **Security/Drift** để tìm run và tải JSON.
+
+Mở project → **By commit** để xem Security và Drift của cùng commit/thư mục quét.
+Mỗi lượt vẫn giữ thời gian, scope và gate riêng vì cùng code có thể quan sát các
+trạng thái AWS khác nhau. Các lượt có thay đổi chưa commit được giữ riêng theo
+run; báo cáo cũ hoặc không có Git nằm trong **Without Git metadata**. Nhóm chỉ
+bao gồm lịch sử đã tải, dùng **Load more reports** để tìm thêm các lượt cũ.
+Trang chi tiết của cả Security và Drift hiển thị SHA đầy đủ, nhánh và trạng thái
+checkout ở phần **Source revision** gần đầu trang.
 Security cần chờ analysis ready; CloudTrail xuất hiện nếu lần chạy đã bật trace.
 Giới hạn report: Security **50 MiB**, Drift **2 MiB**. CLI hiện chưa có lệnh
 liệt kê/tải lại báo cáo từ cloud. `cloud status` chỉ xem cấu hình; `cloud logout`
