@@ -1,11 +1,19 @@
 # Frontend operations
 
 Published dev dashboard: **https://ddsw2osqv2rj2.cloudfront.net**.
-Security, Drift and API-key management are published together as release
-`20261105T144138Z-1f2c89a34d75` (2026-11-05). The previous release
-`20261027T100344Z-d9e3b434ac36` remains available for rollback. Real Cognito/API/S3 browser smoke
-passed on CloudFront and localhost; see the
-[Drift rollout evidence](../tasks/drift-integration-verification.md#dev-deployment-2026-10-27).
+Security, Drift, API-key management and commit-grouped report history are published
+as release `20261112T191236Z-54b376a2d331`. Previous release
+`20261105T144138Z-1f2c89a34d75` remains available for rollback.
+The commit view keeps all clean runs for the same project, SHA and source directory;
+uncommitted and missing-Git runs remain separate. Both report detail pages show
+full source revisions near the top. Grouping covers loaded pages, with independent
+Security/Drift cursors and an explicit load-more control; no aggregate gate is inferred.
+Release checks passed: lint/typecheck, 20 unit tests, 42 Playwright E2E tests,
+dependency audit at the existing high threshold and production build. CloudFront
+HTML/assets were read back. An isolated browser also rendered the deployed bundle
+with read-only real API metadata replay (synthetic session, no live login): matching
+commit aaaeb6d showed one Security and one Drift report. This verifies presentation,
+not a new Cognito authentication smoke. No backend/schema migration was required.
 Distribution `E3L2AM9X65Z1OP`; bucket
 `infralens-dev-frontend-frontendbucket-vhzky2sdozev` remains private.
 Real browser smoke, CDN cache/security checks and release rollback have passed;
