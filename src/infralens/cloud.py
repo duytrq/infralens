@@ -78,7 +78,7 @@ def build_manifest(report, payload, options, started, finished):
         "started_at": started.isoformat(),
         "finished_at": finished.isoformat(),
         "duration_ms": max(0, int((finished - started).total_seconds() * 1000)),
-        "source": {"relative_path": "."},
+        "source": options.upload.source or {"relative_path": "."},
         "tool": {
             "infralens_version": version("infralens"),
             "engine": "terraform",
@@ -152,7 +152,7 @@ def upload_scan(
         "started_at": started.isoformat(),
         "finished_at": finished.isoformat(),
         "duration_ms": max(0, int((finished - started).total_seconds() * 1000)),
-        "source": {"relative_path": "."},
+        "source": options.upload.source or {"relative_path": "."},
         "tool": {
             "infralens_version": version("infralens"),
             "engine": "trivy",
@@ -283,7 +283,39 @@ def upload_report(metadata, payload, api_url):
             ) from None
     kind = "drift run" if run_type == "drift" else "security scan"
     typer.echo(f"Uploaded {kind} {metadata['run_id']}.", err=True)
+    publish_report_link(api_url, metadata)
     if run_type == "security_scan":
         typer.echo(
             "Upload: ready; dashboard analysis may still be processing.", err=True
         )
+
+
+def publish_report_link(api_url, metadata):
+    """Discover the deployed dashboard after confirmed upload, without credentials."""
+    import os
+    from uuid import UUID
+
+    try:
+        _, body = http("GET", api_url + "/v1/dashboard-config", timeout=5)
+        address = json.loads(body)["auth"]["logout_url"]
+        if not isinstance(address, str) or any(
+            char.isspace() or ord(char) < 32 or char in '<>"`' for char in address
+        ):
+            raise ValueError
+        dashboard = origin(address)
+        run = str(UUID(metadata["run_id"]))
+    except (ExecutionError, InvalidInput, KeyError, TypeError, ValueError):
+        typer.echo(
+            "Dashboard link unavailable; open the dashboard run history.", err=True
+        )
+        return
+    url = f"{dashboard}/runs/{run}"
+    typer.echo(f"Dashboard: {url}", err=True)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        label = "Drift" if metadata["run_type"] == "drift" else "Security"
+        try:
+            with open(summary, "a", encoding="utf-8") as stream:
+                stream.write(f"\n[Open {label} report](<{url}>)\n\nRun: `{run}`\n")
+        except OSError:
+            typer.echo("Could not add the dashboard link to CI summary.", err=True)

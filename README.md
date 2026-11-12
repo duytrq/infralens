@@ -114,8 +114,17 @@ infralens drift ./infra --upload --scope dev-default --trace 7
   trong thư mục gọi lệnh; thêm đường dẫn này vào `.gitignore`. Gate fail vẫn upload.
 - Mỗi lần chạy tạo run/báo cáo mới, kể cả kết quả giống nhau. Upload lỗi giữ file
   local; kiểm tra dashboard trước khi chạy lại nếu chưa rõ server đã nhận hay chưa.
+- Với thư mục trong Git repo, CLI gửi commit, nhánh, trạng thái thay đổi chưa commit
+  và đường dẫn tương đối từ repo root. Metadata được đọc trước khi scan tạo report.
+  Detached HEAD có commit nhưng không có tên nhánh; repo chưa có commit hoặc máy
+  thiếu Git vẫn scan/upload được, nhưng không có Git metadata. Báo cáo cũ không
+  tự bổ sung thông tin này; cần tạo một lượt scan mới bằng CLI đã cập nhật.
 
-Mở project → **Security/Drift** trên dashboard để xem chi tiết và tải JSON.
+Sau khi upload được xác nhận, CLI in `Dashboard: https://.../runs/<run-id>` để
+mở thẳng báo cáo. Khi chạy trên GitHub Actions, link cũng xuất hiện trong job
+Summary, kể cả khi gate fail. Địa chỉ dashboard được lấy từ API đang dùng;
+không cần cấu hình thêm URL. Nếu không lấy được link, kết quả upload/gate vẫn
+được giữ nguyên. Có thể mở project → **Security/Drift** để tìm run và tải JSON.
 Security cần chờ analysis ready; CloudTrail xuất hiện nếu lần chạy đã bật trace.
 Giới hạn report: Security **50 MiB**, Drift **2 MiB**. CLI hiện chưa có lệnh
 liệt kê/tải lại báo cáo từ cloud. `cloud status` chỉ xem cấu hình; `cloud logout`

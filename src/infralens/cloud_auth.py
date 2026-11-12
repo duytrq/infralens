@@ -35,7 +35,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def http(method, url, *, data=None, headers=None, statuses=(200,)):
+def http(method, url, *, data=None, headers=None, statuses=(200,), timeout=30):
     try:
         parsed = urllib.parse.urlsplit(url)
         if (
@@ -54,7 +54,7 @@ def http(method, url, *, data=None, headers=None, statuses=(200,)):
     opener = urllib.request.build_opener(NoRedirect)
     try:
         try:
-            response = opener.open(request, timeout=30)
+            response = opener.open(request, timeout=timeout)
         except urllib.error.HTTPError as exc:
             response = exc
         with response:

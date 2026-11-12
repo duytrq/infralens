@@ -26,6 +26,7 @@ class UploadOptions:
     api_url: str
     project: str
     scope: str | None = None
+    source: dict | None = None
 
 
 @dataclass(frozen=True)
