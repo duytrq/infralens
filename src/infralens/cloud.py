@@ -78,7 +78,7 @@ def build_manifest(report, payload, options, started, finished):
         "started_at": started.isoformat(),
         "finished_at": finished.isoformat(),
         "duration_ms": max(0, int((finished - started).total_seconds() * 1000)),
-        "source": {"relative_path": "."},
+        "source": options.upload.source or {"relative_path": "."},
         "tool": {
             "infralens_version": version("infralens"),
             "engine": "terraform",
@@ -152,7 +152,7 @@ def upload_scan(
         "started_at": started.isoformat(),
         "finished_at": finished.isoformat(),
         "duration_ms": max(0, int((finished - started).total_seconds() * 1000)),
-        "source": {"relative_path": "."},
+        "source": options.upload.source or {"relative_path": "."},
         "tool": {
             "infralens_version": version("infralens"),
             "engine": "trivy",

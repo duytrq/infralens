@@ -307,6 +307,7 @@ def _upload_options(
         raise InvalidInput("--upload requires --format json and --output.")
     from infralens.cloud import identifier
     from infralens.cloud_config import resolve
+    from infralens.git_source import source_metadata
 
     api_url, project = resolve(api_url, project, root=root)
     if require_scope and scope is None:
@@ -323,6 +324,7 @@ def _upload_options(
         api_url,
         project,
         scope,
+        source_metadata(root or Path.cwd()),
     )
     return options
 
