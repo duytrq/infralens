@@ -17,6 +17,7 @@ test("projects link to history, exact date filters survive reload", async ({
   await expect(
     page.getByRole("heading", { name: project.name, exact: true }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "Security", exact: true }).click();
   await page.getByLabel("Started from").fill("2026-10-20T10:00");
   await page.getByRole("button", { name: "Apply filters" }).click();
   await expect(page).toHaveURL(/from=/);

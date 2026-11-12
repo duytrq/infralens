@@ -106,7 +106,7 @@ export function Projects() {
                         <td>
                           <Link
                             className={styles.projectName}
-                            to={`/projects/${project.project_id}`}
+                            to={`/projects/${project.project_id}?view=commits`}
                           >
                             <span className={styles.folderIcon}>
                               <Folder size={18} aria-hidden="true" />
@@ -166,7 +166,7 @@ export function Projects() {
                         </td>
                         <td>
                           <Link
-                            to={`/projects/${project.project_id}`}
+                            to={`/projects/${project.project_id}?view=commits`}
                             className={styles.iconButton}
                             aria-label={`Open ${project.name}`}
                           >

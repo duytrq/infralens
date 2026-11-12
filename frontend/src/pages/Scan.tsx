@@ -1,3 +1,4 @@
+import { RunSource } from "../components/RunSource";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Clock3, Info, Layers3 } from "lucide-react";
 import { useParams } from "react-router-dom";
@@ -98,6 +99,7 @@ export function Scan() {
           refreshing={query.isFetching}
         />
       </div>
+      <RunSource run={run} />
       {query.error && <ErrorState error={query.error} retry={refresh} />}
       {run.upload_status === "ready" && (
         <Counts
@@ -175,19 +177,6 @@ export function Scan() {
             <dt>Source</dt>
             <dd>
               <code>{run.source.relative_path}</code>
-            </dd>
-          </div>
-          <div>
-            <dt>Branch</dt>
-            <dd>
-              {run.source.git?.branch ?? "Not provided"}
-              {run.source.git?.dirty ? " · uncommitted changes" : ""}
-            </dd>
-          </div>
-          <div>
-            <dt>Commit</dt>
-            <dd>
-              <code>{run.source.git?.commit ?? "Not provided"}</code>
             </dd>
           </div>
           <div>
