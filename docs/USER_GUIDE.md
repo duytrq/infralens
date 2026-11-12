@@ -408,14 +408,11 @@ token, AWS credentials, raw state/tfvars hoặc URL download đã ký.
 
 ## 7. CI và demo
 
-Runner sạch không có phiên đăng nhập máy cá nhân. Trong đợt này CI vẫn dùng access
-token được cấp bên ngoài, có hạn 15 phút; chưa có API key hoặc tự cấp token dài hạn.
-Runner có phiên đã lưu có thể tự gia hạn nhưng không mở browser.
-
-CI đặt `INFRALENS_API_URL`, `INFRALENS_PROJECT` qua environment và
-`INFRALENS_API_KEY` qua secret environment. Sau đó dùng cùng lệnh upload ở
-mục 3/4, không cần browser hoặc cấu hình máy người dùng. Token hết hạn phải được
-cấp lại; CLI không tự lưu/gia hạn token cho pipeline.
+Runner cài CLI/scanner và dùng API key, không cần phiên đăng nhập máy cá nhân.
+CI đặt `INFRALENS_API_URL`, `INFRALENS_PROJECT` qua environment (hoặc dùng binding
+đã commit) và `INFRALENS_API_KEY` qua secret environment. Sau đó dùng cùng lệnh
+upload ở mục 3/4, không cần browser hoặc `cloud login` tương tác. Khi key hết hạn
+hoặc bị thu hồi, cập nhật secret CI. CLI không tự cấp/gia hạn API key.
 
 Demo Drift không dùng AWS, chạy tại checkout InfraLens:
 
