@@ -111,7 +111,8 @@ def test_upload_sends_token_only_to_api_and_confirms_ready(
     monkeypatch.setattr(cloud, "http", http)
     monkeypatch.setattr(cloud, "access_token", lambda *args: "PRIVATE_TOKEN")
     cloud.upload_report(metadata, payload, API)
-    assert [call[0] for call in calls] == ["POST", "PUT", "POST"]
+    assert [call[0] for call in calls] == ["POST", "PUT", "POST", "GET"]
+    assert "headers" not in calls[-1][2]
     assert calls[1][2]["data"] == path.read_bytes()
     assert "Authorization" not in calls[1][2]["headers"]
     assert calls[0][2]["headers"]["Authorization"] == "Bearer PRIVATE_TOKEN"
@@ -336,3 +337,103 @@ def test_noninteractive_auth_requires_explicit_token_and_never_prints_it(
     with pytest.raises(ExecutionError):
         cloud_auth.access_token(API)
     assert "PRIVATE_TOKEN" not in capsys.readouterr().out
+
+
+def test_report_link_uses_api_dashboard_and_writes_ci_summary(
+    monkeypatch, tmp_path, capsys
+):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    run = "9e418f01-0d59-4174-8815-a968edc032a3"
+    calls = []
+
+    def http(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return 200, b'{"auth":{"logout_url":"https://dashboard.example.com/"}}'
+
+    monkeypatch.setattr(cloud, "http", http)
+    cloud.publish_report_link(API, {"run_id": run, "run_type": "security_scan"})
+    url = f"https://dashboard.example.com/runs/{run}"
+    assert f"Dashboard: {url}" in capsys.readouterr().err
+    assert f"[Open Security report](<{url}>)" in summary.read_text()
+    assert calls == [("GET", API + "/v1/dashboard-config", {"timeout": 5})]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"{}",
+        b"null",
+        b"invalid",
+        b'{"auth":{"logout_url":"http://dashboard.example.com/"}}',
+        b'{"auth":{"logout_url":"https://dashboard.example.com/?token=secret"}}',
+        b'{"auth":{"logout_url":"https://bad.example.com/\\nInjected"}}',
+    ],
+)
+def test_unavailable_dashboard_does_not_fail_confirmed_upload(
+    monkeypatch, capsys, body
+):
+    monkeypatch.setattr(cloud, "http", lambda *args, **kwargs: (200, body))
+    cloud.publish_report_link(
+        API, {"run_id": "9e418f01-0d59-4174-8815-a968edc032a3", "run_type": "drift"}
+    )
+    assert "Dashboard link unavailable" in capsys.readouterr().err
+
+
+def test_dashboard_network_and_summary_errors_are_nonfatal(
+    monkeypatch, tmp_path, capsys
+):
+    def fail(*args, **kwargs):
+        raise ExecutionError("private network detail")
+
+    monkeypatch.setattr(cloud, "http", fail)
+    metadata = {"run_id": "9e418f01-0d59-4174-8815-a968edc032a3", "run_type": "drift"}
+    cloud.publish_report_link(API, metadata)
+    assert "private" not in capsys.readouterr().err
+    monkeypatch.setattr(
+        cloud,
+        "http",
+        lambda *a, **k: (
+            200,
+            b'{"auth":{"logout_url":"https://dashboard.example.com/"}}',
+        ),
+    )
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path))
+    cloud.publish_report_link(API, metadata)
+    assert "Dashboard: https://dashboard.example.com/runs/" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("kind", ["scan", "drift"])
+@pytest.mark.parametrize("confirmed", [True, False])
+def test_cli_report_link_and_summary_follow_upload_confirmation_even_when_gate_fails(
+    kind, confirmed, project, tmp_path, fake_trivy, monkeypatch
+):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setattr(cloud, "access_token", lambda *_: "PRIVATE_TOKEN")
+    captured = {}
+
+    def http(method, url, **kwargs):
+        if url.endswith("/dashboard-config"):
+            assert confirmed and "headers" not in kwargs
+            return 200, b'{"auth":{"logout_url":"https://dashboard.example.com/"}}'
+        captured.update(json.loads(kwargs["data"]))
+        return 201, json.dumps(
+            {
+                "run": {
+                    "run_id": captured["run_id"],
+                    "upload_status": "ready" if confirmed else "pending",
+                },
+                "upload": None,
+            }
+        ).encode()
+
+    monkeypatch.setattr(cloud, "http", http)
+    result = runner.invoke(app, arguments(kind, project, tmp_path / "report.json"))
+    assert result.exit_code == (1 if confirmed else 3), result.output
+    if confirmed:
+        url = "https://dashboard.example.com/runs/" + captured["run_id"]
+        assert url in result.stderr and url in summary.read_text()
+    else:
+        assert "Dashboard:" not in result.stderr and not summary.exists()
+    assert "PRIVATE_TOKEN" not in result.output

@@ -115,7 +115,11 @@ infralens drift ./infra --upload --scope dev-default --trace 7
 - Mỗi lần chạy tạo run/báo cáo mới, kể cả kết quả giống nhau. Upload lỗi giữ file
   local; kiểm tra dashboard trước khi chạy lại nếu chưa rõ server đã nhận hay chưa.
 
-Mở project → **Security/Drift** trên dashboard để xem chi tiết và tải JSON.
+Sau khi upload được xác nhận, CLI in `Dashboard: https://.../runs/<run-id>` để
+mở thẳng báo cáo. Khi chạy trên GitHub Actions, link cũng xuất hiện trong job
+Summary, kể cả khi gate fail. Địa chỉ dashboard được lấy từ API đang dùng;
+không cần cấu hình thêm URL. Nếu không lấy được link, kết quả upload/gate vẫn
+được giữ nguyên. Có thể mở project → **Security/Drift** để tìm run và tải JSON.
 Security cần chờ analysis ready; CloudTrail xuất hiện nếu lần chạy đã bật trace.
 Giới hạn report: Security **50 MiB**, Drift **2 MiB**. CLI hiện chưa có lệnh
 liệt kê/tải lại báo cáo từ cloud. `cloud status` chỉ xem cấu hình; `cloud logout`
