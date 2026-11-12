@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infralens"
+version = "0.1.0"
+description = "Terraform security scanning with Trivy and a CLI foundation for drift detection"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "boto3>=1.40,<2",
+    "python-hcl2>=8.1.4,<9",
+    "pywin32>=310,<400 ; sys_platform == 'win32'",
+    "tomli>=2,<3 ; python_full_version < '3.11'",
+    "typer>=0.24,<1",
+]
+
+[project.scripts]
+infralens = "infralens.cli:main"
+
+[project.optional-dependencies]
+# Compatibility for existing install/sync commands; the SDK is now always installed.
+aws-trace = []
+
+[dependency-groups]
+dev = [
+    "distlib>=0.4,<1",
+    "jsonschema>=4,<5",
+    "pytest>=8,<10",
+    "ruff>=0.14,<1",
+]
+
+[tool.hatch.build.hooks.custom]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src", "/scripts", "/vendor", "/tests", "/hatch_build.py",
+    "/pyproject.toml", "/uv.lock", "/README.md", "/CHANGELOG.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: requires a real Trivy 0.76.x binary",
+    "network: integration checks that download remote Terraform modules",
+    "docker: requires a working Docker daemon and a built InfraLens image",
+    "terraform: requires a real Terraform >=1.1,<2 executable",
+]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

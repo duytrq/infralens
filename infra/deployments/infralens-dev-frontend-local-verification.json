@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "checks": [
+    "real_pkce_login:http://localhost:5173",
+    "stream_indexing:http://localhost:5173",
+    "dashboard_history_detail_download:http://localhost:5173",
+    "cross_user_api_and_ui_isolation:http://localhost:5173",
+    "retry_and_delete:http://localhost:5173",
+    "logout_revocation:http://localhost:5173"
+  ],
+  "run_ids": [
+    "a37bb523-1b35-4cac-a62e-643cb0f5f816"
+  ],
+  "checked_at": "2026-10-23T05:54:00.903611+00:00",
+  "account": "695650811791",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "origins": [
+    "http://localhost:5173"
+  ],
+  "temporary_accounts": 2,
+  "cloudfront_included": false,
+  "build_mode": "production",
+  "temporary_users_removed": 2,
+  "project_rows_removed": 1,
+  "run_cleanup": "Protected tombstones/derived data use scheduled backend cleanup"
+}

@@ -1,0 +1,56 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.5",
+  "planned_values": {},
+  "resource_drift": [
+    {
+      "address": "aws_security_group.web",
+      "type": "aws_security_group",
+      "mode": "managed",
+      "change": {
+        "actions": ["update"],
+        "before": {"ingress": []},
+        "after": {
+          "ingress": [{
+            "protocol": "tcp",
+            "from_port": 22,
+            "to_port": 22,
+            "cidr_blocks": ["0.0.0.0/0"],
+            "ipv6_cidr_blocks": [],
+            "description": "Example external rule"
+          }]
+        }
+      }
+    },
+    {
+      "address": "aws_instance.missing",
+      "type": "aws_instance",
+      "mode": "managed",
+      "change": {
+        "actions": ["delete"],
+        "before": {"instance_type": "t3.micro"},
+        "after": null
+      }
+    },
+    {
+      "address": "aws_instance.resized",
+      "type": "aws_instance",
+      "mode": "managed",
+      "change": {
+        "actions": ["update"],
+        "before": {"instance_type": "t3.micro"},
+        "after": {"instance_type": "t3.small"}
+      }
+    },
+    {
+      "address": "aws_instance.tagged",
+      "type": "aws_instance",
+      "mode": "managed",
+      "change": {
+        "actions": ["update"],
+        "before": {"tags": {"AccessProject": "example-old"}},
+        "after": {"tags": {"AccessProject": "example-new"}}
+      }
+    }
+  ]
+}

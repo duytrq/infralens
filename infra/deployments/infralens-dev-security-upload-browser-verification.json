@@ -1,0 +1,58 @@
+{
+  "status": "passed",
+  "checks": [
+    "real_pkce_login:https://ddsw2osqv2rj2.cloudfront.net",
+    "stream_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+    "dashboard_history_detail_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "cli_security_upload_gate_retry_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+    "cli_security_dashboard_source_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_signed_upload_report_comparison_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_dashboard_deep_link_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "drift_cross_user_isolation_and_deletion:https://ddsw2osqv2rj2.cloudfront.net",
+    "cross_user_api_and_ui_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "retry_and_delete:https://ddsw2osqv2rj2.cloudfront.net",
+    "logout_revocation:https://ddsw2osqv2rj2.cloudfront.net",
+    "real_pkce_login:http://localhost:5173",
+    "stream_indexing:http://localhost:5173",
+    "dashboard_history_detail_download:http://localhost:5173",
+    "cli_security_upload_gate_retry_indexing:http://localhost:5173",
+    "cli_security_dashboard_source_download:http://localhost:5173",
+    "drift_signed_upload_report_comparison_isolation:http://localhost:5173",
+    "drift_dashboard_deep_link_download:http://localhost:5173",
+    "drift_cross_user_isolation_and_deletion:http://localhost:5173",
+    "cross_user_api_and_ui_isolation:http://localhost:5173",
+    "retry_and_delete:http://localhost:5173",
+    "logout_revocation:http://localhost:5173"
+  ],
+  "run_ids": [
+    "5f7c5c2e-e0c9-4c6a-8b72-af391f24e7b9",
+    "e1a53aa0-20e7-45f7-8111-c4b188e38432",
+    "be7c4a32-fb0d-4e7e-ba66-9061d0080252",
+    "98ae8bc0-c0cc-4fab-8837-081073f63cdb",
+    "c9441e1d-c289-4ca7-a641-23a1e548f9a1",
+    "19eb1da0-fb57-4183-9339-c8f5a5da8da9",
+    "8e0af6b0-1e00-4bbe-b488-da7ee10c37fe",
+    "b6260ddc-91da-44ca-b978-7ca7611e3258"
+  ],
+  "checked_at": "2026-10-28T09:08:27.471703+00:00",
+  "account": "695650811791",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "origins": [
+    "https://ddsw2osqv2rj2.cloudfront.net",
+    "http://localhost:5173"
+  ],
+  "temporary_accounts": 2,
+  "cloudfront_included": true,
+  "build_mode": "production",
+  "temporary_users_removed": 2,
+  "project_rows_removed": 2,
+  "run_cleanup": "Protected tombstones/derived data use scheduled backend cleanup",
+  "real_security_cli": true,
+  "cli_artifact": {
+    "filename": "infralens-0.1.0-py3-none-linux_x86_64.whl",
+    "size_bytes": 51492847,
+    "sha256": "2ce59427c5c2eec792e735d4a8aa8d0aabf38ee306a9fc87ede64a45038e89d2",
+    "implementation_revision": "ffae3a1d8cad094f05458374afb517e4a4c30db2",
+    "installed_source_matches_checkout": true
+  }
+}

@@ -1,0 +1,84 @@
+name: Bundled scanner
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.14']
+        runner: [ubuntu-22.04, windows-2022]
+        include:
+          - runner: ubuntu-22.04
+            platform: linux_x86_64
+          - runner: windows-2022
+            platform: win_amd64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      INFRALENS_REQUIRE_SYMLINKS: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: '0.11.6'
+          python-version: ${{ matrix.python }}
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Quality checks
+        run: |
+          uv run ruff check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          uv run ruff format --check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          uv run pytest -q
+          exit $LASTEXITCODE
+      - name: Prepare verified scanner
+        run: |
+          uv run python scripts/bundle_trivy.py ${{ matrix.platform }}
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $binary = if ($IsWindows) { 'trivy.exe' } else { 'trivy' }
+          "INFRALENS_TEST_TRIVY=$env:GITHUB_WORKSPACE/build/trivy/${{ matrix.platform }}/$binary" >> $env:GITHUB_ENV
+          "TRIVY_CACHE_DIR=$env:RUNNER_TEMP/infralens-trivy-cache" >> $env:GITHUB_ENV
+      - name: Real scanner integration
+        run: uv run pytest -q tests/integration/test_trivy_integration.py --run-integration --run-network
+      - name: Build platform wheel
+        env:
+          INFRALENS_BUNDLE_PLATFORM: ${{ matrix.platform }}
+        run: uv build --wheel
+      - name: Verify installed wheel without PATH scanner
+        run: |
+          $wheel = (Get-ChildItem dist/*-${{ matrix.platform }}.whl).FullName
+          uv run python scripts/verify_bundle.py $wheel
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          uv run python -c "import hashlib,pathlib; p=pathlib.Path(r'$wheel'); p.with_suffix(p.suffix+'.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n',encoding='utf-8')"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: infralens-${{ matrix.platform }}-python-${{ matrix.python }}
+          path: |
+            dist/*.whl
+            dist/*.sha256
+          if-no-files-found: error
+
+  docker:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: '0.11.6'
+          python-version: '3.12'
+      - run: uv sync --locked
+      - run: docker build --platform linux/amd64 -t infralens:local .
+      - run: uv run pytest -q tests/integration/test_docker.py --run-docker

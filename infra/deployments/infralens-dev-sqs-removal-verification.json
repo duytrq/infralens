@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-22T14:12:00.532999+00:00",
+  "stack": "infralens-dev",
+  "stack_status": "UPDATE_COMPLETE",
+  "sqs_queue_deleted": true,
+  "failure_destination_removed": true,
+  "sqs_iam_permission_removed": true,
+  "stream_state": "Enabled",
+  "maximum_retry_attempts": 3,
+  "maximum_record_age_seconds": 900,
+  "live_api_checks": {
+    "dashboard_config": 200,
+    "unauthenticated_projects": 401
+  },
+  "local_checks": {
+    "focused_tests": 7,
+    "cfn_lint": "passed",
+    "sam_transform": "passed dev/prod",
+    "sam_build": "passed",
+    "isolated_artifacts": "passed all3",
+    "ruff": "passed"
+  }
+}

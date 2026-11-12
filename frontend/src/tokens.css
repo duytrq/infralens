@@ -1,0 +1,19 @@
+:root {
+  color-scheme: light;
+  --canvas: #f6f8f9;
+  --surface: #ffffff;
+  --subtle: #f9fafb;
+  --text: #192b32;
+  --text-secondary: #3d535d;
+  --muted: #60747e;
+  --border: #e1e8eb;
+  --input-border: #bccbd1;
+  --accent: #087568;
+  --accent-hover: #065c52;
+  --accent-subtle: #e8f5f1;
+  --focus: #158fbd;
+  --nav: #10272b;
+  --nav-muted: #a1b9bc;
+  --danger: #b1323e;
+  --radius: 6px;
+}

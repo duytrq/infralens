@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "checked_at": "2026-10-27T10:04:23.713918+00:00",
+  "account": "695650811791",
+  "region": "ap-southeast-1",
+  "release": "20261027T100344Z-d9e3b434ac36",
+  "git_revision": "d9e3b434ac36695d4ae193b5e3e0d47cc51169c4",
+  "git_dirty": false,
+  "previous_release": "20261023T092153Z-1539682b62c4",
+  "frontend_url": "https://ddsw2osqv2rj2.cloudfront.net",
+  "api_endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "backend_stack_status": "UPDATE_COMPLETE",
+  "checks": [
+    "cdn_hash_and_cache:index.html",
+    "cdn_hash_and_cache:assets/favicon-CbJo80fz.svg",
+    "cdn_hash_and_cache:assets/index-BpZndIly.css",
+    "cdn_hash_and_cache:assets/index-DBp6smHl.js",
+    "spa_deep_links_match_release",
+    "missing_assets_do_not_return_html",
+    "private_s3_origin",
+    "cors_exact_registered_origins",
+    "drift_routes_require_jwt",
+    "cloudformation_complete_and_jwt_scopes",
+    "rollback_archive_available"
+  ],
+  "rollback": {
+    "frontend_release_verified": "20261023T092153Z-1539682b62c4",
+    "backend_previous_template_bucket": "infralens-dev-artifacts-artifactsbucket-yswxkvh81khb",
+    "backend_previous_template_key": "backend-releases/infralens-dev/20261027T100344Z-d9e3b434ac36/previous-template.json",
+    "backend_previous_template_sha256": "f03aa5330d9df1f11819095352f51aa69ed5c656f79617c9520d72ad3121ae58",
+    "note": "Previous packaged Lambda objects remain in the retained artifacts bucket; rollback has not been executed during this rollout."
+  }
+}

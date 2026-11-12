@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-11-05T14:44:38.728831+00:00",
+  "release": "20261105T144138Z-1f2c89a34d75",
+  "previous_release": "20261027T100344Z-d9e3b434ac36",
+  "url": "https://ddsw2osqv2rj2.cloudfront.net",
+  "checks": [
+    "cloudfront_checksum:index.html",
+    "cloudfront_checksum:assets/favicon-CbJo80fz.svg",
+    "cloudfront_checksum:assets/index-BpZndIly.css",
+    "api_key_routes_in_live_bundle",
+    "cloudfront_checksum:assets/index-BCzfl7nZ.js",
+    "spa_route:/api-keys",
+    "spa_route:/projects",
+    "spa_route:/auth/callback"
+  ],
+  "status": "passed"
+}

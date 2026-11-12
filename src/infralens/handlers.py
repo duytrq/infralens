@@ -1,0 +1,192 @@
+"""Command orchestration and finding policies."""
+
+import hashlib
+import json
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+import typer
+
+from infralens.drift_gate import evaluate_gate, render_gate
+from infralens.drift_reporting import render_drift
+from infralens.drift_service import collect_drift
+from infralens.errors import ExecutionError, ExitCode
+from infralens.options import SEVERITIES, DriftOptions, ScanOptions
+from infralens.reporting import render_table, write_report
+from infralens.trivy import Trivy
+
+
+def handle_scan(options: ScanOptions) -> None:
+    if options.upload is not None:
+        destination = options.upload
+        typer.echo(
+            f"Upload destination: {destination.api_url} | project={destination.project}"
+            + (f" | scope={destination.scope}" if destination.scope else ""),
+            err=True,
+        )
+    started = datetime.now(timezone.utc)
+    ignore = options.path / ".trivyignore"
+    ignore_sha256 = (
+        hashlib.sha256(ignore.read_bytes()).hexdigest()
+        if options.upload is not None and ignore.is_file()
+        else None
+    )
+    engine = Trivy(options.path)
+    result = engine.scan(options.timeout)
+    finished = datetime.now(timezone.utc)
+    failed = options.fail_on is not None and any(
+        SEVERITIES.index(f.severity) >= SEVERITIES.index(options.fail_on)
+        for f in result.findings
+    )
+    for diagnostic in result.diagnostics:
+        typer.echo(f"Warning: {diagnostic}", err=True)
+    table = render_table(result, options.severity)
+    display = (
+        render_table(result, options.severity, color=True) if options.color else table
+    )
+    report = table
+    if options.upload is not None:
+        # Cloud counts and gate cover every finding, independent of table filters.
+        if set(options.severity) != set(SEVERITIES):
+            typer.echo(
+                "Warning: Upload JSON includes all severities; "
+                "--severity only filters the terminal table.",
+                err=True,
+            )
+        report = json.dumps(result.raw, ensure_ascii=True, indent=2) + "\n"
+    elif options.format != "table":
+        with tempfile.TemporaryDirectory(prefix="infralens-") as directory:
+            source = Path(directory) / "scan.json"
+            source.write_text(json.dumps(result.raw), encoding="utf-8")
+            report = engine.convert(source, options.format, options.severity)
+    if options.output is not None:
+        write_report(options.output, report)
+        typer.echo(display, nl=False, color=options.color)
+        typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
+    else:
+        screen = display if options.format == "table" else report
+        typer.echo(
+            screen,
+            nl=not screen.endswith("\n"),
+            color=options.color if options.format == "table" else False,
+        )
+    if options.upload is not None:
+        from infralens import cloud
+
+        gate_status = (
+            "failed" if failed else "passed" if options.fail_on else "disabled"
+        )
+        typer.echo(f"Scan: completed | Gate: {gate_status}", err=True)
+        try:
+            cloud.upload_scan(
+                result,
+                options,
+                started,
+                finished,
+                engine.version,
+                failed,
+                ignore_sha256,
+            )
+        except ExecutionError as exc:
+            raise ExecutionError(
+                f"Upload failed or was not confirmed: {exc} "
+                f"Local report kept at {str(options.output)!r}. "
+                "Check the dashboard before running again."
+            ) from None
+    if failed:
+        raise typer.Exit(ExitCode.findings)
+
+
+def handle_drift(options: DriftOptions) -> None:
+    if options.upload is not None:
+        destination = options.upload
+        typer.echo(
+            f"Upload destination: {destination.api_url} | project={destination.project}"
+            + (f" | scope={destination.scope}" if destination.scope else ""),
+            err=True,
+        )
+    started = datetime.now(timezone.utc)
+    result = collect_drift(options)
+    finished = datetime.now(timezone.utc)
+    gate = None
+    if (
+        options.fail_on_drift
+        or options.fail_on_priority is not None
+        or options.fail_on_unknown
+    ):
+        gate = evaluate_gate(
+            result,
+            fail_on_drift=options.fail_on_drift,
+            fail_on_priority=options.fail_on_priority,
+            fail_on_unknown=options.fail_on_unknown,
+        )
+    excerpts = None
+    if options.format == "table" or options.output is not None:
+        import os
+
+        from infralens.drift_code import source_excerpts
+
+        excerpts = source_excerpts(
+            result,
+            options.path,
+            severity=options.severity,
+            data_dir=str(options.data_dir)
+            if options.data_dir is not None
+            else os.environ.get("TF_DATA_DIR"),
+        )
+    table = render_drift(result, severity=options.severity, excerpts=excerpts)
+    display = render_drift(
+        result, color=options.color, severity=options.severity, excerpts=excerpts
+    )
+    if gate is not None:
+        table += render_gate(gate)
+        display += render_gate(gate, color=options.color)
+    data = result.to_dict()
+    if gate is not None:
+        data["gate"] = gate
+    if options.upload is not None:
+        from infralens.cloud import cloud_report
+
+        data = cloud_report(data, options.path)
+    report = (
+        json.dumps(data, ensure_ascii=True, indent=2) + "\n"
+        if options.format == "json"
+        else table
+    )
+    if options.output is not None:
+        write_report(options.output, report)
+        typer.echo(display, nl=False, color=options.color)
+        typer.echo(f"Report saved to {str(options.output)!r}.", err=True)
+    else:
+        typer.echo(
+            display if options.format == "table" else report,
+            nl=False,
+            color=options.color if options.format == "table" else False,
+        )
+    if options.upload is not None:
+        from infralens import cloud
+
+        collection = (
+            "partial" if result.trace and result.trace["has_errors"] else "completed"
+        )
+        typer.echo(
+            f"Scan: {collection} | Gate: {gate['status'] if gate else 'disabled'}",
+            err=True,
+        )
+        try:
+            cloud.upload_drift(data, options, started, finished)
+        except ExecutionError as exc:
+            raise ExecutionError(
+                f"Upload failed or was not confirmed: {exc} "
+                f"Local report kept at {str(options.output)!r}. "
+                "Check the dashboard before running again."
+            ) from None
+    if result.trace and result.trace["has_errors"]:
+        typer.echo(
+            "Error: CloudTrail trace incomplete; see trace details in the report.",
+            err=True,
+        )
+        raise typer.Exit(ExitCode.execution_error)
+    if gate is not None and gate["exit_code"] == 1:
+        raise typer.Exit(ExitCode.findings)

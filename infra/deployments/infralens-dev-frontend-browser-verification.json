@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "checks": [
+    "real_pkce_login:https://ddsw2osqv2rj2.cloudfront.net",
+    "stream_indexing:https://ddsw2osqv2rj2.cloudfront.net",
+    "dashboard_history_detail_download:https://ddsw2osqv2rj2.cloudfront.net",
+    "cross_user_api_and_ui_isolation:https://ddsw2osqv2rj2.cloudfront.net",
+    "retry_and_delete:https://ddsw2osqv2rj2.cloudfront.net",
+    "logout_revocation:https://ddsw2osqv2rj2.cloudfront.net",
+    "real_pkce_login:http://localhost:5173",
+    "stream_indexing:http://localhost:5173",
+    "dashboard_history_detail_download:http://localhost:5173",
+    "cross_user_api_and_ui_isolation:http://localhost:5173",
+    "retry_and_delete:http://localhost:5173",
+    "logout_revocation:http://localhost:5173"
+  ],
+  "run_ids": [
+    "8fda790a-3b3d-4e6c-8959-f06369bc4fe3",
+    "e2b212e0-8481-45ab-8287-4302a1b7e8f6"
+  ],
+  "checked_at": "2026-10-23T09:19:16.921650+00:00",
+  "account": "695650811791",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "origins": [
+    "https://ddsw2osqv2rj2.cloudfront.net",
+    "http://localhost:5173"
+  ],
+  "temporary_accounts": 2,
+  "cloudfront_included": true,
+  "build_mode": "production",
+  "temporary_users_removed": 2,
+  "project_rows_removed": 2,
+  "run_cleanup": "Protected tombstones/derived data use scheduled backend cleanup"
+}

@@ -1,0 +1,47 @@
+{
+  "account": "695650811791",
+  "region": "ap-southeast-1",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "checks": [
+    "Cognito hosted form login and localhost callback with PKCE, account A",
+    "Cognito hosted form login and localhost callback with PKCE, account B",
+    "Gateway rejects absent token, invalid signature and ID token",
+    "Native Trivy report: checksum rejection, immutable PUT, retry, complete, history, download, delete",
+    "Cross-account project/run/read/complete/download/delete denied",
+    "Missing object and checksum-valid invalid native JSON never become ready",
+    "Ready report remains private to its owner",
+    "Deployed cleanup Lambda deletes expired pending metadata and S3 object",
+    "Deletion hides scan immediately; tombstones await signed-URL expiry",
+    "Hourly schedule, invoke permission, private bucket and pending lifecycle configured",
+    "Cognito refresh works; revoked refresh token is rejected"
+  ],
+  "status": "passed",
+  "temporary_users_deleted": 2,
+  "checked_at": "2026-10-21T14:14:08.280868+00:00",
+  "post_verification": {
+    "stack_status": "UPDATE_COMPLETE",
+    "log_checks": {
+      "ApiLogGroup": {
+        "errors": 0,
+        "results": {
+          "200": 20,
+          "201": 8,
+          "202": 5,
+          "404": 9,
+          "409": 3
+        }
+      },
+      "CleanupLogGroup": {
+        "errors": 0,
+        "results": {
+          "cleanup_result deleted=1 deferred=0 failed=0": 1
+        }
+      }
+    },
+    "temporary_users_remaining": 0,
+    "report_objects_remaining": 0,
+    "test_metadata_states": {
+      "deleting": 5
+    }
+  }
+}

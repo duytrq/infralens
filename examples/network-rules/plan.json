@@ -1,0 +1,183 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.5",
+  "planned_values": {},
+  "resource_drift": [
+    {
+      "address": "aws_vpc_security_group_ingress_rule.widen_ports",
+      "type": "aws_vpc_security_group_ingress_rule",
+      "mode": "managed",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 22,
+          "to_port": 22,
+          "cidr_ipv4": "0.0.0.0/0"
+        },
+        "after": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 22,
+          "to_port": 23,
+          "cidr_ipv4": "0.0.0.0/0"
+        }
+      }
+    },
+    {
+      "address": "aws_vpc_security_group_ingress_rule.new_ipv6",
+      "type": "aws_vpc_security_group_ingress_rule",
+      "mode": "managed",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 443,
+          "to_port": 443,
+          "cidr_ipv4": null,
+          "cidr_ipv6": "2001:db8::/64"
+        },
+        "after": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 443,
+          "to_port": 443,
+          "cidr_ipv4": null,
+          "cidr_ipv6": "::/0"
+        }
+      }
+    },
+    {
+      "address": "aws_vpc_security_group_ingress_rule.narrow_ports",
+      "type": "aws_vpc_security_group_ingress_rule",
+      "mode": "managed",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 443,
+          "to_port": 444,
+          "cidr_ipv4": "0.0.0.0/0"
+        },
+        "after": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 443,
+          "to_port": 443,
+          "cidr_ipv4": "0.0.0.0/0"
+        }
+      }
+    },
+    {
+      "address": "aws_vpc_security_group_egress_rule.widen_egress",
+      "type": "aws_vpc_security_group_egress_rule",
+      "mode": "managed",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "security_group_id": "sg-1123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 443,
+          "to_port": 443,
+          "cidr_ipv4": "0.0.0.0/0"
+        },
+        "after": {
+          "security_group_id": "sg-1123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 443,
+          "to_port": 444,
+          "cidr_ipv4": "0.0.0.0/0"
+        }
+      }
+    },
+    {
+      "address": "aws_security_group_rule.legacy_direction",
+      "type": "aws_security_group_rule",
+      "mode": "managed",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "security_group_id": "sg-2123456789abcdef0",
+          "region": "ap-southeast-2",
+          "type": "egress",
+          "protocol": "tcp",
+          "from_port": 22,
+          "to_port": 22,
+          "cidr_blocks": [
+            "0.0.0.0/0"
+          ]
+        },
+        "after": {
+          "security_group_id": "sg-2123456789abcdef0",
+          "region": "ap-southeast-2",
+          "type": "ingress",
+          "protocol": "tcp",
+          "from_port": 22,
+          "to_port": 22,
+          "cidr_blocks": [
+            "0.0.0.0/0"
+          ]
+        }
+      }
+    },
+    {
+      "address": "aws_vpc_security_group_ingress_rule.hidden_context",
+      "type": "aws_vpc_security_group_ingress_rule",
+      "mode": "managed",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 22,
+          "to_port": 22,
+          "cidr_ipv4": "10.0.0.0/24"
+        },
+        "after": {
+          "security_group_id": "sg-0123456789abcdef0",
+          "region": "ap-southeast-2",
+          "ip_protocol": "tcp",
+          "from_port": 22,
+          "to_port": 23,
+          "cidr_ipv4": "10.0.0.0/24"
+        },
+        "before_sensitive": {
+          "cidr_ipv4": true
+        },
+        "after_sensitive": {
+          "cidr_ipv4": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "checked_at": "2026-10-22T10:28:02.908949+00:00",
+  "status": "passed",
+  "endpoint": "https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com",
+  "checks": [
+    "real_cognito_pkce_cli_and_dashboard_two_users",
+    "missing_id_and_invalid_tokens_rejected",
+    "exact_origin_cors_preflight_and_untrusted_origin",
+    "dashboard_project_creation_cli_visibility_and_owner_isolation",
+    "real_stream_worker_indexes_uploaded_report",
+    "findings_pagination_filters_cursor_binding_and_source_excerpt",
+    "cross_user_findings_download_retry_and_delete_denied",
+    "project_latest_history_idempotent_retry_and_original_download",
+    "delete_immediately_hides_findings_and_latest_scan",
+    "failed_analysis_preserves_original_and_can_retry_new_build",
+    "legacy_report_backfill_dry_run_and_real_stream_processing",
+    "deployed_cleanup_removes_orphan_findings_and_job_with_actual_iam",
+    "dashboard_refresh_token_revocation"
+  ],
+  "index_seconds": 3.28,
+  "findings": 2,
+  "temporary_users_deleted": 3,
+  "cleanup": "Run tombstones/derived data remain protected until scheduled cleanup; original report deleted.",
+  "recovery_checked_at": "2026-10-22T10:30:11.914996+00:00",
+  "post_verification": {
+    "stack_status": "UPDATE_COMPLETE",
+    "temporary_users_remaining": 0,
+    "error_logs_last_hour": {
+      "ApiLogGroup": 0,
+      "CleanupLogGroup": 0,
+      "AnalysisLogGroup": 0
+    },
+    "failure_queue_messages": 0,
+    "report_objects_remaining": 0,
+    "run_metadata_states": {
+      "deleting": 3
+    }
+  },
+  "local_checks": {
+    "backend_tests": 104,
+    "cli_tests": 176,
+    "cli_platform_skip": 1,
+    "cli_optional_deselected": 12,
+    "dependency_audit": "no known vulnerabilities",
+    "auth_mutation_test": "rejected",
+    "large_report_benchmark": {
+      "bytes": 51487311,
+      "findings": 1000,
+      "seconds": 11.439,
+      "peak_rss_kib": 120408
+    }
+  }
+}
