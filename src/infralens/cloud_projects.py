@@ -1,16 +1,94 @@
 """Authenticated project operations using the existing private projects API."""
 
 import json
+import os
+import re
+import subprocess
 from pathlib import Path
 from urllib.parse import urlencode
 
 import typer
 
-from infralens import cloud_config
+from infralens import cloud_auth, cloud_config
 from infralens.cloud import identifier
 from infralens.cloud_auth import access_token, http
 from infralens.errors import ExecutionError, InvalidInput
 from infralens.reporting import plain
+
+
+def auto_project(api, root):
+    """Bind on first upload; ask before reusing any existing project ID."""
+    directory = Path(root).resolve()
+    existing, binding = cloud_config.repo_config(directory)
+    if existing is not None:
+        if binding["api_url"] == api:
+            return binding["project_id"]
+        raise InvalidInput(
+            "This repo is bound to a different API. Use --project for this run "
+            "or 'infralens cloud project use ID --api-url URL' to rebind it."
+        )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+            env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+        git_root = Path(result.stdout.strip()).resolve()
+        directory.relative_to(git_root)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        raise InvalidInput(
+            "No project bound to this directory and no usable Git repo found. "
+            "Run 'infralens cloud setup' or pass --project explicitly."
+        ) from None
+    name = plain(git_root.name)[:120] or "Git project"
+    project_id = re.sub(r"[^a-z0-9]+", "-", name.lower())[:64].strip("-") or "repo"
+    token = access_token(api)
+    while True:
+        data, created = _prepare_project(api, token, project_id, name)
+        if created:
+            break
+        if not cloud_auth.interactive_input():
+            raise InvalidInput(
+                f"Project '{project_id}' already exists. Run with --project "
+                "to explicitly reuse it, commit a repo binding, or use "
+                "'infralens cloud project create ID --name NAME' to create another."
+            )
+        typer.echo(
+            f"Project ID already exists: {project_id} | {plain(data['name'])}",
+            err=True,
+        )
+        if typer.confirm("Use this existing project?", default=False, err=True):
+            break
+        project_id = identifier(typer.prompt("New project ID", err=True), "Project ID")
+    file = cloud_config.save_repo(git_root, api, project_id)
+    typer.echo(f"Project ready: {project_id} | {plain(data['name'])}", err=True)
+    typer.echo(f"Repo binding saved: {file}", err=True)
+    return project_id
+
+
+def _prepare_project(api, token, project_id, name):
+    path = f"/v1/projects/{project_id}"
+    status, data = _request(
+        api, token, "GET", path, statuses=(200, 404), include_status=True
+    )
+    if status == 200:
+        return _project(data, project_id), False
+    status, data = _request(
+        api,
+        token,
+        "PUT",
+        path,
+        {"name": name},
+        statuses=(200, 201, 409),
+        include_status=True,
+    )
+    # Another client may create the ID between GET and PUT. Never silently reuse it.
+    if status == 409:
+        data = _request(api, token, "GET", path)
+    return _project(data, project_id), status == 201
 
 
 def _project(data, expected=None):
@@ -28,10 +106,12 @@ def _project(data, expected=None):
     return data
 
 
-def _request(api, token, method, path, body=None):
+def _request(
+    api, token, method, path, body=None, *, statuses=None, include_status=False
+):
     from infralens.cloud_api_key import route
 
-    _, payload = http(
+    status, payload = http(
         method,
         api + route(token, path),
         data=json.dumps(body).encode() if body is not None else None,
@@ -39,10 +119,11 @@ def _request(api, token, method, path, body=None):
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
-        statuses=(200, 201) if method == "PUT" else (200,),
+        statuses=statuses or ((200, 201) if method == "PUT" else (200,)),
     )
     try:
-        return json.loads(payload)
+        data = json.loads(payload)
+        return (status, data) if include_status else data
     except (ValueError, UnicodeError, RecursionError):
         raise ExecutionError("The service returned invalid project data.") from None
 

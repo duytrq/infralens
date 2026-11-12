@@ -230,18 +230,24 @@ mã nguồn do Trivy cung cấp. Báo cáo được xuất trước khi trả ex
 
 ### Upload Security lên dashboard
 
-Lưu API một lần, tạo hoặc chọn project ngay trong CLI:
+Trong repo Git, lưu API và đăng nhập một lần; upload đầu tự tạo project:
 
 ```bash
 infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
-infralens cloud project create my-project --name "My project"
-infralens cloud project list
-infralens cloud configure list
+infralens cloud login
 
 infralens scan ./infra --format json --output ./reports/security.json \
   --fail-on HIGH --upload
 ```
 
+CLI lưu liên kết vào `.infralens.toml` ở gốc Git và tự dùng lại cho những lần sau.
+Commit file này để các bản clone/CI dùng cùng project; file không chứa API key.
+ID mặc định là tên repo viết thường, thay khoảng trắng/ký tự đặc biệt bằng `-`,
+tối đa 64 ký tự, không có hash. Nếu ID đã tồn tại, terminal hỏi dùng project đó
+hay nhập ID khác; CI dừng và yêu cầu `--project` hoặc binding đã lưu.
+Git cần có trên PATH cho bước tự tạo lần đầu. Liên kết cũ vẫn được dùng lại.
+
+Muốn tự đặt tên/ID, dùng `cloud project create my-project --name "My project"`.
 `create` hỏi ID/tên còn thiếu trên terminal; CI phải truyền ID và `--name`.
 `create` tự chọn project; dùng `cloud project use ID` để chuyển project đã có.
 Project có cả Security và Drift. Project được gắn với repo, không có mặc định chung

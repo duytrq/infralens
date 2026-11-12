@@ -309,20 +309,20 @@ def _upload_options(
     from infralens.cloud_config import resolve
 
     api_url, project = resolve(api_url, project, root=root)
-    if project is None:
-        raise InvalidInput(
-            "No project bound to this repo. Run 'infralens cloud setup' or "
-            "pass --project explicitly for this run."
-        )
     if require_scope and scope is None:
         raise InvalidInput(
             "Drift upload requires --scope, e.g. --scope dev-default "
             "for this account/workspace/environment."
         )
+    scope = identifier(scope, "--scope") if require_scope else None
+    if project is None:
+        from infralens.cloud_projects import auto_project
+
+        project = auto_project(api_url, root or Path.cwd())
     options = UploadOptions(
         api_url,
         project,
-        identifier(scope, "--scope") if require_scope else None,
+        scope,
     )
     return options
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — Automatic Git project binding
+
+- First Security/Drift `--upload` in an unbound Git checkout creates a private
+  project and saves `.infralens.toml` at the Git root; later uploads reuse it.
+- Explicit flags, environment selections and existing repo bindings take priority.
+  API overrides never silently replace a binding. Commit the config to share the
+  project across clones/CI. New IDs use the normalized repo name without a hash.
+- When an ID already exists, ask whether to reuse it or enter another ID. CI must
+  select explicitly or provide a saved binding. Concurrent creation does not
+  silently merge projects; existing bindings, including hashed IDs, remain valid.
+
 ## Unreleased — Operator-managed account offboarding
 
 - Replace per-request Cognito owner lookup with a strongly consistent DynamoDB

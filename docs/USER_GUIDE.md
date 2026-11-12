@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng InfraLens
 
-Cập nhật **2026-10-29**. InfraLens kiểm tra **Security** (cấu hình Terraform không
+Cập nhật **2026-11-11**. InfraLens kiểm tra **Security** (cấu hình Terraform không
 an toàn) và **Drift** (hạ tầng thực tế lệch so với state đã lưu). Chạy kiểm tra ở
 máy/CI; dashboard dùng để xem báo cáo đã upload.
 
@@ -31,7 +31,37 @@ Xem [README](../README.md) nếu dùng mã nguồn thay vì wheel.
 
 ## 2. Setup một lần
 
-Tại repo hạ tầng, chạy:
+Với repo Git, chỉ cần cấu hình API và đăng nhập một lần:
+
+```bash
+infralens cloud configure --api-url https://8maelv4bic.execute-api.ap-southeast-1.amazonaws.com
+infralens cloud login
+infralens scan --upload
+```
+
+Lần upload đầu, nếu chưa chọn project, CLI lấy tên thư mục gốc Git làm tên
+hiển thị, tạo ID từ tên viết thường, thay khoảng trắng/ký tự đặc biệt bằng `-`
+và giới hạn 64 ký tự (tên không tạo được ID thì dùng `repo`). Ví dụ `Company Infra`
+thành `company-infra`, không thêm hash. CLI lưu API/project vào `.infralens.toml`
+ở gốc repo. Những lần scan/Drift sau
+tự dùng lại liên kết, kể cả khi chạy từ thư mục con. Không cần tạo trên dashboard.
+Git phải có trên PATH và repo phải ghi được file cấu hình. Project được chuẩn bị
+trước khi quét; nếu scanner lỗi, project đã tạo vẫn được giữ để chạy lại.
+
+**Commit `.infralens.toml` để máy khác và CI dùng cùng project**, với API key thuộc
+cùng tài khoản. File chỉ chứa API URL/project ID, không chứa API key. CLI không
+dùng Git remote để nhận diện các bản clone. Nếu ID đã tồn tại trong tài khoản,
+CLI hiển thị ID/tên project và hỏi **Use this existing project?** (mặc định không).
+Chọn có để dùng chung lịch sử, hoặc chọn không rồi nhập **New project ID**, ví dụ
+`company-infra-lab`. Nếu ID mới cũng trùng, CLI tiếp tục hỏi. Hủy lựa chọn không
+lưu liên kết hoặc chạy scanner. Trong CI/terminal không tương tác, CLI dừng và
+hướng dẫn truyền `--project ID`, dùng file binding đã commit hoặc tạo/chọn project
+tường minh; không tự dùng chung project chỉ vì trùng tên. Liên kết cũ, kể cả ID
+có hash, vẫn được giữ nguyên. Monorepo
+cần tách project có thể truyền `--project` cho mỗi lần chạy hoặc đặt file
+`.infralens.toml` riêng trong từng thư mục Terraform.
+
+Nếu muốn chọn project đã có hoặc thiết lập qua hướng dẫn tương tác, chạy:
 
 ```bash
 infralens cloud setup
@@ -98,11 +128,14 @@ file ở thư mục hiện tại khi chưa có, sau khi kiểm tra quyền truy 
 
 Khi upload, Project ID lấy từ **flag → biến môi trường → repo**; không có fallback
 về project trên máy. API URL vẫn có thể lấy từ cấu hình máy để thuận tiện setup.
-Thiếu project thì lệnh dừng trước khi quét và hướng dẫn `cloud setup`. CI có thể
+Thiếu project trong repo Git thì CLI tự tạo và lưu liên kết; ngoài Git thì dừng
+và hướng dẫn `cloud setup`. CI có thể
 chỉ định project tường minh bằng `INFRALENS_PROJECT` hoặc `--project`. CLI tìm file
 repo từ thư mục **được quét**, đi lên đến gốc Git (kể cả Git worktree), không lấy
 repo của terminal khi quét một đường dẫn khác. Khi đổi API, project đã lưu của API
-cũ không được tự dùng cho API mới. Scan local không đọc cloud config.
+cũ không được tự dùng cho API mới và binding cũ không bị tự ghi đè; hãy truyền
+`--project` cho lần chạy hoặc dùng `project use ID --api-url URL` để đổi liên kết.
+Scan local không đọc cloud config và không tạo project.
 
 - Cấu hình máy chỉ lưu API URL: `$XDG_CONFIG_HOME/infralens/config.json`, mặc định `~/.config/infralens/config.json`;
   Windows dùng `%APPDATA%\infralens\config.json`.
